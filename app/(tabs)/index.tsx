@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 
 // Quando a logo estiver pronta:
@@ -25,8 +26,7 @@ export default function Home() {
           <View style={styles.marcaLinha}>
             <Ionicons name="school" size={22} color="#F5A623" />
             <View>
-              <Text style={styles.marca}>EDUSYNC</Text>
-              <Text style={styles.marcaSub}>DESDE 2025</Text>
+              <Image source={require("../../assets/images/logoImg.png")} style={styles.logo} resizeMode="contain" />
             </View>
           </View>
 

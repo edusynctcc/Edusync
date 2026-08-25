@@ -1,4 +1,3 @@
-// app/login.js
 import { useState } from "react";
 import {
   View,
@@ -9,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { Link, router, Stack } from "expo-router";
 
@@ -65,9 +65,8 @@ export default function Login() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.cartao}>
-          <Text style={styles.marca}>EDUSYNC</Text>
-
-          <Text style={styles.rotulo}>E-mail</Text>
+           <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
+           <Text style={styles.rotulo}>Nome</Text>
           <TextInput
             style={styles.campo}
             placeholder="Digite seu email"
@@ -122,6 +121,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0B1E3D",
   },
+  logo: {
+  width: 120,
+  height: 120,
+  alignSelf: 'center',
+  marginBottom: 20,
+  },
   scroll: {
     flexGrow: 1,
     alignItems: "center",
@@ -157,7 +162,7 @@ const styles = StyleSheet.create({
   },
   rotulo: {
     alignSelf: "flex-start",
-    fontSize: 13,
+    fontSize: 14,
     color: "#334155",
     marginBottom: 6,
     marginTop: 10,
