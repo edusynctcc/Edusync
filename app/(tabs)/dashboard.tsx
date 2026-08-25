@@ -1,4 +1,3 @@
-// Conteúdo para colocar em app/(tabs)/index.tsx (substitua todo o conteúdo do arquivo por este)
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   ScrollView,
@@ -9,13 +8,8 @@ import {
   Image,
 } from "react-native";
 
-// Quando a logo estiver pronta:
-// 1. salve o arquivo em assets/images/logo.png
-// 2. importe Image de "react-native" (adicione ao import acima)
-// 3. troque o bloco do ícone abaixo por:
-//    <Image source={require("../../assets/images/logo.png")} style={styles.logo} resizeMode="contain" />
-// Não deixe o require() no código antes de o arquivo existir — o Metro quebra o build
-// mesmo que o require esteja dentro de um "if" que nunca roda.
+
+
 
 export default function Home() {
   return (
