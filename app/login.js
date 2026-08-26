@@ -1,18 +1,18 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Link, router, Stack } from "expo-router";
 import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   useWindowDimensions,
+  View,
 } from "react-native";
-import { Link, router, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 const LARGURA_DESKTOP = 900;
 
@@ -20,17 +20,20 @@ const RECURSOS = [
   {
     icone: "camera-outline",
     titulo: "Correção automática por imagem",
-    texto: "Envie atividades e receba correções e sugestões de forma automática com IA.",
+    texto:
+      "Envie atividades e receba correções e sugestões de forma automática com IA.",
   },
   {
     icone: "stats-chart-outline",
     titulo: "Organização inteligente de notas",
-    texto: "Acompanhe o desempenho da turma com relatórios completos e organizados.",
+    texto:
+      "Acompanhe o desempenho da turma com relatórios completos e organizados.",
   },
   {
     icone: "time-outline",
     titulo: "Economia de tempo",
-    texto: "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
+    texto:
+      "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
 
@@ -55,7 +58,7 @@ export default function Login() {
       return;
     }
 
-    router.replace("/dashboard");
+    router.replace("/home");
 
     /* ---- versão com API real (descomente quando o backend estiver pronto) ----
     setCarregando(true);
@@ -73,7 +76,7 @@ export default function Login() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace("/home");
     } catch (e) {
       setErro("Não foi possível conectar ao servidor.");
     } finally {
@@ -85,13 +88,22 @@ export default function Login() {
   // conteúdo do formulário — igual em mobile e desktop, só muda o "embrulho" ao redor
   const conteudoFormulario = (
     <>
-      <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
+      <Image
+        source={require("../assets/images/logoTexto.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.titulo}>Bem-vindo de volta</Text>
       <Text style={styles.subtitulo}>Entre com sua conta de professor</Text>
 
       <Text style={styles.rotulo}>E-mail</Text>
       <View style={styles.campoLinha}>
-        <Ionicons name="mail-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
+        <Ionicons
+          name="mail-outline"
+          size={18}
+          color="#8A93A6"
+          style={styles.campoIcone}
+        />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite seu email"
@@ -105,7 +117,12 @@ export default function Login() {
 
       <Text style={styles.rotulo}>Senha</Text>
       <View style={styles.campoLinha}>
-        <Ionicons name="lock-closed-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
+        <Ionicons
+          name="lock-closed-outline"
+          size={18}
+          color="#8A93A6"
+          style={styles.campoIcone}
+        />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite sua senha"
@@ -114,8 +131,15 @@ export default function Login() {
           onChangeText={setSenha}
           secureTextEntry={!mostrarSenha}
         />
-        <TouchableOpacity onPress={() => setMostrarSenha((v) => !v)} hitSlop={8}>
-          <Ionicons name={mostrarSenha ? "eye-outline" : "eye-off-outline"} size={18} color="#8A93A6" />
+        <TouchableOpacity
+          onPress={() => setMostrarSenha((v) => !v)}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
+            size={18}
+            color="#8A93A6"
+          />
         </TouchableOpacity>
       </View>
 
@@ -137,8 +161,12 @@ export default function Login() {
         disabled={carregando}
         activeOpacity={0.85}
       >
-        <Text style={styles.textoBotao}>{carregando ? "Entrando..." : "Entrar na Plataforma"}</Text>
-        {!carregando && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
+        <Text style={styles.textoBotao}>
+          {carregando ? "Entrando..." : "Entrar na Plataforma"}
+        </Text>
+        {!carregando && (
+          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        )}
       </TouchableOpacity>
 
       <View style={styles.rodape}>
@@ -164,12 +192,15 @@ export default function Login() {
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
-              <Text style={styles.promoTituloDestaque}>menos tempo para corrigir.</Text>
+              <Text style={styles.promoTituloDestaque}>
+                menos tempo para corrigir.
+              </Text>
             </Text>
 
             <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para você
-              foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              O Edusync automatiza a correção de atividades e organiza suas
+              notas de forma inteligente, para você foque no que realmente
+              importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -190,7 +221,9 @@ export default function Login() {
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.promoCtaTexto}>Quer saber mais sobre o nosso projeto?</Text>
+              <Text style={styles.promoCtaTexto}>
+                Quer saber mais sobre o nosso projeto?
+              </Text>
               <TouchableOpacity style={styles.promoCtaBotao}>
                 <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
               </TouchableOpacity>
@@ -203,9 +236,15 @@ export default function Login() {
 
   // ---------- versão mobile ----------
   return (
-    <KeyboardAvoidingView style={styles.tela} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={styles.tela}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.cartao}>{conteudoFormulario}</View>
       </ScrollView>
     </KeyboardAvoidingView>
