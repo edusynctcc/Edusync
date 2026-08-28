@@ -1,5 +1,8 @@
+
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
 import {
   Platform,
   ScrollView,
@@ -33,6 +36,7 @@ const ATALHOS = [
     corFundo: "#E7F8EF",
     corIcone: "#22C55E",
     biblioteca: "ion",
+    rota: "/atividades",
   },
   {
     chave: "scanner",
@@ -72,6 +76,7 @@ const ATALHOS = [
   },
 ];
 
+
 export default function Home() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
@@ -81,43 +86,11 @@ export default function Home() {
   const larguraCardGrade =
     colunasGrade === 1 ? "100%" : colunasGrade === 2 ? "48%" : "31.5%";
   const [dicaVisivel, setDicaVisivel] = useState(true);
+  const router = useRouter();
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 240 }]}>
-      {!ehDesktop && (
-        <View
-          style={[
-            styles.cabecalho,
-            { paddingTop: Platform.OS === "web" ? 18 : 56 },
-          ]}
-        >
-          <View style={styles.cabecalhoMiolo}>
-            <View style={styles.marcaLinha}>
-              <Image
-                source={require("../../assets/images/logoImg.png")}
-                style={[styles.logo, ehMobilePequeno && { width: 120, height: 34 }]}
-                resizeMode="contain"
-              />
-            </View>
-
-            <View style={styles.usuarioLinha}>
-              <View style={styles.avatarPequeno}>
-                <Text style={styles.avatarPequenoTexto}>{INICIAIS_PROFESSOR}</Text>
-              </View>
-              {!ehMobilePequeno && (
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNome}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
-                </View>
-              )}
-              <TouchableOpacity style={styles.sino}>
-                <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-                <View style={styles.sinoPonto} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+    <View style={[styles.tela, ehDesktop && { paddingLeft: 300 }]}>
+      {!ehDesktop && <CabecalhoMobile ehMobilePequeno={ehMobilePequeno} />}
 
       <ScrollView
         style={styles.conteudo}
@@ -128,11 +101,12 @@ export default function Home() {
       >
         <View
           style={[
-            ehDesktop && styles.miolo,
+            ehDesktop ? styles.miolo : { width: "100%" },
             ehTelaLarga && { maxWidth: 1300 },
           ]}
         >
           {ehDesktop ? (
+            
             <View style={styles.cabecalhoDesktopLinha}>
               <View style={styles.avatarSaudacaoLinha}>
                 <View style={styles.avatarGrandeDesktop}>
@@ -140,7 +114,7 @@ export default function Home() {
                 </View>
                 <View>
                   <Text style={styles.saudacaoDesktop}>
-                    Olá, Prof. {NOME_PROFESSOR}! 👋
+                    Olá, Prof. {NOME_PROFESSOR}!
                   </Text>
                   <Text style={styles.subtituloDesktop}>
                     O que você deseja fazer hoje?
@@ -148,7 +122,11 @@ export default function Home() {
                 </View>
               </View>
 
-              <View style={styles.toolbarDesktop}>
+              <TouchableOpacity
+                style={styles.toolbarDesktop}
+                activeOpacity={0.8}
+                onPress={() => router.push("/perfil")}
+              >
                 <View style={styles.avatarPequenoClaro}>
                   <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
                 </View>
@@ -156,11 +134,7 @@ export default function Home() {
                   <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
                   <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
                 </View>
-                <TouchableOpacity style={styles.sinoClaro}>
-                  <Ionicons name="notifications-outline" size={18} color="#0B1E3D" />
-                  <View style={styles.sinoPonto} />
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             </View>
           ) : (
             <>
@@ -170,12 +144,16 @@ export default function Home() {
                 </View>
               </View>
 
-              <Text style={styles.saudacao}>Olá, Prof. {NOME_PROFESSOR}! 👋</Text>
+              <Text style={styles.saudacao}>Olá, Prof. {NOME_PROFESSOR}!</Text>
               <Text style={styles.subtitulo}>O que você deseja fazer hoje?</Text>
             </>
           )}
 
-          <TouchableOpacity style={styles.cardNovaAtividade} activeOpacity={0.9}>
+          <TouchableOpacity
+            style={styles.cardNovaAtividade}
+            activeOpacity={0.9}
+            onPress={() => router.push("/criar-atividade")}
+          >
             <View style={styles.cardNovaAtividadeIcone}>
               <Ionicons name="add" size={22} color="#FFFFFF" />
             </View>
@@ -200,6 +178,7 @@ export default function Home() {
                   ehDesktop && styles.atalhoCardDesktop,
                 ]}
                 activeOpacity={0.85}
+                onPress={() => item.rota && router.push(item.rota)}
               >
                 <View
                   style={[
@@ -261,51 +240,9 @@ export default function Home() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
-  cabecalho: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: "#0B1E3D",
-  },
-  cabecalhoMiolo: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  cabecalhoMioloDesktop: { maxWidth: 900, alignSelf: "center" },
-  marcaLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logo: { width: 160, height: 44 },
 
-  usuarioLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequeno: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPequenoTexto: { color: "#0B1E3D", fontSize: 11, fontWeight: "700" },
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-  sino: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
-  },
-  sinoPonto: {
-    position: "absolute",
-    top: 6,
-    right: 7,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#F5A623",
-  },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -317,6 +254,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
+    minHeight: 56,
+    marginTop: 16,
     marginBottom: 24,
   },
   avatarSaudacaoLinha: {

@@ -1,3 +1,4 @@
+
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import { useState } from "react";
@@ -30,23 +31,30 @@ function CustomTabBar({ state, navigation }: any) {
   if (!ehDesktop) {
     return (
       <View style={styles.barraInferior}>
-        {state.routes.map((route: any) => {
-          const focado = route.name === rotaAtual;
-          const icone = (ICONES_POR_ROTA as any)[route.name] ?? "ellipse-outline";
-          return (
-            <TouchableOpacity
-              key={route.key}
-              style={styles.itemInferior}
-              onPress={() => navigation.navigate(route.name)}
-            >
-              <Ionicons
-                name={icone}
-                size={22}
-                color={focado ? "#FFFFFF" : "#5C7096"}
-              />
-            </TouchableOpacity>
-          );
-        })}
+        {state.routes
+          .filter((route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name))
+          .map((route: any) => {
+            const focado = route.name === rotaAtual;
+            const icone =
+              (ICONES_POR_ROTA as any)[route.name] ?? "ellipse-outline";
+            return (
+              <TouchableOpacity
+                key={route.key}
+                style={styles.itemInferior}
+                onPress={() => navigation.navigate(route.name)}
+              >
+                <Ionicons
+                  name={icone}
+                  size={22}
+                  color={focado ? "#FFFFFF" : "#5C7096"}
+                />
+              </TouchableOpacity>
+            );
+          })}
+
+        <TouchableOpacity style={styles.itemInferior} onPress={sair}>
+          <Ionicons name="log-out-outline" size={22} color="#F87171" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -55,7 +63,7 @@ function CustomTabBar({ state, navigation }: any) {
   return (
     <View style={styles.barraLateral}>
       <Image
-        source={require("../../assets/images/logoImg.png")}
+        source={require("../../assets/images/logo_escrita.png")}
         style={styles.logoLateral}
         resizeMode="contain"
       />
@@ -73,12 +81,17 @@ function CustomTabBar({ state, navigation }: any) {
 
       <Text style={styles.menuTitulo}>MENU PRINCIPAL</Text>
 
-      <ItemMenu
-        ativo={rotaAtual === "home"}
-        icone="home-outline"
-        rotulo="Home"
-        onPress={() => navigation.navigate("home")}
-      />
+      {state.routes
+        .filter((route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name))
+        .map((route: any) => (
+          <ItemMenu
+            key={route.key}
+            ativo={route.name === rotaAtual}
+            icone={(ICONES_POR_ROTA as any)[route.name] ?? "ellipse-outline"}
+            rotulo={(ROTULOS_POR_ROTA as any)[route.name] ?? route.name}
+            onPress={() => navigation.navigate(route.name)}
+          />
+        ))}
 
       <View style={styles.espacador} />
 
@@ -111,7 +124,9 @@ function ItemMenu({ ativo, icone, rotulo, onPress }: any) {
       ]}
     >
       <Ionicons name={icone} size={18} color={ativo ? "#BFDBFE" : "#8CA0C4"} />
-      <Text style={[styles.itemLateralTexto, ativo && styles.itemLateralTextoAtivo]}>
+      <Text
+        style={[styles.itemLateralTexto, ativo && styles.itemLateralTextoAtivo]}
+      >
         {rotulo}
       </Text>
     </Pressable>
@@ -124,7 +139,20 @@ const ICONES_POR_ROTA = {
   scanner: "camera-outline",
   editar: "pencil-outline",
   perfil: "person-outline",
+  atividades: "document-text-outline",
 };
+
+// Rótulos usados na sidebar do desktop (mobile só mostra o ícone).
+const ROTULOS_POR_ROTA = {
+  home: "Home",
+  correcoes: "Correções",
+  scanner: "Scanner",
+  editar: "Editar",
+  perfil: "Perfil",
+  atividades: "Atividades",
+};
+
+const ROTAS_OCULTAS_DA_BARRA: string[] = ["criar-atividade", "perfil"];
 
 export default function TabsLayout() {
   return (
@@ -137,6 +165,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="scanner" />
       <Tabs.Screen name="editar" />
       <Tabs.Screen name="perfil" />
+      <Tabs.Screen name="atividades" />
+      <Tabs.Screen name="criar-atividade" />
     </Tabs>
   );
 }
@@ -165,8 +195,8 @@ const styles = StyleSheet.create({
     borderRightColor: "#12294F",
   },
   logoLateral: {
-    width: 150,
-    height: 40,
+    width: 180,
+    height: 41,
     marginBottom: 22,
     marginLeft: 4,
   },
