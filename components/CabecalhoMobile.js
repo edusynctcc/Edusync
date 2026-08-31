@@ -1,3 +1,25 @@
+// Componente reutilizável — salvar em components/CabecalhoMobile.js
+//
+// Cabeçalho azul-marinho fixo no topo de cada tela, só no mobile
+// (`{!ehDesktop && <CabecalhoMobile ... />}`): logo + bolinha com as
+// iniciais/nome do professor (que leva pro Perfil) + sino opcional.
+//
+// Antes esse bloco inteiro (JSX + estilos) estava copiado dentro de cada
+// tela — home, atividades, scanner, editar, perfil, criar-atividade — o
+// que significava editar 6 arquivos pra mudar uma coisa só, como o
+// tamanho do ícone da logo. Agora é um componente só; cada tela passa
+// apenas o que varia nela (se tem sino, se o avatar deve linkar pro
+// Perfil, etc).
+//
+// Props:
+// - comSino: mostra o sino de notificação (default false)
+// - linkPerfil: bolinha/nome vira TouchableOpacity que navega pra
+//   /perfil (default true) — usar false só na própria tela de Perfil
+// - ehMobilePequeno: esconde o nome ao lado do avatar e encolhe a logo,
+//   pra celulares bem estreitos (usado hoje só na Home)
+// - paddingBottom: espaço embaixo do cabeçalho (default 16 — editar.js
+//   usa 18 por causa do conteúdo mais denso ali)
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -19,6 +41,13 @@ export default function CabecalhoMobile({
 }) {
   const router = useRouter();
 
+  function sair() {
+    // Aqui depois entra a limpeza de token/sessão quando a autenticação
+    // real estiver pronta. Por enquanto só manda de volta pro login —
+    // mesmo comportamento do "Sair" da sidebar do desktop.
+    router.replace("/login");
+  }
+
   const conteudoAvatar = (
     <>
       <View style={styles.avatarPequeno}>
@@ -27,9 +56,7 @@ export default function CabecalhoMobile({
       {!ehMobilePequeno && (
         <View style={styles.usuarioNomeLinha}>
           <Text style={styles.usuarioNome}>Ana Silva</Text>
-          {linkPerfil && (
-            <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
-          )}
+          {linkPerfil && <Ionicons name="chevron-down" size={14} color="#FFFFFF" />}
         </View>
       )}
     </>
@@ -64,14 +91,14 @@ export default function CabecalhoMobile({
 
           {comSino && (
             <View style={styles.sino}>
-              <Ionicons
-                name="notifications-outline"
-                size={16}
-                color="#FFFFFF"
-              />
+              <Ionicons name="notifications-outline" size={16} color="#FFFFFF" />
               <View style={styles.sinoPonto} />
             </View>
           )}
+
+          <TouchableOpacity style={styles.botaoSair} activeOpacity={0.8} onPress={sair}>
+            <Ionicons name="log-out-outline" size={17} color="#F87171" />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -116,5 +143,14 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
     backgroundColor: "#F5A623",
+  },
+  botaoSair: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(248,113,113,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
   },
 });

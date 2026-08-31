@@ -1,4 +1,3 @@
-
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
@@ -15,6 +14,25 @@ import {
 
 const INICIAIS_PROFESSOR = "AS";
 
+// Números do topo da tela (turmas, atividades, alunos, taxa de correção).
+//
+// ---------------------------------------------------------------------------
+// API — GET /auth/me
+// Traz os dados do professor logado. Esses totais são contagens que o
+// back-end calcula (COUNT nas tabelas turma, atividade, aluno e correcao) —
+// combine com quem fizer o back-end pra virem junto nessa mesma resposta,
+// em vez de o app fazer quatro chamadas só pra montar quatro números.
+//
+//   const [professor, setProfessor] = useState(null);
+//
+//   useEffect(() => {
+//     fetch("http://localhost:3000/auth/me", {
+//       headers: { Authorization: `Bearer ${token}` },
+//     })
+//       .then((r) => r.json())
+//       .then(setProfessor);
+//   }, []);
+// ---------------------------------------------------------------------------
 const RESUMO_CONTA = [
   { valor: "12", rotulo: "Turmas", icone: "people-outline", corFundo: "#E8F0FE", corIcone: "#3B82F6" },
   { valor: "48", rotulo: "Atividades", icone: "document-text-outline", corFundo: "#E7F8EF", corIcone: "#22C55E" },
@@ -94,12 +112,19 @@ export default function Perfil() {
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
 
+  // Sai da conta e volta pro login.
+  //
+  // API — não precisa de endpoint: com JWT o logout é local, basta apagar o
+  // token guardado no aparelho.
+  //
+  //   await AsyncStorage.removeItem("token");
+  //   router.replace("/login");
   function sair() {
     router.replace("/login");
   }
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 300 }]}>
+    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
       {!ehDesktop && <CabecalhoMobile comSino linkPerfil={false} />}
 
       <ScrollView
@@ -119,16 +144,6 @@ export default function Perfil() {
                 <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
                 <Text style={styles.tituloPaginaDesktop}>Perfil</Text>
               </TouchableOpacity>
-
-              <View style={styles.toolbarDesktop}>
-                <View style={styles.avatarPequenoClaro}>
-                  <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
-                </View>
-              </View>
             </View>
           )}
 
@@ -221,6 +236,7 @@ export default function Perfil() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
+  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 

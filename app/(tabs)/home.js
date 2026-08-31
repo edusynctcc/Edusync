@@ -1,4 +1,5 @@
-
+// A fonte do título é a Baloo 2: instale com
+// npx expo install expo-font @expo-google-fonts/baloo-2 e carregue no app/_layout.tsx.
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -8,13 +9,67 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Image,
   useWindowDimensions,
 } from "react-native";
 
+// Lista que a busca do Home percorre.
+//
+// ---------------------------------------------------------------------------
+// API — GET /turmas  +  GET /atividades
+// Esses títulos são fixos e espelham os mocks de turmas.js e atividades.js.
+// Pra virem do back-end, troque a constante por estado e busque os dois:
+//
+//   const [indiceBusca, setIndiceBusca] = useState([]);
+//
+//   useEffect(() => {
+//     async function carregar() {
+//       const cabecalho = { Authorization: `Bearer ${token}` };
+//       const [turmas, atividades] = await Promise.all([
+//         fetch("http://localhost:3000/turmas", { headers: cabecalho }).then((r) => r.json()),
+//         fetch("http://localhost:3000/atividades", { headers: cabecalho }).then((r) => r.json()),
+//       ]);
+//
+//       setIndiceBusca([
+//         ...turmas.map((t) => ({ tipo: "turma", titulo: t.nome, subtitulo: t.escola })),
+//         ...atividades.map((a) => ({ tipo: "atividade", titulo: a.nome, subtitulo: a.descricao })),
+//       ]);
+//     }
+//     carregar();
+//   }, []);
+// ---------------------------------------------------------------------------
+const INDICE_BUSCA = [
+  { tipo: "turma", titulo: "9º Ano A", subtitulo: "E.E. Marechal Rondon" },
+  { tipo: "turma", titulo: "1ª Série B", subtitulo: "E.E. Marechal Rondon" },
+  { tipo: "turma", titulo: "7º Ano C", subtitulo: "Colégio Santa Clara" },
+  { tipo: "atividade", titulo: "Prova de Álgebra", subtitulo: "Prova sobre equações e funções" },
+  { tipo: "atividade", titulo: "Lista de Exercícios", subtitulo: "Exercícios de sistemas lineares" },
+  { tipo: "atividade", titulo: "Trabalho de Geometria", subtitulo: "Figuras planas e espaciais" },
+  { tipo: "atividade", titulo: "Prova Bimestral", subtitulo: "Conteúdos do 1º bimestre" },
+  { tipo: "atividade", titulo: "Exercícios de Frações", subtitulo: "Operações com frações" },
+  { tipo: "atividade", titulo: "Projeto de Estatística", subtitulo: "Pesquisa e análise de dados" },
+];
 
+// Nome que aparece na saudação e as iniciais do avatar.
+//
+// API — GET /auth/me
+// Devolve os dados do professor logado a partir do token:
+//
+//   const [professor, setProfessor] = useState(null);
+//
+//   useEffect(() => {
+//     fetch("http://localhost:3000/auth/me", {
+//       headers: { Authorization: `Bearer ${token}` },
+//     })
+//       .then((r) => r.json())
+//       .then(setProfessor);
+//   }, []);
+//
+// As iniciais dá pra montar do próprio nome, sem campo novo no banco:
+//   const iniciais = professor.nome.split(" ").map((p) => p[0]).slice(0, 2).join("");
 const NOME_PROFESSOR = "Ana";
 const INICIAIS_PROFESSOR = "AS";
 
@@ -23,16 +78,17 @@ const ATALHOS = [
     chave: "turmas",
     titulo: "Minhas turmas",
     descricao: "Gerencie suas turmas e veja os alunos.",
-    icone: "people",
+    icone: "people-outline",
     corFundo: "#E8F0FE",
     corIcone: "#3B82F6",
     biblioteca: "ion",
+    rota: "/turmas",
   },
   {
     chave: "atividades",
     titulo: "Atividades",
     descricao: "Visualize e edite suas atividades criadas.",
-    icone: "clipboard",
+    icone: "clipboard-outline",
     corFundo: "#E7F8EF",
     corIcone: "#22C55E",
     biblioteca: "ion",
@@ -42,54 +98,54 @@ const ATALHOS = [
     chave: "scanner",
     titulo: "Scanner",
     descricao: "Escaneie ou envie atividades para correção.",
-    icone: "camera",
+    icone: "camera-outline",
     corFundo: "#F1E9FB",
     corIcone: "#8B5CF6",
     biblioteca: "ion",
+    rota: "/scanner",
   },
   {
     chave: "correcoes",
     titulo: "Correções",
     descricao: "Acompanhe o progresso das correções da IA.",
-    icone: "create",
+    icone: "create-outline",
     corFundo: "#FEF0E4",
     corIcone: "#F5A623",
     biblioteca: "ion",
+    rota: "/correcoes",
   },
-  {
-    chave: "notas",
-    titulo: "Notas",
-    descricao: "Veja as notas e o desempenho dos seus alunos.",
-    icone: "star",
-    corFundo: "#FDF6DC",
-    corIcone: "#D4A017",
-    biblioteca: "ion",
-  },
-  {
-    chave: "relatorios",
-    titulo: "Relatórios",
-    descricao: "Gere relatórios e exporte resultados.",
-    icone: "file-document-outline",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
-    biblioteca: "mci",
-  },
+  // Atalhos do "Acesso rápido".
 ];
-
 
 export default function Home() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
   const ehTelaLarga = width >= 1300;
   const ehMobilePequeno = width < 360;
-  const colunasGrade = ehDesktop ? 3 : ehMobilePequeno ? 1 : 2;
-  const larguraCardGrade =
-    colunasGrade === 1 ? "100%" : colunasGrade === 2 ? "48%" : "31.5%";
+  // 2 colunas (1 só em celular pequeno).
+  const colunasGrade = ehMobilePequeno ? 1 : 2;
+  const larguraCardGrade = colunasGrade === 1 ? "100%" : "48%";
   const [dicaVisivel, setDicaVisivel] = useState(true);
+  const [buscaHome, setBuscaHome] = useState("");
   const router = useRouter();
 
+  const buscaNormalizada = buscaHome.trim().toLowerCase();
+  const resultadosBusca = buscaNormalizada
+    ? INDICE_BUSCA.filter((item) => item.titulo.toLowerCase().includes(buscaNormalizada))
+    : [];
+
+  function abrirResultado(item) {
+    setBuscaHome("");
+    if (item.tipo === "turma") {
+      router.push({ pathname: "/turmas", params: { turmaBusca: item.titulo } });
+    } else {
+      router.push({ pathname: "/atividades", params: { atividadeTitulo: item.titulo } });
+    }
+  }
+
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 300 }]}>
+    // paddingTop reserva o espaço da navbar do topo.
+    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
       {!ehDesktop && <CabecalhoMobile ehMobilePequeno={ehMobilePequeno} />}
 
       <ScrollView
@@ -106,7 +162,7 @@ export default function Home() {
           ]}
         >
           {ehDesktop ? (
-            
+            // O avatar fica na navbar, não aqui.
             <View style={styles.cabecalhoDesktopLinha}>
               <View style={styles.avatarSaudacaoLinha}>
                 <View style={styles.avatarGrandeDesktop}>
@@ -121,20 +177,6 @@ export default function Home() {
                   </Text>
                 </View>
               </View>
-
-              <TouchableOpacity
-                style={styles.toolbarDesktop}
-                activeOpacity={0.8}
-                onPress={() => router.push("/perfil")}
-              >
-                <View style={styles.avatarPequenoClaro}>
-                  <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
-                </View>
-              </TouchableOpacity>
             </View>
           ) : (
             <>
@@ -146,6 +188,72 @@ export default function Home() {
 
               <Text style={styles.saudacao}>Olá, Prof. {NOME_PROFESSOR}!</Text>
               <Text style={styles.subtitulo}>O que você deseja fazer hoje?</Text>
+            </>
+          )}
+
+          {/* Busca — no desktop já tem a busca da navbar (lupinha lá em
+              cima), então essa caixa aqui só aparece no mobile, que não
+              tem navbar com lupinha. */}
+          {!ehDesktop && (
+            <>
+              <View style={styles.buscaHomeBox}>
+                <Ionicons name="search" size={16} color="#94A3B8" />
+                <TextInput
+                  value={buscaHome}
+                  onChangeText={setBuscaHome}
+                  placeholder="Buscar turma ou atividade..."
+                  placeholderTextColor="#94A3B8"
+                  style={styles.buscaHomeInput}
+                />
+                {buscaHome.length > 0 && (
+                  <TouchableOpacity onPress={() => setBuscaHome("")} hitSlop={8}>
+                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {buscaNormalizada.length > 0 && (
+                <View style={styles.resultadosBuscaBox}>
+                  {resultadosBusca.length === 0 ? (
+                    <Text style={styles.resultadoVazioTexto}>
+                      Nada encontrado para "{buscaHome}"
+                    </Text>
+                  ) : (
+                    resultadosBusca.map((item) => (
+                      <TouchableOpacity
+                        key={`${item.tipo}-${item.titulo}`}
+                        style={styles.resultadoItem}
+                        activeOpacity={0.7}
+                        onPress={() => abrirResultado(item)}
+                      >
+                        <View
+                          style={[
+                            styles.resultadoIconeCirculo,
+                            {
+                              backgroundColor: item.tipo === "turma" ? "#E8F0FE" : "#E7F8EF",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
+                            size={16}
+                            color={item.tipo === "turma" ? "#3B82F6" : "#22C55E"}
+                          />
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.resultadoTitulo} numberOfLines={1}>
+                            {item.titulo}
+                          </Text>
+                          <Text style={styles.resultadoSubtitulo} numberOfLines={1}>
+                            {item.tipo === "turma" ? "Turma" : "Atividade"} · {item.subtitulo}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
             </>
           )}
 
@@ -218,7 +326,7 @@ export default function Home() {
 
           {dicaVisivel && (
             <View style={styles.dicaBox}>
-              <Ionicons name="star" size={18} color="#7C3AED" style={{ marginTop: 1 }} />
+              <Ionicons name="star" size={18} color="#3B82F6" style={{ marginTop: 1 }} />
               <View style={styles.dicaTextos}>
                 <Text style={styles.dicaTitulo}>Dica rápida</Text>
                 <Text style={styles.dicaDescricao}>
@@ -227,7 +335,7 @@ export default function Home() {
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setDicaVisivel(false)}>
-                <Ionicons name="close" size={18} color="#7C3AED" />
+                <Ionicons name="close" size={18} color="#3B82F6" />
               </TouchableOpacity>
             </View>
           )}
@@ -240,7 +348,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
-
+  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 
@@ -271,7 +379,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  saudacaoDesktop: { fontSize: 18, fontWeight: "700", color: "#0B1E3D" },
+  // Fonte Baloo 2 (carregada no app/_layout.tsx).
+  saudacaoDesktop: {
+    fontSize: 20,
+    fontFamily: Platform.OS === "web" ? "Baloo2_800ExtraBold, sans-serif" : "Baloo2_800ExtraBold",
+    color: "#0B1E3D",
+  },
   subtituloDesktop: { fontSize: 13, color: "#64748B", marginTop: 2 },
 
   toolbarDesktop: {
@@ -312,8 +425,62 @@ const styles = StyleSheet.create({
   },
   avatarGrandeTexto: { color: "#FFFFFF", fontSize: 22, fontWeight: "700" },
 
-  saudacao: { fontSize: 18, fontWeight: "700", color: "#0B1E3D", textAlign: "center" },
+  saudacao: {
+    fontSize: 20,
+    fontFamily: Platform.OS === "web" ? "Baloo2_800ExtraBold, sans-serif" : "Baloo2_800ExtraBold",
+    color: "#0B1E3D",
+    textAlign: "center",
+  },
   subtitulo: { fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 20, textAlign: "center" },
+
+  buscaHomeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E7EBF3",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  buscaHomeInput: { flex: 1, fontSize: 13.5, color: "#0B1E3D", padding: 0 },
+
+  resultadosBuscaBox: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E7EBF3",
+    padding: 8,
+    marginBottom: 16,
+    gap: 2,
+  },
+  resultadoVazioTexto: {
+    fontSize: 12.5,
+    color: "#94A3B8",
+    padding: 10,
+    textAlign: "center",
+  },
+  resultadoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 8,
+    borderRadius: 10,
+  },
+  resultadoIconeCirculo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  resultadoTitulo: { fontSize: 13, fontWeight: "700", color: "#0B1E3D" },
+  resultadoSubtitulo: { fontSize: 10.5, color: "#94A3B8", marginTop: 1 },
 
   cardNovaAtividade: {
     flexDirection: "row",
@@ -360,6 +527,7 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 18,
     borderRadius: 16,
+    minHeight: 92,
   },
   atalhoIconeCirculo: {
     width: 34,
@@ -384,11 +552,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
     width: "100%",
-    backgroundColor: "#F1E9FB",
+    backgroundColor: "#E8F0FE",
     borderRadius: 12,
     padding: 14,
   },
   dicaTextos: { flex: 1 },
-  dicaTitulo: { fontSize: 12.5, fontWeight: "700", color: "#5B21B6" },
-  dicaDescricao: { fontSize: 11, color: "#6D4FA0", marginTop: 2, lineHeight: 15 },
+  dicaTitulo: { fontSize: 12.5, fontWeight: "700", color: "#1D4ED8" },
+  dicaDescricao: { fontSize: 11, color: "#3B5A8A", marginTop: 2, lineHeight: 15 },
 });

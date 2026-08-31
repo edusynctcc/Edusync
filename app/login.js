@@ -1,39 +1,49 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Link, router, Stack } from "expo-router";
 import { useState } from "react";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image,
+  ImageBackground,
   useWindowDimensions,
-  View,
 } from "react-native";
+import { Link, router, Stack } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 const LARGURA_DESKTOP = 900;
+
+// Imagem de fundo (opcional): salve em assets/images/fundo-login.jpg, de
+// preferência 1920x1080, e troque as duas linhas abaixo de lugar. Sem imagem
+// a tela usa o fundo azul-marinho. COR_SOBREPOSICAO é a camada escura por
+// cima da foto — quanto maior o último número, mais escuro fica.
+const IMAGEM_FUNDO = null;
+// const IMAGEM_FUNDO = require("../assets/images/fundo-login.jpg");
+const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
+
+// Com imagem a tela é um ImageBackground; sem imagem, uma View comum.
+const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
+const propsFundo = IMAGEM_FUNDO ? { source: IMAGEM_FUNDO, resizeMode: "cover" } : {};
 
 const RECURSOS = [
   {
     icone: "camera-outline",
     titulo: "Correção automática por imagem",
-    texto:
-      "Envie atividades e receba correções e sugestões de forma automática com IA.",
+    texto: "Envie atividades e receba correções e sugestões de forma automática com IA.",
   },
   {
     icone: "stats-chart-outline",
     titulo: "Organização inteligente de notas",
-    texto:
-      "Acompanhe o desempenho da turma com relatórios completos e organizados.",
+    texto: "Acompanhe o desempenho da turma com relatórios completos e organizados.",
   },
   {
     icone: "time-outline",
     titulo: "Economia de tempo",
-    texto:
-      "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
+    texto: "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
 
@@ -47,9 +57,7 @@ export default function Login() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
-  // Backend ainda não está pronto: por enquanto o login só valida os campos
-  // e já navega pra home. Quando a API estiver no ar, troque o corpo desta
-  // função pelo bloco comentado logo abaixo.
+  // Valida os campos e entra no app (hoje entra direto, sem checar senha).
   async function handleLogin() {
     setErro("");
 
@@ -60,7 +68,14 @@ export default function Login() {
 
     router.replace("/home");
 
-    /* ---- versão com API real (descomente quando o backend estiver pronto) ----
+    /* -------------------------------------------------------------------
+       API — POST /auth/login
+
+       Quando o back-end estiver pronto, APAGUE o router.replace acima e
+       descomente este bloco. A resposta esperada é { token, professor }.
+       O token precisa ser guardado (AsyncStorage ou Context) porque todas
+       as outras telas mandam ele no header Authorization.
+
     setCarregando(true);
     try {
       const resposta = await fetch("http://localhost:3000/auth/login", {
@@ -76,34 +91,25 @@ export default function Login() {
         return;
       }
 
+      // await AsyncStorage.setItem("token", dados.token);
       router.replace("/home");
     } catch (e) {
       setErro("Não foi possível conectar ao servidor.");
     } finally {
       setCarregando(false);
     }
-    ---------------------------------------------------------------------------- */
+    ------------------------------------------------------------------- */
   }
 
-  // conteúdo do formulário — igual em mobile e desktop, só muda o "embrulho" ao redor
   const conteudoFormulario = (
     <>
-      <Image
-        source={require("../assets/images/logoTexto.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.titulo}>Bem-vindo de volta</Text>
       <Text style={styles.subtitulo}>Entre com sua conta de professor</Text>
 
       <Text style={styles.rotulo}>E-mail</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="mail-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="mail-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite seu email"
@@ -117,12 +123,7 @@ export default function Login() {
 
       <Text style={styles.rotulo}>Senha</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="lock-closed-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite sua senha"
@@ -131,15 +132,8 @@ export default function Login() {
           onChangeText={setSenha}
           secureTextEntry={!mostrarSenha}
         />
-        <TouchableOpacity
-          onPress={() => setMostrarSenha((v) => !v)}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
-            size={18}
-            color="#8A93A6"
-          />
+        <TouchableOpacity onPress={() => setMostrarSenha((v) => !v)} hitSlop={8}>
+          <Ionicons name={mostrarSenha ? "eye-outline" : "eye-off-outline"} size={18} color="#8A93A6" />
         </TouchableOpacity>
       </View>
 
@@ -161,12 +155,8 @@ export default function Login() {
         disabled={carregando}
         activeOpacity={0.85}
       >
-        <Text style={styles.textoBotao}>
-          {carregando ? "Entrando..." : "Entrar na Plataforma"}
-        </Text>
-        {!carregando && (
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        )}
+        <Text style={styles.textoBotao}>{carregando ? "Entrando..." : "Entrar na Plataforma"}</Text>
+        {!carregando && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
       </TouchableOpacity>
 
       <View style={styles.rodape}>
@@ -178,11 +168,12 @@ export default function Login() {
     </>
   );
 
-  // ---------- versão desktop: cartão único com 2 colunas ----------
   if (isDesktop) {
     return (
-      <View style={styles.telaDesktop}>
+      <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
+
+        {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
@@ -192,15 +183,12 @@ export default function Login() {
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
-              <Text style={styles.promoTituloDestaque}>
-                menos tempo para corrigir.
-              </Text>
+              <Text style={styles.promoTituloDestaque}>menos tempo para corrigir.</Text>
             </Text>
 
             <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas
-              notas de forma inteligente, para você foque no que realmente
-              importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para você
+              foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -221,41 +209,54 @@ export default function Login() {
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.promoCtaTexto}>
-                Quer saber mais sobre o nosso projeto?
-              </Text>
+              <Text style={styles.promoCtaTexto}>Quer saber mais sobre o nosso projeto?</Text>
               <TouchableOpacity style={styles.promoCtaBotao}>
                 <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </View>
+      </Fundo>
     );
   }
 
-  // ---------- versão mobile ----------
   return (
-    <KeyboardAvoidingView
-      style={styles.tela}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
+
+      {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+
+      <KeyboardAvoidingView
+        style={styles.areaTeclado}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.cartao}>{conteudoFormulario}</View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          style={styles.scrollTransparente}
+        >
+          <View style={styles.cartao}>{conteudoFormulario}</View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Fundo>
   );
 }
 
 const styles = StyleSheet.create({
-  // ----- mobile -----
+  sobreposicao: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COR_SOBREPOSICAO,
+  },
+
   tela: {
     flex: 1,
     backgroundColor: "#0B1E3D",
+  },
+  areaTeclado: {
+    flex: 1,
+  },
+  scrollTransparente: {
+    backgroundColor: "transparent",
   },
   scroll: {
     flexGrow: 1,
@@ -264,7 +265,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
 
-  // ----- desktop -----
   telaDesktop: {
     flex: 1,
     minHeight: "100%",
@@ -391,7 +391,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ----- compartilhado (formulário) -----
   cartao: {
     width: "100%",
     maxWidth: 380,

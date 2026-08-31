@@ -1,7 +1,7 @@
-
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
 import {
   Platform,
   ScrollView,
@@ -35,7 +35,16 @@ export default function CriarAtividade() {
   const ehDesktop = width >= 900;
   const router = useRouter();
 
-  const [titulo, setTitulo] = useState("");
+  // Vindo de "Editar atividade", os dados chegam por parâmetro.
+  const { modo, tituloInicial, disciplinaInicial } = useLocalSearchParams();
+  const emEdicao = modo === "editar";
+
+  const [titulo, setTitulo] = useState(
+    typeof tituloInicial === "string" ? tituloInicial : ""
+  );
+  const [disciplina, setDisciplina] = useState(
+    typeof disciplinaInicial === "string" ? disciplinaInicial : ""
+  );
   const [questoes, setQuestoes] = useState([novaQuestao()]);
 
   function atualizarQuestao(id, campo, valor) {
@@ -49,33 +58,8 @@ export default function CriarAtividade() {
   }
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 240 }]}>
-      {!ehDesktop && (
-        <View
-          style={[styles.cabecalho, { paddingTop: Platform.OS === "web" ? 18 : 56 }]}
-        >
-          <View style={styles.cabecalhoMiolo}>
-            <Image
-              source={require("../../assets/images/logoImg.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View style={styles.usuarioLinha}>
-              <View style={styles.avatarPequeno}>
-                <Text style={styles.avatarPequenoTexto}>{INICIAIS_PROFESSOR}</Text>
-              </View>
-              <View style={styles.usuarioNomeLinha}>
-                <Text style={styles.usuarioNome}>Ana Silva</Text>
-                <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
-              </View>
-              <TouchableOpacity style={styles.sino}>
-                <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-                <View style={styles.sinoPonto} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+      {!ehDesktop && <CabecalhoMobile comSino />}
 
       <ScrollView
         style={styles.conteudo}
@@ -89,23 +73,17 @@ export default function CriarAtividade() {
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
                 <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
-                <Text style={styles.tituloPaginaDesktop}>Criar atividade</Text>
+                <Text style={styles.tituloPaginaDesktop}>
+                  {emEdicao ? "Editar atividade" : "Criar atividade"}
+                </Text>
               </TouchableOpacity>
-
-              <View style={styles.toolbarDesktop}>
-                <View style={styles.avatarPequenoClaro}>
-                  <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
-                </View>
-              </View>
             </View>
           ) : (
             <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
               <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
-              <Text style={styles.tituloPagina}>Criar atividade</Text>
+              <Text style={styles.tituloPagina}>
+                {emEdicao ? "Editar atividade" : "Criar atividade"}
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -130,10 +108,13 @@ export default function CriarAtividade() {
             <Text style={styles.rotulo}>
               Disciplina <Text style={styles.obrigatorio}>*</Text>
             </Text>
-            <TouchableOpacity style={styles.campoSelect}>
-              <Text style={styles.campoSelectPlaceholder}>Selecione a disciplina</Text>
-              <Ionicons name="chevron-down" size={16} color="#64748B" />
-            </TouchableOpacity>
+            <TextInput
+              value={disciplina}
+              onChangeText={setDisciplina}
+              placeholder="Ex: História"
+              placeholderTextColor="#94A3B8"
+              style={styles.campoTexto}
+            />
 
             <Text style={styles.rotulo}>
               Turmas <Text style={styles.obrigatorio}>*</Text>
@@ -257,19 +238,70 @@ export default function CriarAtividade() {
             <Text style={styles.botaoAdicionarQuestaoTexto}>Adicionar questão</Text>
           </TouchableOpacity>
 
+          {/* -------------------------------------------------------------
+              API — POST /atividades (criar) ou PUT /atividades/:id (editar),
+                    e depois POST /atividades/:id/questoes
+
+              Os dois botões abaixo ainda não têm onPress. É aqui que entra
+              o salvamento — em duas etapas, porque a atividade precisa
+              existir antes das questões terem um id_atividade pra apontar:
+
+              async function publicarAtividade() {
+                const cabecalho = {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                };
+
+                // 1. cria (ou atualiza) a atividade
+                const resposta = await fetch(
+                  emEdicao
+                    ? `http://localhost:3000/atividades/${id}`
+                    : "http://localhost:3000/atividades",
+                  {
+                    method: emEdicao ? "PUT" : "POST",
+                    headers: cabecalho,
+                    body: JSON.stringify({
+                      nome: titulo,
+                      descricao,
+                      id_turma: turmaSelecionada,
+                    }),
+                  }
+                );
+
+                const atividade = await resposta.json();
+
+                // 2. manda as questões em lote (o gabarito que a IA vai usar)
+                await fetch(
+                  `http://localhost:3000/atividades/${atividade.id_atividade}/questoes`,
+                  {
+                    method: "POST",
+                    headers: cabecalho,
+                    body: JSON.stringify({ questoes }),
+                  }
+                );
+
+                router.replace("/atividades");
+              }
+
+              Depois é só ligar: onPress={publicarAtividade}
+              ------------------------------------------------------------- */}
           <View style={[styles.acoesFinais, ehDesktop && styles.acoesFinaisDesktop]}>
-            <TouchableOpacity
-              style={[styles.botaoRascunho, ehDesktop && styles.botaoRascunhoDesktop]}
-            >
-              <Text style={styles.botaoRascunhoTexto} numberOfLines={1}>
-                Salvar rascunho
-              </Text>
-            </TouchableOpacity>
+            {/* "Salvar rascunho" só faz sentido pra atividade nova — uma
+                que já existe não é mais rascunho */}
+            {!emEdicao && (
+              <TouchableOpacity
+                style={[styles.botaoRascunho, ehDesktop && styles.botaoRascunhoDesktop]}
+              >
+                <Text style={styles.botaoRascunhoTexto} numberOfLines={1}>
+                  Salvar rascunho
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.botaoPublicar, ehDesktop && styles.botaoPublicarDesktop]}
             >
               <Text style={styles.botaoPublicarTexto} numberOfLines={1}>
-                Publicar atividade
+                {emEdicao ? "Salvar alterações" : "Publicar atividade"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -282,44 +314,9 @@ export default function CriarAtividade() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
-  cabecalho: { paddingHorizontal: 20, paddingBottom: 16, backgroundColor: "#0B1E3D" },
-  cabecalhoMiolo: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  logo: { width: 150, height: 40 },
-  usuarioLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequeno: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPequenoTexto: { color: "#0B1E3D", fontSize: 11, fontWeight: "700" },
+  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-  sino: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
-  },
-  sinoPonto: {
-    position: "absolute",
-    top: 6,
-    right: 7,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#F5A623",
-  },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 60, alignItems: "center" },

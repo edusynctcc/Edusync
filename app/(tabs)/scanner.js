@@ -1,4 +1,3 @@
-
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -19,6 +18,20 @@ import {
 
 const INICIAIS_PROFESSOR = "AS";
 
+// Atividades do modal "Selecionar atividade". Lista vazia = a tela mostra o
+// aviso pedindo pra criar turma e atividade antes.
+//
+// API — GET /atividades
+//
+//   const [atividades, setAtividades] = useState([]);
+//
+//   useEffect(() => {
+//     fetch("http://localhost:3000/atividades", {
+//       headers: { Authorization: `Bearer ${token}` },
+//     })
+//       .then((r) => r.json())
+//       .then(setAtividades);
+//   }, []);
 const ATIVIDADES_CADASTRADAS = [
   {
     id: "1",
@@ -147,9 +160,32 @@ export default function Scanner() {
     setAcaoSelecionada(acao);
   }
 
+  // Depois de escolher a atividade, vai pro Processando (preview + envio).
+  //
+  // API — aqui é onde entram a câmera e o seletor de arquivo de verdade.
+  // Hoje nenhuma imagem é capturada: a tela só navega. Com expo-image-picker
+  // e expo-camera instalados, seria mais ou menos assim:
+  //
+  //   import * as ImagePicker from "expo-image-picker";
+  //
+  //   const resultado = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+  //   if (resultado.canceled) return;
+  //
+  //   router.push({
+  //     pathname: "/processando",
+  //     params: {
+  //       atividadeTitulo: atividade.titulo,
+  //       atividadeTurma: atividade.turma,
+  //       id_atividade: atividade.id,
+  //       imagemUri: resultado.assets[0].uri,   // o Processando faz o upload
+  //     },
+  //   });
   function escolherAtividade(atividade) {
     setAcaoSelecionada(null);
-    router.push("/editar");
+    router.push({
+      pathname: "/processando",
+      params: { atividadeTitulo: atividade.titulo, atividadeTurma: atividade.turma },
+    });
   }
 
   const atividadesFiltradas = ATIVIDADES_CADASTRADAS.filter((atividade) =>
@@ -157,7 +193,7 @@ export default function Scanner() {
   );
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 300 }]}>
+    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
       {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
@@ -177,31 +213,24 @@ export default function Scanner() {
                 <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
                 <Text style={styles.tituloPaginaDesktop}>Scanner</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.toolbarDesktop}
-                activeOpacity={0.8}
-                onPress={() => router.push("/perfil")}
-              >
-                <View style={styles.avatarPequenoClaro}>
-                  <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
-                </View>
-              </TouchableOpacity>
             </View>
           )}
 
           {/* Card azul de destaque */}
           <View style={[styles.cardScanner, ehDesktop && styles.cardScannerDesktop]}>
-            <View style={styles.viewfinder}>
-              <View style={[styles.cantoViewfinder, styles.cantoTopoEsquerdo]} />
-              <View style={[styles.cantoViewfinder, styles.cantoTopoDireito]} />
-              <View style={[styles.cantoViewfinder, styles.cantoBaixoEsquerdo]} />
-              <View style={[styles.cantoViewfinder, styles.cantoBaixoDireito]} />
-              <Ionicons name="camera-outline" size={ehDesktop ? 40 : 32} color="#FFFFFF" />
+            <View style={[styles.viewfinder, ehDesktop && styles.viewfinderDesktop]}>
+              {/* Os cantinhos de "visor de câmera" só fazem sentido no
+                  tamanho grande do mobile — no desktop o quadrado é
+                  pequeno e eles ficariam apertados/estranhos */}
+              {!ehDesktop && (
+                <>
+                  <View style={[styles.cantoViewfinder, styles.cantoTopoEsquerdo]} />
+                  <View style={[styles.cantoViewfinder, styles.cantoTopoDireito]} />
+                  <View style={[styles.cantoViewfinder, styles.cantoBaixoEsquerdo]} />
+                  <View style={[styles.cantoViewfinder, styles.cantoBaixoDireito]} />
+                </>
+              )}
+              <Ionicons name="camera-outline" size={ehDesktop ? 26 : 32} color="#FFFFFF" />
             </View>
 
             <Text style={styles.cardScannerTitulo}>Scanner de Atividades</Text>
@@ -244,9 +273,17 @@ export default function Scanner() {
             </View>
 
             <View style={styles.dicasLinha}>
+              {/* Chip diferente dos outros (fundo mais forte, texto em
+                  negrito) só pra sinalizar "isso aqui é um rótulo", não
+                  mais uma dica igual às outras */}
+              <View style={styles.dicaRotuloChip}>
+                <Ionicons name="bulb-outline" size={11} color="#FFFFFF" />
+                <Text style={styles.dicaRotuloTexto}>Dicas para melhores resultados</Text>
+              </View>
+
               {DICAS.map((dica) => (
-                <View key={dica.texto} style={styles.dicaItem}>
-                  <Ionicons name={dica.icone} size={13} color="#BFDBFE" />
+                <View key={dica.texto} style={styles.dicaChip}>
+                  <Ionicons name={dica.icone} size={11} color="#BFDBFE" />
                   <Text style={styles.dicaTexto}>{dica.texto}</Text>
                 </View>
               ))}
@@ -266,12 +303,15 @@ export default function Scanner() {
                 style={[
                   styles.recursoCard,
                   ehDesktop ? styles.recursoCardDesktop : styles.recursoCardMobile,
+                  { backgroundColor: recurso.corFundo },
                 ]}
               >
-                <View style={[styles.recursoIconeCirculo, { backgroundColor: recurso.corFundo }]}>
-                  <Ionicons name={recurso.icone} size={20} color={recurso.corIcone} />
+                <View style={[styles.recursoIconeCirculo, { backgroundColor: "rgba(255,255,255,0.65)" }]}>
+                  <Ionicons name={recurso.icone} size={14} color={recurso.corIcone} />
                 </View>
-                <Text style={styles.recursoTitulo}>{recurso.titulo}</Text>
+                <Text style={[styles.recursoTitulo, { color: recurso.corIcone }]}>
+                  {recurso.titulo}
+                </Text>
                 <Text style={styles.recursoDescricao}>{recurso.descricao}</Text>
               </View>
             ))}
@@ -337,62 +377,107 @@ export default function Scanner() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBuscaBox}>
-              <Ionicons name="search" size={16} color="#94A3B8" />
-              <TextInput
-                value={busca}
-                onChangeText={setBusca}
-                placeholder="Buscar atividade..."
-                placeholderTextColor="#94A3B8"
-                style={styles.modalBuscaInput}
-              />
-            </View>
+            {ATIVIDADES_CADASTRADAS.length === 0 ? (
+              // Sem atividade cadastrada: mostra o aviso em vez da busca.
+              <View style={styles.modalPreRequisito}>
+                <Ionicons name="alert-circle-outline" size={28} color="#F5A623" />
+                <Text style={styles.modalPreRequisitoTitulo}>
+                  Você ainda não tem nenhuma atividade cadastrada
+                </Text>
+                <Text style={styles.modalPreRequisitoTexto}>
+                  Pra usar o scanner, primeiro crie uma turma e depois uma atividade anexada a
+                  ela — só assim dá pra saber pra onde mandar a correção.
+                </Text>
 
-            <ScrollView style={styles.modalLista} contentContainerStyle={{ paddingBottom: 8 }}>
-              {atividadesFiltradas.map((atividade) => (
                 <TouchableOpacity
-                  key={atividade.id}
-                  style={styles.modalAtividadeItem}
-                  activeOpacity={0.7}
-                  onPress={() => escolherAtividade(atividade)}
+                  style={styles.modalPreRequisitoBotao}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setAcaoSelecionada(null);
+                    router.push("/turmas");
+                  }}
                 >
-                  <View
-                    style={[styles.modalAtividadeIcone, { backgroundColor: atividade.corFundo }]}
-                  >
-                    <MaterialCommunityIcons
-                      name={atividade.icone}
-                      size={19}
-                      color={atividade.corIcone}
-                    />
-                  </View>
-                  <View style={styles.modalAtividadeTextos}>
-                    <Text style={styles.modalAtividadeTitulo} numberOfLines={1}>
-                      {atividade.titulo}
-                    </Text>
-                    <Text style={styles.modalAtividadeTurma} numberOfLines={1}>
-                      {atividade.turma}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+                  <Ionicons name="people-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.modalPreRequisitoBotaoTexto}>1. Criar turma</Text>
                 </TouchableOpacity>
-              ))}
 
-              {atividadesFiltradas.length === 0 && (
-                <Text style={styles.modalVazioTexto}>Nenhuma atividade encontrada.</Text>
-              )}
+                <TouchableOpacity
+                  style={[styles.modalPreRequisitoBotao, styles.modalPreRequisitoBotaoSecundario]}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setAcaoSelecionada(null);
+                    router.push("/criar-atividade");
+                  }}
+                >
+                  <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
+                  <Text style={styles.modalPreRequisitoBotaoSecundarioTexto}>
+                    2. Criar atividade
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.modalBuscaBox}>
+                  <Ionicons name="search" size={16} color="#94A3B8" />
+                  <TextInput
+                    value={busca}
+                    onChangeText={setBusca}
+                    placeholder="Buscar atividade..."
+                    placeholderTextColor="#94A3B8"
+                    style={styles.modalBuscaInput}
+                  />
+                </View>
 
-              <TouchableOpacity
-                style={styles.modalNovaAtividade}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setAcaoSelecionada(null);
-                  router.push("/criar-atividade");
-                }}
-              >
-                <Ionicons name="add-circle-outline" size={18} color="#3B82F6" />
-                <Text style={styles.modalNovaAtividadeTexto}>Criar nova atividade</Text>
-              </TouchableOpacity>
-            </ScrollView>
+                <ScrollView style={styles.modalLista} contentContainerStyle={{ paddingBottom: 8 }}>
+                  {atividadesFiltradas.map((atividade) => (
+                    <TouchableOpacity
+                      key={atividade.id}
+                      style={styles.modalAtividadeItem}
+                      activeOpacity={0.7}
+                      onPress={() => escolherAtividade(atividade)}
+                    >
+                      <View
+                        style={[
+                          styles.modalAtividadeIcone,
+                          { backgroundColor: atividade.corFundo },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={atividade.icone}
+                          size={19}
+                          color={atividade.corIcone}
+                        />
+                      </View>
+                      <View style={styles.modalAtividadeTextos}>
+                        <Text style={styles.modalAtividadeTitulo} numberOfLines={1}>
+                          {atividade.titulo}
+                        </Text>
+                        <Text style={styles.modalAtividadeTurma} numberOfLines={1}>
+                          {atividade.turma}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+                    </TouchableOpacity>
+                  ))}
+
+                  {atividadesFiltradas.length === 0 && (
+                    <Text style={styles.modalVazioTexto}>Nenhuma atividade encontrada.</Text>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.modalNovaAtividade}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setAcaoSelecionada(null);
+                      router.push("/criar-atividade");
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={18} color="#3B82F6" />
+                    <Text style={styles.modalNovaAtividadeTexto}>Criar nova atividade</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -403,6 +488,7 @@ export default function Scanner() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
+  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 
@@ -442,7 +528,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  cardScannerDesktop: { padding: 34, marginBottom: 22 },
+  cardScannerDesktop: { padding: 30, marginBottom: 22, alignItems: "center" },
   viewfinder: {
     width: 96,
     height: 96,
@@ -453,6 +539,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     position: "relative",
   },
+  // No desktop o visor da câmera fica menor.
+  viewfinderDesktop: { width: 56, height: 56, borderRadius: 14, marginBottom: 12 },
   cantoViewfinder: {
     position: "absolute",
     width: 18,
@@ -522,33 +610,56 @@ const styles = StyleSheet.create({
   },
   botaoSecundarioTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
 
-  dicasLinha: { flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
-  dicaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  dicaTexto: { fontSize: 11, color: "#BFDBFE" },
+  dicasLinha: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  // Rótulo em destaque.
+  dicaRotuloChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  dicaRotuloTexto: { fontSize: 9, color: "#FFFFFF", fontWeight: "700" },
+  // Cada dica é um chip pequeno.
+  dicaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  dicaTexto: { fontSize: 9, color: "#BFDBFE", fontWeight: "600" },
 
   // ----- recursos -----
-  recursosGrade: { width: "100%", gap: 12, marginBottom: 16 },
+  recursosGrade: { width: "100%", gap: 8, marginBottom: 16 },
   recursosGradeMobile: { flexDirection: "column" },
-  recursosGradeDesktop: { flexDirection: "row", marginBottom: 22 },
+  recursosGradeDesktop: { flexDirection: "row", marginBottom: 18 },
   recursoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EEF1F6",
-    padding: 16,
+    borderRadius: 12,
+    padding: 10,
   },
   recursoCardMobile: { width: "100%" },
   recursoCardDesktop: { flex: 1 },
   recursoIconeCirculo: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  recursoTitulo: { fontSize: 13.5, fontWeight: "700", color: "#0B1E3D", marginBottom: 3 },
-  recursoDescricao: { fontSize: 11.5, color: "#94A3B8" },
+  recursoTitulo: { fontSize: 11.5, fontWeight: "700", marginBottom: 1 },
+  recursoDescricao: { fontSize: 10, color: "#5C7096" },
 
   // ----- uploads recentes -----
   secaoCard: {
@@ -671,6 +782,46 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: 20,
   },
+
+  // ----- aviso de pré-requisito (sem turma/atividade cadastrada) -----
+  modalPreRequisito: {
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingBottom: 20,
+    gap: 6,
+  },
+  modalPreRequisitoTitulo: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0B1E3D",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  modalPreRequisitoTexto: {
+    fontSize: 12.5,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  modalPreRequisitoBotao: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    backgroundColor: "#3B82F6",
+    borderRadius: 10,
+    paddingVertical: 13,
+    marginTop: 6,
+  },
+  modalPreRequisitoBotaoTexto: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+  modalPreRequisitoBotaoSecundario: {
+    backgroundColor: "#F7FAFF",
+    borderWidth: 1,
+    borderColor: "#E8F0FE",
+  },
+  modalPreRequisitoBotaoSecundarioTexto: { fontSize: 13, fontWeight: "700", color: "#3B82F6" },
 
   modalNovaAtividade: {
     flexDirection: "row",

@@ -1,40 +1,49 @@
-// app/cadastro.js
-import { Ionicons } from "@expo/vector-icons";
-import { Link, router, Stack } from "expo-router";
 import { useState } from "react";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image,
+  ImageBackground,
   useWindowDimensions,
-  View,
 } from "react-native";
+import { Link, router, Stack } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 const LARGURA_DESKTOP = 900;
+
+// Imagem de fundo (opcional): salve em assets/images/fundo-login.jpg, de
+// preferência 1920x1080, e troque as duas linhas abaixo de lugar. Sem imagem
+// a tela usa o fundo azul-marinho. COR_SOBREPOSICAO é a camada escura por
+// cima da foto — quanto maior o último número, mais escuro fica.
+const IMAGEM_FUNDO = null;
+// const IMAGEM_FUNDO = require("../assets/images/fundo-login.jpg");
+const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
+
+// Com imagem a tela é um ImageBackground; sem imagem, uma View comum.
+const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
+const propsFundo = IMAGEM_FUNDO ? { source: IMAGEM_FUNDO, resizeMode: "cover" } : {};
 
 const RECURSOS = [
   {
     icone: "camera-outline",
     titulo: "Correção automática por imagem",
-    texto:
-      "Envie atividades e receba correções e sugestões de forma automática com IA.",
+    texto: "Envie atividades e receba correções e sugestões de forma automática com IA.",
   },
   {
     icone: "stats-chart-outline",
     titulo: "Organização inteligente de notas",
-    texto:
-      "Acompanhe o desempenho da turma com relatórios completos e organizados.",
+    texto: "Acompanhe o desempenho da turma com relatórios completos e organizados.",
   },
   {
     icone: "time-outline",
     titulo: "Economia de tempo",
-    texto:
-      "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
+    texto: "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
 
@@ -50,6 +59,15 @@ export default function Cadastro() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
+  // Valida os campos e cria a conta do professor.
+  //
+  // API — POST /auth/registro
+  // Esta é a única tela que JÁ chama a API de verdade (as outras ainda usam
+  // dados fixos). Confira dois pontos com quem estiver fazendo o back-end:
+  //   1. o endereço abaixo tem que ser o mesmo que o servidor expõe;
+  //   2. no celular, "localhost" aponta pro próprio aparelho, não pro seu
+  //      computador — nesse caso troque pelo IP da máquina, ex:
+  //      http://192.168.0.10:3000/auth/registro
   async function handleCadastro() {
     setErro("");
 
@@ -68,7 +86,7 @@ export default function Cadastro() {
 
     setCarregando(true);
     try {
-      const resposta = await fetch("http://localhost:3000/auth/cadastro", {
+      const resposta = await fetch("http://localhost:3000/auth/registro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nome, email, senha }),
@@ -91,24 +109,13 @@ export default function Cadastro() {
 
   const conteudoFormulario = (
     <>
-      <Image
-        source={require("../assets/images/logoTexto.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
       <Text style={styles.titulo}>Criar conta</Text>
-      <Text style={styles.subtitulo}>
-        Cadastre-se como professor no Edusync
-      </Text>
+      <Text style={styles.subtitulo}>Cadastre-se como professor no Edusync</Text>
 
       <Text style={styles.rotulo}>Nome</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="person-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="person-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite seu nome"
@@ -120,12 +127,7 @@ export default function Cadastro() {
 
       <Text style={styles.rotulo}>E-mail</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="mail-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="mail-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite seu email"
@@ -139,12 +141,7 @@ export default function Cadastro() {
 
       <Text style={styles.rotulo}>Senha</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="lock-closed-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Mínimo de 6 caracteres"
@@ -153,26 +150,14 @@ export default function Cadastro() {
           onChangeText={setSenha}
           secureTextEntry={!mostrarSenha}
         />
-        <TouchableOpacity
-          onPress={() => setMostrarSenha((v) => !v)}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
-            size={18}
-            color="#8A93A6"
-          />
+        <TouchableOpacity onPress={() => setMostrarSenha((v) => !v)} hitSlop={8}>
+          <Ionicons name={mostrarSenha ? "eye-outline" : "eye-off-outline"} size={18} color="#8A93A6" />
         </TouchableOpacity>
       </View>
 
       <Text style={styles.rotulo}>Confirmar senha</Text>
       <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
+        <Ionicons name="lock-closed-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite a senha novamente"
@@ -196,12 +181,8 @@ export default function Cadastro() {
         disabled={carregando}
         activeOpacity={0.85}
       >
-        <Text style={styles.textoBotao}>
-          {carregando ? "Criando conta..." : "Criar Conta"}
-        </Text>
-        {!carregando && (
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        )}
+        <Text style={styles.textoBotao}>{carregando ? "Criando conta..." : "Criar Conta"}</Text>
+        {!carregando && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
       </TouchableOpacity>
 
       <View style={styles.rodape}>
@@ -215,8 +196,10 @@ export default function Cadastro() {
 
   if (isDesktop) {
     return (
-      <View style={styles.telaDesktop}>
+      <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
+
+        {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
@@ -226,15 +209,7 @@ export default function Cadastro() {
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
-              <Text style={styles.promoTituloDestaque}>
-                menos tempo para corrigir.
-              </Text>
-            </Text>
-
-            <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas
-              notas de forma inteligente, para você foque no que realmente
-              importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              <Text style={styles.promoTituloDestaque}>menos tempo para corrigir.</Text>
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -255,39 +230,54 @@ export default function Cadastro() {
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color="#FFFFFF" />
               </View>
-              <Text style={styles.promoCtaTexto}>
-                Quer saber mais sobre o nosso projeto?
-              </Text>
+              <Text style={styles.promoCtaTexto}>Quer saber mais sobre o nosso projeto?</Text>
               <TouchableOpacity style={styles.promoCtaBotao}>
                 <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </View>
+      </Fundo>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.tela}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
+
+      {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+
+      <KeyboardAvoidingView
+        style={styles.areaTeclado}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.cartao}>{conteudoFormulario}</View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          style={styles.scrollTransparente}
+        >
+          <View style={styles.cartao}>{conteudoFormulario}</View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Fundo>
   );
 }
 
 const styles = StyleSheet.create({
+  sobreposicao: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COR_SOBREPOSICAO,
+  },
+
   tela: {
     flex: 1,
     backgroundColor: "#0B1E3D",
+  },
+  areaTeclado: {
+    flex: 1,
+  },
+  scrollTransparente: {
+    backgroundColor: "transparent",
   },
   scroll: {
     flexGrow: 1,

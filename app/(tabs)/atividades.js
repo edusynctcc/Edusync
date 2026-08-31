@@ -1,11 +1,12 @@
-
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import {
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +21,23 @@ const INICIAIS_PROFESSOR = "AS";
 
 const FILTROS = ["Todas", "Em aberto", "Concluídas"];
 
-const ATIVIDADES = [
+// Atividades listadas na tela, hoje fixas.
+//
+// ---------------------------------------------------------------------------
+// API — GET /atividades
+// Aceita filtrar por turma: GET /atividades?id_turma=3
+//
+//   const [atividades, setAtividades] = useState([]);
+//
+//   useEffect(() => {
+//     fetch("http://localhost:3000/atividades", {
+//       headers: { Authorization: `Bearer ${token}` },
+//     })
+//       .then((r) => r.json())
+//       .then(setAtividades);
+//   }, []);
+// ---------------------------------------------------------------------------
+const ATIVIDADES_INICIAIS = [
   {
     id: "1",
     titulo: "Prova de Álgebra",
@@ -101,11 +118,48 @@ export default function Atividades() {
   const ehDesktop = width >= 900;
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
+  // Vindo de "Ver atividade original", o título chega por parâmetro.
+  const { atividadeTitulo } = useLocalSearchParams();
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
+
+  // Lista em estado pra dar pra excluir e editar item.
+  const [atividades, setAtividades] = useState(ATIVIDADES_INICIAIS);
+  // Guarda o item cujo menu "editar/excluir" está aberto (null = fechado).
+  const [menuAtivo, setMenuAtivo] = useState(null);
+  // Guarda o item que está com o modal de confirmação de exclusão aberto.
+  const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
+
+  // Abre a tela de criar atividade em modo de edição.
+  function irParaEdicao(item) {
+    setMenuAtivo(null);
+    router.push({
+      pathname: "/criar-atividade",
+      params: { modo: "editar", tituloInicial: item.titulo },
+    });
+  }
+
+  // API — DELETE /atividades/:id
+  //
+  //   await fetch(`http://localhost:3000/atividades/${atividadeParaExcluir.id}`, {
+  //     method: "DELETE",
+  //     headers: { Authorization: `Bearer ${token}` },
+  //   });
+  //
+  // Só depois que a resposta voltar OK é que vale tirar da lista na tela —
+  // senão o item some aqui mas continua no banco.
+  function confirmarExclusao() {
+    setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
+    setAtividadeParaExcluir(null);
+  }
+
+  // Filtra a lista pelo texto digitado na busca.
+  const atividadesFiltradas = atividades.filter((item) =>
+    item.titulo.toLowerCase().includes(busca.toLowerCase())
+  );
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingLeft: 300 }]}>
+    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
       {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
@@ -125,20 +179,6 @@ export default function Atividades() {
                 <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
                 <Text style={styles.tituloPaginaDesktop}>Atividades</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.toolbarDesktop}
-                activeOpacity={0.8}
-                onPress={() => router.push("/perfil")}
-              >
-                <View style={styles.avatarPequenoClaro}>
-                  <Text style={styles.avatarPequenoClaroTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View style={styles.usuarioNomeLinha}>
-                  <Text style={styles.usuarioNomeClaro}>Ana Silva</Text>
-                  <Ionicons name="chevron-down" size={14} color="#0B1E3D" />
-                </View>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -152,6 +192,11 @@ export default function Atividades() {
                 placeholderTextColor="#94A3B8"
                 style={styles.buscaInput}
               />
+              {busca.length > 0 && (
+                <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
             </View>
             <TouchableOpacity style={styles.turmaFiltro}>
               <Ionicons name="people-outline" size={14} color="#3B82F6" />
@@ -178,11 +223,12 @@ export default function Atividades() {
           </View>
 
           <View style={styles.lista}>
-            {ATIVIDADES.map((item) => (
+            {atividadesFiltradas.map((item) => (
               <View
                 key={item.id}
                 style={[styles.atividadeCard, !ehDesktop && styles.atividadeCardMobile]}
               >
+                {/* Linha 1 (sempre): ícone + título/descrição */}
                 <View style={styles.atividadeLinhaTopo}>
                   <View
                     style={[styles.atividadeIconeCirculo, { backgroundColor: item.corFundo }]}
@@ -207,9 +253,31 @@ export default function Atividades() {
                     </Text>
                   </View>
 
+                  {/* Botão "..." — abre o menu de editar/excluir. Fica
+                      separado do "Ver atividade" pra não confundir as duas
+                      ações. */}
+                  <TouchableOpacity
+                    style={styles.botaoMenu}
+                    activeOpacity={0.7}
+                    hitSlop={8}
+                    onPress={() => setMenuAtivo(item)}
+                  >
+                    <Ionicons name="ellipsis-vertical" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  {/* No desktop, botão + data ficam nessa mesma linha, à direita */}
                   {ehDesktop && (
                     <View style={styles.atividadeAcao}>
-                      <TouchableOpacity style={styles.botaoVer}>
+                      <TouchableOpacity
+                        style={styles.botaoVer}
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/correcoes",
+                            params: { atividadeTitulo: item.titulo },
+                          })
+                        }
+                      >
                         <Text style={styles.botaoVerTexto}>Ver atividade</Text>
                       </TouchableOpacity>
                       <Text style={styles.atividadeData}>
@@ -219,12 +287,23 @@ export default function Atividades() {
                   )}
                 </View>
 
+                {/* No mobile, botão + data descem pra uma segunda linha,
+                    embaixo, com largura total — evita espremer o texto */}
                 {!ehDesktop && (
                   <View style={styles.atividadeLinhaBaixoMobile}>
                     <Text style={styles.atividadeData}>
                       {item.data} · {item.quando}
                     </Text>
-                    <TouchableOpacity style={styles.botaoVer}>
+                    <TouchableOpacity
+                      style={styles.botaoVer}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/correcoes",
+                          params: { atividadeTitulo: item.titulo },
+                        })
+                      }
+                    >
                       <Text style={styles.botaoVerTexto}>Ver atividade</Text>
                     </TouchableOpacity>
                   </View>
@@ -277,12 +356,87 @@ export default function Atividades() {
         onPress={() => router.push("/criar-atividade")}
         style={ehDesktop ? { bottom: 32, right: 32 } : { bottom: 74, right: 14 }}
       />
+
+      {/* Menu "editar/excluir" de uma atividade */}
+      <Modal
+        visible={!!menuAtivo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuAtivo(null)}
+      >
+        <Pressable style={styles.modalFundo} onPress={() => setMenuAtivo(null)}>
+          <Pressable style={styles.menuCartao} onPress={() => {}}>
+            <Text style={styles.menuTituloAtividade} numberOfLines={1}>
+              {menuAtivo?.titulo}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.menuOpcao}
+              activeOpacity={0.7}
+              onPress={() => irParaEdicao(menuAtivo)}
+            >
+              <Ionicons name="pencil-outline" size={17} color="#3B82F6" />
+              <Text style={styles.menuOpcaoTexto}>Editar atividade</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuOpcao}
+              activeOpacity={0.7}
+              onPress={() => {
+                setAtividadeParaExcluir(menuAtivo);
+                setMenuAtivo(null);
+              }}
+            >
+              <Ionicons name="trash-outline" size={17} color="#EF4444" />
+              <Text style={[styles.menuOpcaoTexto, { color: "#EF4444" }]}>Excluir atividade</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirmação de exclusão */}
+      <Modal
+        visible={!!atividadeParaExcluir}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAtividadeParaExcluir(null)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconeCirculo}>
+              <Ionicons name="trash-outline" size={22} color="#EF4444" />
+            </View>
+            <Text style={styles.modalTitulo}>Excluir esta atividade?</Text>
+            <Text style={styles.modalTexto}>
+              "{atividadeParaExcluir?.titulo}" será removida e essa ação não pode ser desfeita.
+            </Text>
+            <View style={styles.modalAcoes}>
+              <TouchableOpacity
+                style={styles.modalBotaoCancelar}
+                activeOpacity={0.8}
+                onPress={() => setAtividadeParaExcluir(null)}
+              >
+                <Text style={styles.modalBotaoCancelarTexto}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalBotaoExcluir}
+                activeOpacity={0.8}
+                onPress={confirmarExclusao}
+              >
+                <Text style={styles.modalBotaoExcluirTexto}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
+
+  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 
@@ -395,6 +549,99 @@ const styles = StyleSheet.create({
   },
   botaoVerTexto: { color: "#FFFFFF", fontSize: 11.5, fontWeight: "700" },
   atividadeData: { fontSize: 10, color: "#94A3B8" },
+  botaoMenu: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  // ----- menu editar/excluir + modal de confirmação -----
+  modalFundo: {
+    flex: 1,
+    backgroundColor: "rgba(11,30,61,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  menuCartao: {
+    width: "100%",
+    maxWidth: 300,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 8,
+  },
+  menuTituloAtividade: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#94A3B8",
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  menuOpcao: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  menuOpcaoTexto: { fontSize: 14, fontWeight: "600", color: "#0B1E3D" },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 22,
+    alignItems: "center",
+  },
+  modalIconeCirculo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  modalTitulo: {
+    fontSize: 15.5,
+    fontWeight: "700",
+    color: "#0B1E3D",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  modalTexto: {
+    fontSize: 12.5,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 18,
+    lineHeight: 18,
+  },
+  modalAcoes: { flexDirection: "row", gap: 10, width: "100%" },
+  modalBotaoCancelar: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#E7EBF3",
+  },
+  modalBotaoCancelarTexto: { fontSize: 13.5, fontWeight: "700", color: "#64748B" },
+  modalBotaoExcluir: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#EF4444",
+  },
+  modalBotaoExcluirTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
 
   resumoBox: {
     width: "100%",
