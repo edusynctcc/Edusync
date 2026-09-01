@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model alternativa {
+  id_alternativa Int      @id @default(autoincrement())
+  id_questao     Int?
+  letra          String?  @db.VarChar(1)
+  texto          String?  @db.VarChar(255)
+  questao        questao? @relation(fields: [id_questao], references: [id_questao], onDelete: NoAction, onUpdate: NoAction, map: "alternativa_ibfk_1")
+
+  @@index([id_questao], map: "id_questao")
+}
+
+model aluno {
+  id_aluno       Int        @id @default(autoincrement())
+  id_turma       Int
+  nome           String     @db.VarChar(100)
+  matricula      String     @unique(map: "matricula") @db.VarChar(20)
+  numero_chamada Int
+  turma          turma      @relation(fields: [id_turma], references: [id_turma], onDelete: NoAction, onUpdate: NoAction, map: "aluno_ibfk_1")
+  correcao       correcao[]
+
+  @@index([id_turma], map: "id_turma")
+}
+
+model atividade {
+  id_atividade Int        @id @default(autoincrement())
+  id_professor Int?
+  id_turma     Int
+  nome         String     @db.VarChar(100)
+  descricao    String?    @db.Text
+  imagem       String?    @db.VarChar(255)
+  criado_em    DateTime?  @default(now()) @db.Timestamp(0)
+  professor    professor? @relation(fields: [id_professor], references: [id_professor], onDelete: NoAction, onUpdate: NoAction, map: "atividade_ibfk_1")
+  turma        turma      @relation(fields: [id_turma], references: [id_turma], onDelete: NoAction, onUpdate: NoAction, map: "atividade_ibfk_2")
+  correcao     correcao[]
+  questao      questao[]
+
+  @@index([id_professor], map: "id_professor")
+  @@index([id_turma], map: "id_turma")
+}
+
+model correcao {
+  id_correcao  Int        @id @default(autoincrement())
+  id_atividade Int?
+  id_aluno     Int?
+  imagem       String?    @db.VarChar(255)
+  nota         Decimal?   @db.Decimal(5, 2)
+  status       String?    @default("pendente") @db.VarChar(20)
+  observacao   String?    @db.Text
+  enviado_em   DateTime?  @default(now()) @db.Timestamp(0)
+  corrigido_em DateTime?  @db.Timestamp(0)
+  atividade    atividade? @relation(fields: [id_atividade], references: [id_atividade], onDelete: NoAction, onUpdate: NoAction, map: "correcao_ibfk_1")
+  aluno        aluno?     @relation(fields: [id_aluno], references: [id_aluno], onDelete: NoAction, onUpdate: NoAction, map: "correcao_ibfk_2")
+  resposta     resposta[]
+
+  @@unique([id_atividade, id_aluno], map: "unico_por_aluno")
+  @@index([id_aluno], map: "id_aluno")
+}
+
+model professor {
+  id_professor Int         @id @default(autoincrement())
+  nome         String      @db.VarChar(100)
+  email        String      @unique(map: "email") @db.VarChar(100)
+  senha        String      @db.VarChar(255)
+  criado_em    DateTime?   @default(now()) @db.Timestamp(0)
+  atividade    atividade[]
+  turma        turma[]
+}
+
+model questao {
+  id_questao       Int           @id @default(autoincrement())
+  id_atividade     Int?
+  numero           Int
+  pergunta         String        @db.Text
+  tipo             String        @db.VarChar(20)
+  resposta_correta String?       @db.VarChar(255)
+  peso             Decimal?      @default(1.00) @db.Decimal(4, 2)
+  alternativa      alternativa[]
+  atividade        atividade?    @relation(fields: [id_atividade], references: [id_atividade], onDelete: NoAction, onUpdate: NoAction, map: "questao_ibfk_1")
+  resposta         resposta[]
+
+  @@index([id_atividade], map: "id_atividade")
+}
+
+model resposta {
+  id_resposta          Int       @id @default(autoincrement())
+  id_correcao          Int?
+  id_questao           Int?
+  resposta             String?   @db.Text
+  nota                 Decimal?  @db.Decimal(3, 2)
+  comentario           String?   @db.Text
+  ajustado_manualmente Boolean?  @default(false)
+  correcao             correcao? @relation(fields: [id_correcao], references: [id_correcao], onDelete: NoAction, onUpdate: NoAction, map: "resposta_ibfk_1")
+  questao              questao?  @relation(fields: [id_questao], references: [id_questao], onDelete: NoAction, onUpdate: NoAction, map: "resposta_ibfk_2")
+
+  @@index([id_correcao], map: "id_correcao")
+  @@index([id_questao], map: "id_questao")
+}
+
+model turma {
+  id_turma     Int         @id @default(autoincrement())
+  id_professor Int
+  nome         String      @db.VarChar(50)
+  escola       String?     @db.VarChar(100)
+  criado_em    DateTime?   @default(now()) @db.Timestamp(0)
+  aluno        aluno[]
+  atividade    atividade[]
+  professor    professor   @relation(fields: [id_professor], references: [id_professor], onDelete: NoAction, onUpdate: NoAction, map: "turma_ibfk_1")
+
+  @@index([id_professor], map: "id_professor")
+}
