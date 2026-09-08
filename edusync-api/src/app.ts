@@ -5,6 +5,7 @@ import atividadeRoutes from './routes/atividadeRoutes';
 import turmaRoutes from './routes/turmaRoutes';
 import alunoRoutes from './routes/alunoRoutes';
 import questaoRoutes from './routes/questaoRoutes';
+import alternativaRoutes from './routes/alternativaRoutes';
 
 const app = express();
 
@@ -15,5 +16,6 @@ app.use('/atividades', atividadeRoutes);
 app.use('/turmas', turmaRoutes);
 app.use('/alunos', alunoRoutes);
 app.use('/questoes', questaoRoutes);
+app.use('/alternativas', alternativaRoutes);
 
 export default app;
