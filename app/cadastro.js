@@ -14,18 +14,13 @@ import {
 } from "react-native";
 import { Link, router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { COR, FONTE } from "../components/estilo";
 
 const LARGURA_DESKTOP = 900;
 
-// Imagem de fundo (opcional): salve em assets/images/fundo-login.jpg, de
-// preferência 1920x1080, e troque as duas linhas abaixo de lugar. Sem imagem
-// a tela usa o fundo azul-marinho. COR_SOBREPOSICAO é a camada escura por
-// cima da foto — quanto maior o último número, mais escuro fica.
 const IMAGEM_FUNDO = null;
-// const IMAGEM_FUNDO = require("../assets/images/fundo-login.jpg");
 const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
 
-// Com imagem a tela é um ImageBackground; sem imagem, uma View comum.
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
 const propsFundo = IMAGEM_FUNDO ? { source: IMAGEM_FUNDO, resizeMode: "cover" } : {};
 
@@ -182,7 +177,7 @@ export default function Cadastro() {
         activeOpacity={0.85}
       >
         <Text style={styles.textoBotao}>{carregando ? "Criando conta..." : "Criar Conta"}</Text>
-        {!carregando && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
+        {!carregando && <Ionicons name="arrow-forward" size={18} color={COR.branco} />}
       </TouchableOpacity>
 
       <View style={styles.rodape}>
@@ -212,6 +207,11 @@ export default function Cadastro() {
               <Text style={styles.promoTituloDestaque}>menos tempo para corrigir.</Text>
             </Text>
 
+            <Text style={styles.promoTexto}>
+              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para você
+              foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
+            </Text>
+
             <View style={styles.promoDivisor} />
 
             {RECURSOS.map((r) => (
@@ -228,7 +228,7 @@ export default function Cadastro() {
 
             <View style={styles.promoCta}>
               <View style={styles.promoCtaIcone}>
-                <Ionicons name="school" size={16} color="#FFFFFF" />
+                <Ionicons name="school" size={16} color={COR.branco} />
               </View>
               <Text style={styles.promoCtaTexto}>Quer saber mais sobre o nosso projeto?</Text>
               <TouchableOpacity style={styles.promoCtaBotao}>
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
 
   tela: {
     flex: 1,
-    backgroundColor: "#0B1E3D",
+    backgroundColor: COR.marinho,
   },
   areaTeclado: {
     flex: 1,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   telaDesktop: {
     flex: 1,
     minHeight: "100%",
-    backgroundColor: "#0B1E3D",
+    backgroundColor: COR.marinho,
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 1000,
     minHeight: 600,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 24,
     overflow: "hidden",
     shadowColor: "#000",
@@ -325,9 +325,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   promoTitulo: {
-    fontSize: 24,
+    fontFamily: FONTE.bold, fontSize: 24,
     fontWeight: "700",
-    color: "#0B1E3D",
+    color: COR.tintaForte,
     lineHeight: 32,
     marginBottom: 12,
   },
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     color: "#F5811F",
   },
   promoTexto: {
-    fontSize: 13.5,
+    fontFamily: FONTE.regular, fontSize: 13.5,
     color: "#5B6472",
     lineHeight: 20,
     marginBottom: 18,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 9,
-    backgroundColor: "#EAF1FE",
+    backgroundColor: COR.emAndamentoFundo,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -367,13 +367,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   promoItemTitulo: {
-    fontSize: 13,
+    fontFamily: FONTE.bold, fontSize: 13,
     fontWeight: "700",
-    color: "#0B1E3D",
+    color: COR.tintaForte,
     marginBottom: 2,
   },
   promoItemDescricao: {
-    fontSize: 12,
+    fontFamily: FONTE.regular, fontSize: 12,
     color: "#7A8393",
     lineHeight: 17,
   },
@@ -396,9 +396,9 @@ const styles = StyleSheet.create({
   },
   promoCtaTexto: {
     flex: 1,
-    fontSize: 11.5,
+    fontFamily: FONTE.semi, fontSize: 11.5,
     fontWeight: "600",
-    color: "#334155",
+    color: COR.tintaMedia,
   },
   promoCtaBotao: {
     backgroundColor: "#2F6FED",
@@ -407,15 +407,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   promoCtaBotaoTexto: {
-    color: "#FFFFFF",
-    fontSize: 11.5,
+    color: COR.branco,
+    fontFamily: FONTE.bold, fontSize: 11.5,
     fontWeight: "700",
   },
 
   cartao: {
     width: "100%",
     maxWidth: 380,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 24,
     padding: 28,
     alignItems: "center",
@@ -431,23 +431,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   titulo: {
-    fontSize: 20,
+    fontFamily: FONTE.bold, fontSize: 20,
     fontWeight: "700",
-    color: "#0B1E3D",
+    color: COR.tintaForte,
     marginTop: 4,
   },
   subtitulo: {
-    fontSize: 13,
-    color: "#64748B",
+    fontFamily: FONTE.regular, fontSize: 13,
+    color: COR.tintaMedia,
     marginBottom: 14,
     marginTop: 2,
     textAlign: "center",
   },
   rotulo: {
     alignSelf: "flex-start",
-    fontSize: 12.5,
+    fontFamily: FONTE.semi, fontSize: 12.5,
     fontWeight: "600",
-    color: "#334155",
+    color: COR.tintaMedia,
     marginBottom: 5,
     marginTop: 8,
     letterSpacing: 0.2,
@@ -457,10 +457,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COR.linha,
     borderRadius: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COR.fundo,
   },
   campoIcone: {
     marginRight: 8,
@@ -468,8 +468,8 @@ const styles = StyleSheet.create({
   campoTexto: {
     flex: 1,
     paddingVertical: 9,
-    fontSize: 14,
-    color: "#0B1E3D",
+    fontFamily: FONTE.regular, fontSize: 14,
+    color: COR.tintaForte,
   },
   avisoErro: {
     flexDirection: "row",
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   textoErro: {
     color: "#DC2626",
-    fontSize: 12.5,
+    fontFamily: FONTE.regular, fontSize: 12.5,
   },
   botao: {
     flexDirection: "row",
@@ -506,9 +506,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   textoBotao: {
-    color: "#FFFFFF",
+    color: COR.branco,
     fontWeight: "700",
-    fontSize: 14.5,
+    fontFamily: FONTE.bold, fontSize: 14.5,
   },
   rodape: {
     flexDirection: "row",
@@ -517,12 +517,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rodapeTexto: {
-    fontSize: 12.5,
-    color: "#475569",
+    fontFamily: FONTE.regular, fontSize: 12.5,
+    color: COR.tintaMedia,
   },
   rodapeLink: {
-    fontSize: 12.5,
-    color: "#F5A623",
+    fontFamily: FONTE.bold, fontSize: 12.5,
+    color: COR.avisoTexto,
     fontWeight: "700",
   },
 });

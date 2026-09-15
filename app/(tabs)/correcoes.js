@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   ScrollView,
   StyleSheet,
@@ -12,11 +13,18 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-const INICIAIS_PROFESSOR = "AS";
+const FILTROS = ["Todas", "Aguardando você", "Em processamento", "Concluídas"];
 
-const FILTROS = ["Todas", "Em processamento", "Concluídas", "Pendentes"];
-
-// status: "concluida" | "processando" | "pendente"
+// status: "processando" | "pendente" | "concluida"
+//
+//   processando -> a IA está corrigindo as folhas agora
+//   pendente    -> a IA terminou e está ESPERANDO A REVISÃO do professor
+//                  (é este que aparece no bloco escuro da Home)
+//   concluida   -> o professor já revisou e fechou a nota
+//
+// Ou seja: "pendente" não quer dizer "sem corrigir" — quer dizer "corrigido
+// pela IA, faltando a palavra final do professor". Por isso toda correção
+// pendente tem corrigidos > 0.
 //
 // ---------------------------------------------------------------------------
 // API — GET /correcoes
@@ -41,76 +49,76 @@ const CORRECOES = [
   {
     id: "1",
     titulo: "Prova de Álgebra",
-    turma: "9º Ano A · Turma B",
-    status: "concluida",
+    turma: "9º Ano A",
+    status: "pendente",
     corrigidos: 28,
     data: "19/03/2026",
     quando: "Hoje, 10:15",
     icone: "function-variant",
-    corFundo: "#F1E9FB",
-    corIcone: "#8B5CF6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "2",
     titulo: "Lista de Exercícios",
-    turma: "8º Ano B",
-    status: "processando",
-    corrigidos: 14,
+    turma: "1ª Série B",
+    status: "pendente",
+    corrigidos: 31,
     data: "19/03/2026",
     quando: "Hoje, 09:50",
     icone: "format-list-bulleted",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "3",
     titulo: "Trabalho de Geometria",
-    turma: "9º Ano A",
-    status: "pendente",
-    corrigidos: 0,
+    turma: "7º Ano C",
+    status: "processando",
+    corrigidos: 14,
     data: "18/03/2026",
     quando: "Ontem, 16:40",
     icone: "shape-outline",
-    corFundo: "#FEF0E4",
-    corIcone: "#F5A623",
+    corFundo: COR.avisoFundo,
+    corIcone: COR.avisoTexto,
   },
   {
     id: "4",
     titulo: "Prova Bimestral",
-    turma: "7º Ano B",
+    turma: "9º Ano A",
     status: "concluida",
     corrigidos: 27,
     data: "16/03/2026",
     quando: "Há 3 dias",
     icone: "school-outline",
-    corFundo: "#FCE7F3",
-    corIcone: "#DB2777",
+    corFundo: COR.okFundo,
+    corIcone: COR.ok,
   },
   {
     id: "5",
     titulo: "Exercícios de Frações",
-    turma: "6º Ano A",
-    status: "pendente",
-    corrigidos: 0,
+    turma: "7º Ano C",
+    status: "concluida",
+    corrigidos: 25,
     data: "15/03/2026",
     quando: "Há 4 dias",
     icone: "fraction-one-half",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
 ];
 
 const CONFIG_STATUS = {
-  concluida: { rotulo: "Concluída", cor: "#22C55E", corFundo: "#E7F8EF", icone: "checkmark-circle" },
-  processando: { rotulo: "Processando", cor: "#3B82F6", corFundo: "#E8F0FE", icone: "sync-outline" },
-  pendente: { rotulo: "Pendente", cor: "#F5A623", corFundo: "#FEF3C7", icone: "time-outline" },
+  concluida: { rotulo: "Concluída", cor: COR.ok, corFundo: COR.okFundo, icone: "checkmark-circle" },
+  processando: { rotulo: "Processando", cor: COR.marcador, corFundo: COR.emAndamentoFundo, icone: "sync-outline" },
+  pendente: { rotulo: "Aguardando você", cor: COR.avisoTexto, corFundo: COR.avisoFundo, icone: "time-outline" },
 };
 
 function correcaoCombinaComFiltro(correcao, filtro) {
   if (filtro === "Todas") return true;
   if (filtro === "Em processamento") return correcao.status === "processando";
   if (filtro === "Concluídas") return correcao.status === "concluida";
-  if (filtro === "Pendentes") return correcao.status === "pendente";
+  if (filtro === "Aguardando você") return correcao.status === "pendente";
   return true;
 }
 
@@ -119,7 +127,6 @@ export default function Correcoes() {
   const ehDesktop = width >= 900;
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
-  // Vindo de "Ver atividade", o título chega por parâmetro.
   const { atividadeTitulo } = useLocalSearchParams();
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
   const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
@@ -129,10 +136,10 @@ export default function Correcoes() {
   const totalPendentes = CORRECOES.filter((c) => c.status === "pendente").length;
 
   const RESUMO = [
-    { valor: String(totalConcluidas), rotulo: "Concluídas", icone: "checkmark-circle", cor: "#22C55E" },
-    { valor: String(totalProcessando), rotulo: "Em processamento", icone: "sync-outline", cor: "#3B82F6" },
-    { valor: String(totalPendentes), rotulo: "Pendentes", icone: "time-outline", cor: "#F5A623" },
-    { valor: String(CORRECOES.length), rotulo: "Total enviadas", icone: "layers-outline", cor: "#8B5CF6" },
+    { valor: String(totalConcluidas), rotulo: "Concluídas", icone: "checkmark-circle", cor: COR.ok },
+    { valor: String(totalProcessando), rotulo: "Em processamento", icone: "sync-outline", cor: COR.marcador },
+    { valor: String(totalPendentes), rotulo: "Aguardando você", icone: "time-outline", cor: COR.avisoTexto },
+    { valor: String(CORRECOES.length), rotulo: "Total enviadas", icone: "layers-outline", cor: COR.marcador },
   ];
 
   const correcoesFiltradas = CORRECOES.filter(
@@ -142,7 +149,7 @@ export default function Correcoes() {
   );
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+    <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile comSino />}
 
       <ScrollView
@@ -159,7 +166,7 @@ export default function Correcoes() {
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
-                <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+                <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Correções</Text>
               </TouchableOpacity>
             </View>
@@ -169,17 +176,17 @@ export default function Correcoes() {
 
           <View style={styles.buscaLinha}>
             <View style={styles.buscaBox}>
-              <Ionicons name="search" size={16} color="#94A3B8" />
+              <Ionicons name="search" size={16} color={COR.tintaFraca} />
               <TextInput
                 value={busca}
                 onChangeText={setBusca}
                 placeholder="Buscar por atividade..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={COR.tintaFraca}
                 style={styles.buscaInput}
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
                 </TouchableOpacity>
               )}
             </View>
@@ -189,7 +196,7 @@ export default function Correcoes() {
                 style={styles.botaoScannerDesktop}
                 onPress={() => router.push("/scanner")}
               >
-                <Ionicons name="camera-outline" size={17} color="#FFFFFF" />
+                <Ionicons name="camera-outline" size={17} color={COR.branco} />
                 <Text style={styles.botaoScannerDesktopTexto}>Ir para o Scanner</Text>
               </TouchableOpacity>
             )}
@@ -221,7 +228,9 @@ export default function Correcoes() {
                   key={item.id}
                   style={[styles.correcaoCard, !ehDesktop && styles.correcaoCardMobile]}
                   activeOpacity={0.85}
-                  onPress={() => item.status === "concluida" && router.push("/editar")}
+                  onPress={() =>
+                    item.status !== "processando" && router.push("/editar")
+                  }
                 >
                   <View style={styles.correcaoLinhaTopo}>
                     <View
@@ -247,24 +256,30 @@ export default function Correcoes() {
                     </View>
                   </View>
 
-                  {item.status !== "pendente" && (
-                    <View style={styles.correcaoContagemLinha}>
-                      <Ionicons
-                        name={item.status === "processando" ? "sync-outline" : "checkmark-circle-outline"}
-                        size={13}
-                        color={status.cor}
-                      />
-                      <Text style={[styles.correcaoContagemTexto, { color: status.cor }]}>
-                        {item.status === "processando"
-                          ? `${item.corrigidos} corrigidas até agora — a IA continua conforme chegam mais folhas escaneadas`
-                          : `${item.corrigidos} corrigidas no total`}
-                      </Text>
-                    </View>
-                  )}
+                  <View style={styles.correcaoContagemLinha}>
+                    <Ionicons
+                      name={
+                        item.status === "processando"
+                          ? "sync-outline"
+                          : item.status === "pendente"
+                          ? "time-outline"
+                          : "checkmark-circle-outline"
+                      }
+                      size={13}
+                      color={status.cor}
+                    />
+                    <Text style={[styles.correcaoContagemTexto, { color: status.cor }]}>
+                      {item.status === "processando"
+                        ? `${item.corrigidos} corrigidas até agora — a IA continua conforme chegam mais folhas escaneadas`
+                        : item.status === "pendente"
+                        ? `${item.corrigidos} corrigidas pela IA — esperando sua revisão`
+                        : `${item.corrigidos} corrigidas e revisadas por você`}
+                    </Text>
+                  </View>
 
                   <View style={styles.correcaoRodapeLinha}>
                     <Text style={styles.correcaoData}>
-                      {item.data} · {item.quando}
+                      {item.quando}
                     </Text>
 
                     {item.status === "concluida" && (
@@ -278,10 +293,10 @@ export default function Correcoes() {
 
                     {item.status === "pendente" && (
                       <TouchableOpacity
-                        style={styles.botaoVerSecundario}
-                        onPress={() => router.push("/scanner")}
+                        style={styles.botaoVer}
+                        onPress={() => router.push("/editar")}
                       >
-                        <Text style={styles.botaoVerSecundarioTexto}>Enviar agora</Text>
+                        <Text style={styles.botaoVerTexto}>Revisar</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -291,7 +306,7 @@ export default function Correcoes() {
 
             {correcoesFiltradas.length === 0 && (
               <View style={styles.vazioBox}>
-                <Ionicons name="document-text-outline" size={28} color="#94A3B8" />
+                <Ionicons name="document-text-outline" size={28} color={COR.tintaFraca} />
                 <Text style={styles.vazioTexto}>Nenhuma correção encontrada.</Text>
               </View>
             )}
@@ -334,8 +349,7 @@ export default function Correcoes() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
+  tela: { flex: 1, backgroundColor: COR.fundo },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -351,19 +365,8 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontSize: 20, fontWeight: "700", color: "#0B1E3D" },
-  tituloPagina: { fontSize: 18, fontWeight: "700", color: "#0B1E3D", marginBottom: 14, width: "100%" },
-  toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
+  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
+  tituloPagina: { fontFamily: FONTE.bold, fontSize: 18, fontWeight: "700", color: COR.tintaForte, marginBottom: 14, width: "100%" },
 
   buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 14 },
   buscaBox: {
@@ -371,43 +374,43 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.controle,
     borderWidth: 1,
-    borderColor: "#E7EBF3",
+    borderColor: COR.linha,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { flex: 1, fontSize: 13, color: "#0B1E3D", padding: 0 },
+  buscaInput: { flex: 1, fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaForte, padding: 0 },
 
   botaoScannerDesktop: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#3B82F6",
-    borderRadius: 10,
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  botaoScannerDesktopTexto: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  botaoScannerDesktopTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 13, fontWeight: "700" },
 
   filtrosLinha: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 16, flexWrap: "wrap" },
   filtroPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#EDF1F7",
+    backgroundColor: COR.linhaSuave,
   },
-  filtroPillAtivo: { backgroundColor: "#3B82F6" },
-  filtroTexto: { fontSize: 12.5, fontWeight: "600", color: "#64748B" },
-  filtroTextoAtivo: { color: "#FFFFFF" },
+  filtroPillAtivo: { backgroundColor: COR.marinho },
+  filtroTexto: { fontFamily: FONTE.semi, fontSize: 12.5, fontWeight: "600", color: COR.tintaMedia },
+  filtroTextoAtivo: { color: COR.branco },
 
   lista: { width: "100%", gap: 10, marginBottom: 20 },
   correcaoCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 14,
   },
   correcaoCardMobile: { gap: 10 },
@@ -415,14 +418,14 @@ const styles = StyleSheet.create({
   correcaoIconeCirculo: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   correcaoTextos: { flex: 1, minWidth: 0 },
-  correcaoTitulo: { fontSize: 13.5, fontWeight: "700", color: "#0B1E3D" },
-  correcaoTurma: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
+  correcaoTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaForte },
+  correcaoTurma: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
 
   statusBadge: {
     flexDirection: "row",
@@ -430,10 +433,10 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     flexShrink: 0,
   },
-  statusBadgeTexto: { fontSize: 10.5, fontWeight: "700" },
+  statusBadgeTexto: { fontFamily: FONTE.bold, fontSize: 10.5, fontWeight: "700" },
 
   correcaoContagemLinha: {
     flexDirection: "row",
@@ -441,7 +444,7 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 6,
   },
-  correcaoContagemTexto: { flex: 1, fontSize: 10.5, fontWeight: "600" },
+  correcaoContagemTexto: { flex: 1, fontFamily: FONTE.semi, fontSize: 10.5, fontWeight: "600" },
 
   correcaoRodapeLinha: {
     flexDirection: "row",
@@ -449,38 +452,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  correcaoData: { fontSize: 10, color: "#94A3B8" },
+  correcaoData: { fontFamily: FONTE.regular, fontSize: 10, color: COR.tintaFraca },
   botaoVer: {
-    backgroundColor: "#3B82F6",
-    borderRadius: 8,
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  botaoVerTexto: { color: "#FFFFFF", fontSize: 11.5, fontWeight: "700" },
-  botaoVerSecundario: {
-    borderWidth: 1,
-    borderColor: "#F5A623",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  botaoVerSecundarioTexto: { color: "#F5A623", fontSize: 11.5, fontWeight: "700" },
+  botaoVerTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11.5, fontWeight: "700" },
 
   vazioBox: { alignItems: "center", gap: 8, paddingVertical: 40, width: "100%" },
-  vazioTexto: { fontSize: 13, color: "#94A3B8" },
+  vazioTexto: { fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaFraca },
 
   resumoBox: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 18,
     marginBottom: 20,
   },
   resumoBoxDesktop: { padding: 28 },
-  resumoTitulo: { fontSize: 14, fontWeight: "700", color: "#0B1E3D", marginBottom: 14 },
-  resumoTituloDesktop: { fontSize: 17, marginBottom: 22 },
+  resumoTitulo: { fontFamily: FONTE.bold, fontSize: 14, fontWeight: "700", color: COR.tintaForte, marginBottom: 14 },
+  resumoTituloDesktop: { fontFamily: FONTE.regular, fontSize: 17, marginBottom: 22 },
   resumoGrade: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -494,10 +489,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#F4F6FA",
+    backgroundColor: COR.fundo,
   },
-  resumoValor: { fontSize: 15, fontWeight: "700", color: "#0B1E3D" },
-  resumoValorDesktop: { fontSize: 22 },
-  resumoRotulo: { fontSize: 10.5, color: "#94A3B8" },
-  resumoRotuloDesktop: { fontSize: 12.5, marginTop: 2 },
+  resumoValor: { fontFamily: FONTE.bold, fontSize: 15, fontWeight: "700", color: COR.tintaForte },
+  resumoValorDesktop: { fontFamily: FONTE.regular, fontSize: 22 },
+  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 10.5, color: COR.tintaFraca },
+  resumoRotuloDesktop: { fontFamily: FONTE.regular, fontSize: 12.5, marginTop: 2 },
 });

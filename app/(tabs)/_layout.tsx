@@ -1,6 +1,5 @@
-
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs, useRouter, usePathname } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -14,20 +13,55 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-// Altura da navbar do desktop; as telas usam esse valor no paddingTop.
-export const ALTURA_NAVBAR_TOPO = 76;
+export const LARGURA_LATERAL = 236;
 
-// Estilos só do navegador — ficam fora do StyleSheet pra não dar erro de tipo.
+const SISTEMA: any = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default: "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
+});
+
+const FONTE: any = {
+  regular: Platform.OS === "web" ? `PublicSans_400Regular, ${SISTEMA}` : "PublicSans_400Regular",
+  media: Platform.OS === "web" ? `PublicSans_500Medium, ${SISTEMA}` : "PublicSans_500Medium",
+  semi: Platform.OS === "web" ? `PublicSans_600SemiBold, ${SISTEMA}` : "PublicSans_600SemiBold",
+  bold: Platform.OS === "web" ? `PublicSans_700Bold, ${SISTEMA}` : "PublicSans_700Bold",
+};
+
+const COR: any = {
+  marinho: "#0B1E3D",
+  marinhoFundo: "#081730",
+  marinhoClaro: "#9FB3D4",
+  tintaForte: "#17242E",
+  tintaMedia: "#55646F",
+  branco: "#FFFFFF",
+  marcador: "#2E6FB0",
+  fundo: "#F2F5F6",
+  perigo: "#F87171",
+};
+
 const TRANSICAO_WEB: any =
   Platform.OS === "web"
     ? { transitionProperty: "background-color", transitionDuration: "150ms" }
     : null;
 
-const SEM_CONTORNO_WEB: any =
-  Platform.OS === "web" ? { outlineStyle: "none" } : null;
+const SEM_CONTORNO_WEB: any = Platform.OS === "web" ? { outlineStyle: "none" } : null;
 
-// Índice que a busca da navbar percorre (mesmos dados do Home).
-const INDICE_BUSCA_NAVBAR = [
+
+const ITENS_LATERAL = [
+  { rota: "/home", rotulo: "Home", icone: "grid-outline", iconeAtivo: "grid" },
+  { rota: "/turmas", rotulo: "Turmas", icone: "people-outline", iconeAtivo: "people" },
+  { rota: "/atividades", rotulo: "Atividades", icone: "document-text-outline", iconeAtivo: "document-text" },
+  { rota: "/scanner", rotulo: "Scanner", icone: "scan-outline", iconeAtivo: "scan" },
+  { rota: "/correcoes", rotulo: "Correções", icone: "checkmark-done-outline", iconeAtivo: "checkmark-done" },
+  { rota: "/perfil", rotulo: "Perfil", icone: "person-outline", iconeAtivo: "person" },
+];
+
+// Índice que a busca percorre.
+//
+// API — GET /turmas + GET /atividades
+// Mesma ideia do Home: troque a constante por estado e busque os dois.
+const INDICE_BUSCA = [
   { tipo: "turma", titulo: "9º Ano A" },
   { tipo: "turma", titulo: "1ª Série B" },
   { tipo: "turma", titulo: "7º Ano C" },
@@ -39,39 +73,20 @@ const INDICE_BUSCA_NAVBAR = [
   { tipo: "atividade", titulo: "Projeto de Estatística" },
 ];
 
-function CustomTabBar({ state, navigation }: any) {
-  const { width } = useWindowDimensions();
-  const ehDesktop = width >= 900;
+function LateralDesktop() {
   const router = useRouter();
-
-  // Controla se a caixa de busca está aberta (abre e fecha na lupa).
-  const [buscaAberta, setBuscaAberta] = useState(false);
+  const caminho = usePathname();
   const [buscaTexto, setBuscaTexto] = useState("");
 
-  const rotaAtual = state.routes[state.index]?.name;
-
-  const itensMenu = state.routes.filter(
-    (route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name)
-  );
-
-  const resultadosBusca =
+  const resultados =
     buscaTexto.trim().length === 0
       ? []
-      : INDICE_BUSCA_NAVBAR.filter((item) =>
+      : INDICE_BUSCA.filter((item) =>
           item.titulo.toLowerCase().includes(buscaTexto.toLowerCase())
         );
 
-  function abrirBusca() {
-    setBuscaAberta(true);
-  }
-
-  function fecharBusca() {
-    setBuscaAberta(false);
-    setBuscaTexto("");
-  }
-
   function abrirResultado(item: any) {
-    fecharBusca();
+    setBuscaTexto("");
     if (item.tipo === "turma") {
       router.push({ pathname: "/turmas", params: { turmaBusca: item.titulo } });
     } else {
@@ -80,135 +95,163 @@ function CustomTabBar({ state, navigation }: any) {
   }
 
   function sair() {
-    // Sai da conta. Com a API no ar, apague o token guardado antes de redirecionar.
+    // Com a API no ar, apague o token guardado antes de redirecionar.
     router.replace("/login");
   }
 
-  // ---------- MOBILE: barra de baixo, só ícones ----------
-  if (!ehDesktop) {
-    return (
-      <View style={styles.barraInferior}>
-        {itensMenu.map((route: any) => {
-          const focado = route.name === rotaAtual;
-          const icone = ICONES_POR_ROTA[route.name] ?? "ellipse-outline";
-          return (
-            <TouchableOpacity
-              key={route.key}
-              style={styles.itemInferior}
-              onPress={() => navigation.navigate(route.name)}
-            >
-              <Ionicons name={icone} size={22} color={focado ? "#FFFFFF" : "#5C7096"} />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  }
-
-  // ---------- DESKTOP: navbar horizontal no topo ----------
   return (
-    <View style={styles.navbarTopo}>
+    <View style={styles.lateral}>
       <Image
         source={require("../../assets/images/logo_escrita.png")}
-        style={styles.logoTopo}
+        style={styles.logoLateral}
         resizeMode="contain"
       />
 
-      <View style={styles.itensTopoLinha}>
-        {itensMenu.map((route: any) => {
-          const ativo = route.name === rotaAtual;
+      <View style={styles.buscaCaixa}>
+        <Ionicons name="search" size={15} color={COR.marinhoClaro} />
+        <TextInput
+          value={buscaTexto}
+          onChangeText={setBuscaTexto}
+          placeholder="Buscar..."
+          placeholderTextColor={COR.marinhoClaro}
+          style={[styles.buscaInput, SEM_CONTORNO_WEB]}
+          onSubmitEditing={() => resultados[0] && abrirResultado(resultados[0])}
+        />
+        {buscaTexto.length > 0 && (
+          <TouchableOpacity onPress={() => setBuscaTexto("")} hitSlop={6}>
+            <Ionicons name="close" size={15} color={COR.marinhoClaro} />
+          </TouchableOpacity>
+        )}
+
+        {resultados.length > 0 && (
+          <View style={styles.buscaResultados}>
+            {resultados.map((item) => (
+              <TouchableOpacity
+                key={item.tipo + item.titulo}
+                style={styles.buscaResultadoItem}
+                onPress={() => abrirResultado(item)}
+              >
+                <Ionicons
+                  name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
+                  size={14}
+                  color={COR.tintaMedia}
+                />
+                <Text style={styles.buscaResultadoTexto} numberOfLines={1}>
+                  {item.titulo}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.lateralItens}>
+        {ITENS_LATERAL.map((item) => {
+          const ativo = caminho === item.rota;
           return (
-            <Pressable
-              key={route.key}
-              onPress={() => navigation.navigate(route.name)}
-              style={({ hovered }: any) => [
-                styles.itemTopo,
-                TRANSICAO_WEB,
-                !ativo && hovered && styles.itemTopoHover,
-              ]}
-            >
-              <Ionicons
-                name={ICONES_POR_ROTA[route.name] ?? "ellipse-outline"}
-                size={19}
-                color={ativo ? "#FFFFFF" : "#8CA0C6"}
-              />
-              <Text style={[styles.itemTopoTexto, ativo && styles.itemTopoTextoAtivo]}>
-                {ROTULOS_POR_ROTA[route.name] ?? route.name}
-              </Text>
-              {/* Tracinho embaixo do item ativo, igual sublinhado de aba */}
-              {ativo && <View style={styles.itemTopoIndicador} />}
-            </Pressable>
+            <View key={item.rota} style={styles.itemEnvolucro}>
+              {ativo && <View style={styles.marcaAtivo} />}
+
+              <Pressable
+                onPress={() => router.push(item.rota as any)}
+                style={({ hovered }: any) => [
+                  styles.itemLateral,
+                  TRANSICAO_WEB,
+                  ativo && styles.itemLateralAtivo,
+                  !ativo && hovered && styles.itemLateralHover,
+                ]}
+              >
+                <Ionicons
+                  name={(ativo ? item.iconeAtivo : item.icone) as any}
+                  size={18}
+                  color={ativo ? COR.marinho : COR.marinhoClaro}
+                />
+                <Text style={[styles.itemLateralTexto, ativo && styles.itemLateralTextoAtivo]}>
+                  {item.rotulo}
+                </Text>
+              </Pressable>
+            </View>
           );
         })}
       </View>
 
-      <View style={styles.acoesTopoLinha}>
-        {buscaAberta ? (
-          <View style={styles.buscaTopoCaixa}>
-            <TouchableOpacity onPress={fecharBusca} hitSlop={6}>
-              <Ionicons name="search" size={15} color="#8CA0C6" />
-            </TouchableOpacity>
-            <TextInput
-              autoFocus
-              value={buscaTexto}
-              onChangeText={setBuscaTexto}
-              placeholder="Buscar turma ou atividade..."
-              placeholderTextColor="#8CA0C6"
-              // SEM_CONTORNO_WEB tira o contorno azul do input no navegador.
-              style={[styles.buscaTopoInput, SEM_CONTORNO_WEB]}
-              onSubmitEditing={() => resultadosBusca[0] && abrirResultado(resultadosBusca[0])}
-            />
-            <TouchableOpacity onPress={fecharBusca}>
-              <Ionicons name="close" size={16} color="#8CA0C6" />
-            </TouchableOpacity>
+      <View style={{ flex: 1 }} />
 
-            {resultadosBusca.length > 0 && (
-              <View style={styles.buscaTopoResultados}>
-                {resultadosBusca.map((item) => (
-                  <TouchableOpacity
-                    key={item.tipo + item.titulo}
-                    style={styles.buscaTopoResultadoItem}
-                    onPress={() => abrirResultado(item)}
-                  >
-                    <Ionicons
-                      name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
-                      size={15}
-                      color="#0B1E3D"
-                    />
-                    <Text style={styles.buscaTopoResultadoTexto}>{item.titulo}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.botaoIconeTopo} activeOpacity={0.7} onPress={abrirBusca}>
-            <Ionicons name="search" size={17} color="#C6D2EA" />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity style={styles.botaoIconeTopo} activeOpacity={0.7} onPress={sair}>
-          <Ionicons name="log-out-outline" size={17} color="#F87171" />
-        </TouchableOpacity>
-
-        <Pressable
-          style={({ hovered }: any) => [styles.avatarLinhaTopo, hovered && { opacity: 0.85 }]}
-          onPress={() => router.push("/perfil")}
-        >
-          <View style={styles.avatarTopo}>
-            <Text style={styles.avatarTopoTexto}>AS</Text>
-          </View>
-          <Ionicons name="chevron-down" size={14} color="#C6D2EA" />
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={sair}
+        style={({ hovered }: any) => [styles.sairLinha, TRANSICAO_WEB, hovered && styles.itemLateralHover]}
+      >
+        <Ionicons name="log-out-outline" size={17} color={COR.perigo} />
+        <Text style={styles.sairTexto}>Sair</Text>
+      </Pressable>
     </View>
   );
 }
 
-// Record<string, any> permite indexar por route.name sem erro de tipo.
+function BarraMobile({ state, navigation }: any) {
+  const rotaAtual = state.routes[state.index]?.name;
+
+  const itensMenu = state.routes.filter(
+    (route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name)
+  );
+
+  const posicaoNaBarra = (nome: string) => {
+    const posicao = ORDEM_BARRA_MOBILE.indexOf(nome);
+    return posicao === -1 ? 999 : posicao;
+  };
+
+  const itensOrdenados = [...itensMenu].sort(
+    (a: any, b: any) => posicaoNaBarra(a.name) - posicaoNaBarra(b.name)
+  );
+
+  return (
+    <View style={styles.barraInferior}>
+      {itensOrdenados.map((route: any) => {
+        const focado = route.name === rotaAtual;
+        const icone = ICONES_POR_ROTA[route.name];
+
+        if (route.name === ROTA_ACAO_CENTRAL) {
+          return (
+            <TouchableOpacity
+              key={route.key}
+              style={styles.itemInferior}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate(route.name)}
+            >
+              <View style={[styles.botaoCentral, focado && styles.botaoCentralAtivo]}>
+                <Ionicons name={icone} size={24} color={COR.branco} />
+              </View>
+              <Text style={[styles.rotuloInferior, focado && styles.rotuloInferiorAtivo]}>
+                {ROTULOS_POR_ROTA[route.name]}
+              </Text>
+            </TouchableOpacity>
+          );
+        }
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            style={styles.itemInferior}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate(route.name)}
+          >
+            <Ionicons name={icone} size={21} color={focado ? COR.branco : COR.marinhoClaro} />
+            <Text
+              style={[styles.rotuloInferior, focado && styles.rotuloInferiorAtivo]}
+              numberOfLines={1}
+            >
+              {ROTULOS_POR_ROTA[route.name]}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 const ICONES_POR_ROTA: Record<string, any> = {
   home: "home-outline",
-  correcoes: "list-outline",
+  correcoes: "checkmark-done-outline",
   scanner: "camera-outline",
   editar: "pencil-outline",
   perfil: "person-outline",
@@ -216,7 +259,6 @@ const ICONES_POR_ROTA: Record<string, any> = {
   turmas: "people-outline",
 };
 
-// Rótulos usados na navbar do desktop (mobile só mostra o ícone).
 const ROTULOS_POR_ROTA: Record<string, string> = {
   home: "Home",
   correcoes: "Correções",
@@ -227,144 +269,167 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   turmas: "Turmas",
 };
 
-// Telas navegáveis que não aparecem como ícone na barra.
 const ROTAS_OCULTAS_DA_BARRA: string[] = ["criar-atividade", "perfil", "processando", "editar"];
 
-// Ordem dos itens na navbar: turma → atividade → scanner → correções.
+const ORDEM_BARRA_MOBILE: string[] = ["home", "turmas", "scanner", "atividades", "correcoes"];
+const ROTA_ACAO_CENTRAL = "scanner";
+
 export default function TabsLayout() {
+  const { width } = useWindowDimensions();
+  const ehDesktop = width >= 900;
+
   return (
-    <Tabs
-      tabBar={(props: any) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="home" />
-      <Tabs.Screen name="turmas" />
-      <Tabs.Screen name="atividades" />
-      <Tabs.Screen name="scanner" />
-      <Tabs.Screen name="correcoes" />
-      <Tabs.Screen name="editar" />
-      <Tabs.Screen name="perfil" />
-      <Tabs.Screen name="criar-atividade" />
-      <Tabs.Screen name="processando" />
-    </Tabs>
+    <View style={[styles.raiz, ehDesktop && styles.raizLinha]}>
+      {ehDesktop && <LateralDesktop />}
+
+      <View style={[styles.area, ehDesktop && styles.areaDesktop]}>
+        <Tabs
+          tabBar={(props: any) => (ehDesktop ? null : <BarraMobile {...props} />)}
+          screenOptions={{ headerShown: false }}
+        >
+          <Tabs.Screen name="home" />
+          <Tabs.Screen name="turmas" />
+          <Tabs.Screen name="atividades" />
+          <Tabs.Screen name="scanner" />
+          <Tabs.Screen name="correcoes" />
+          <Tabs.Screen name="editar" />
+          <Tabs.Screen name="perfil" />
+          <Tabs.Screen name="criar-atividade" />
+          <Tabs.Screen name="processando" />
+        </Tabs>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ----- mobile -----
-  barraInferior: {
+  raiz: { flex: 1, backgroundColor: COR.fundo },
+  raizLinha: {
     flexDirection: "row",
-    height: 60,
-    backgroundColor: "#0B1E3D",
+    backgroundColor: COR.marinhoFundo,
+    padding: 12,
+    gap: 12,
   },
-  itemInferior: { flex: 1, alignItems: "center", justifyContent: "center" },
+  area: { flex: 1, minWidth: 0 },
+  areaDesktop: {
+    backgroundColor: COR.fundo,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
 
-  // ----- desktop: navbar horizontal no topo -----
-  navbarTopo: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: ALTURA_NAVBAR_TOPO,
-    backgroundColor: "#0B1E3D",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 28,
-    gap: 24,
-    zIndex: 20,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoTopo: { width: 130, height: 34, flexShrink: 0 },
-
-  itensTopoLinha: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-  },
-  itemTopo: {
-    alignItems: "center",
-    justifyContent: "center",
+  lateral: {
+    width: LARGURA_LATERAL,
+    flexShrink: 0,
+    backgroundColor: COR.marinho,
+    borderRadius: 20,
+    paddingTop: 22,
+    paddingBottom: 14,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    position: "relative",
-    // A transição do hover está na constante TRANSICAO_WEB, no topo do arquivo.
+    zIndex: 20,
   },
-  itemTopoHover: { backgroundColor: "rgba(255,255,255,0.08)" },
-  itemTopoTexto: { fontSize: 10.5, color: "#8CA0C6", fontWeight: "600", marginTop: 4 },
-  itemTopoTextoAtivo: { color: "#FFFFFF", fontWeight: "700" },
-  itemTopoIndicador: {
-    position: "absolute",
-    bottom: 0,
-    left: "22%",
-    right: "22%",
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#FFFFFF",
-  },
+  logoLateral: { width: 140, height: 36, marginLeft: 6, marginBottom: 18 },
 
-  acoesTopoLinha: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 },
-  botaoIconeTopo: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  avatarLinhaTopo: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 4 },
-  avatarTopo: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarTopoTexto: { color: "#0B1E3D", fontSize: 12, fontWeight: "700" },
-
-  buscaTopoCaixa: {
+  buscaCaixa: {
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    width: 240,
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    height: 36,
+    paddingHorizontal: 11,
+    borderRadius: 9,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 18,
+    zIndex: 30,
   },
-  buscaTopoInput: {
-    flex: 1,
-    height: "100%",
-    color: "#FFFFFF",
-    fontSize: 13,
-  },
-  buscaTopoResultados: {
+  buscaInput: { fontFamily: FONTE.media, flex: 1, height: "100%", color: COR.branco, fontSize: 12.5 },
+  buscaResultados: {
     position: "absolute",
-    top: 46,
+    top: 42,
     left: 0,
     right: 0,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 6,
+    backgroundColor: COR.branco,
+    borderRadius: 10,
+    paddingVertical: 5,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  buscaResultadoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+  buscaResultadoTexto: { fontFamily: FONTE.media, flex: 1, fontSize: 12.5, color: COR.tintaForte, fontWeight: "500" },
+
+  lateralItens: { gap: 3 },
+  itemEnvolucro: { position: "relative", justifyContent: "center" },
+  marcaAtivo: {
+    position: "absolute",
+    left: -14,
+    top: 10,
+    bottom: 10,
+    width: 3,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: COR.branco,
+  },
+  itemLateral: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  itemLateralHover: { backgroundColor: "rgba(255,255,255,0.07)" },
+  itemLateralAtivo: { backgroundColor: COR.branco },
+  itemLateralTexto: { fontFamily: FONTE.media, fontSize: 13, color: COR.marinhoClaro, fontWeight: "500" },
+  itemLateralTextoAtivo: { color: COR.marinho, fontWeight: "600" },
+
+  sairLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.09)",
+  },
+  sairTexto: { fontFamily: FONTE.semi, fontSize: 12.5, color: COR.perigo, fontWeight: "600" },
+
+  barraInferior: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    backgroundColor: COR.marinho,
+    minHeight: 62,
+    paddingTop: 9,
+    paddingBottom: 12,
+  },
+  itemInferior: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 4 },
+  rotuloInferior: { fontFamily: FONTE.semi, fontSize: 10, fontWeight: "600", color: COR.marinhoClaro },
+  rotuloInferiorAtivo: { color: COR.branco },
+
+  botaoCentral: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: COR.marcador,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -26,
+    marginBottom: 2,
+    borderWidth: 4,
+    borderColor: COR.marinho,
+    shadowColor: COR.marcador,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 6,
   },
-  buscaTopoResultadoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  buscaTopoResultadoTexto: { fontSize: 13, color: "#0B1E3D", fontWeight: "600" },
+  botaoCentralAtivo: { backgroundColor: COR.marinho },
 });
