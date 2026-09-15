@@ -1,20 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Link, router, Stack } from "expo-router";
 import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  ImageBackground,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   useWindowDimensions,
+  View,
 } from "react-native";
-import { Link, router, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { COR, FONTE } from "../components/estilo";
+import { registrar } from "../constants/api";
 
 const LARGURA_DESKTOP = 900;
 
@@ -54,54 +55,33 @@ export default function Cadastro() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
-  // Valida os campos e cria a conta do professor.
-  //
-  // API — POST /auth/registro
-  // Esta é a única tela que JÁ chama a API de verdade (as outras ainda usam
-  // dados fixos). Confira dois pontos com quem estiver fazendo o back-end:
-  //   1. o endereço abaixo tem que ser o mesmo que o servidor expõe;
-  //   2. no celular, "localhost" aponta pro próprio aparelho, não pro seu
-  //      computador — nesse caso troque pelo IP da máquina, ex:
-  //      http://192.168.0.10:3000/auth/registro
-  async function handleCadastro() {
-    setErro("");
+ async function handleCadastro() {
+  setErro("");
 
-    if (!nome || !email || !senha || !confirmarSenha) {
-      setErro("Preencha todos os campos.");
-      return;
-    }
-    if (senha.length < 6) {
-      setErro("A senha precisa ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (senha !== confirmarSenha) {
-      setErro("As senhas não coincidem.");
-      return;
-    }
-
-    setCarregando(true);
-    try {
-      const resposta = await fetch("http://localhost:3000/auth/registro", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, email, senha }),
-      });
-
-      const dados = await resposta.json();
-
-      if (!resposta.ok) {
-        setErro(dados.erro || "Não foi possível criar a conta.");
-        return;
-      }
-
-      router.replace("/home");
-    } catch (e) {
-      setErro("Não foi possível conectar ao servidor.");
-    } finally {
-      setCarregando(false);
-    }
+  if (!nome || !email || !senha || !confirmarSenha) {
+    setErro("Preencha todos os campos.");
+    return;
+  }
+  if (senha.length < 6) {
+    setErro("A senha precisa ter pelo menos 6 caracteres.");
+    return;
+  }
+  if (senha !== confirmarSenha) {
+    setErro("As senhas não coincidem.");
+    return;
   }
 
+  setCarregando(true);
+  try {
+    await registrar(nome, email, senha);
+    router.replace({ pathname: "/login", params: { email } });
+  } catch (e) {
+    setErro(e.message);
+  } finally {
+    setCarregando(false);
+  }
+}
+  
   const conteudoFormulario = (
     <>
       <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />

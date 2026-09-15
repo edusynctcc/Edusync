@@ -1,20 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Link, router, Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  ImageBackground,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   useWindowDimensions,
+  View,
 } from "react-native";
-import { Link, router, Stack } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { COR, FONTE } from "../components/estilo";
+import { login } from "../constants/api";
 
 const LARGURA_DESKTOP = 900;
 
@@ -45,54 +46,32 @@ const RECURSOS = [
 export default function Login() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
+  const { email: emailVindoDoCadastro } = useLocalSearchParams();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailVindoDoCadastro ? String(emailVindoDoCadastro) : "");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
   async function handleLogin() {
-    setErro("");
+  setErro("");
 
-    if (!email || !senha) {
-      setErro("Preencha email e senha.");
-      return;
-    }
-
-    router.replace("/home");
-
-    /* -------------------------------------------------------------------
-       API — POST /auth/login
-
-       Quando o back-end estiver pronto, APAGUE o router.replace acima e
-       descomente este bloco. A resposta esperada é { token, professor }.
-       O token precisa ser guardado (AsyncStorage ou Context) porque todas
-       as outras telas mandam ele no header Authorization.
-
-    setCarregando(true);
-    try {
-      const resposta = await fetch("http://localhost:3000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha }),
-      });
-
-      const dados = await resposta.json();
-
-      if (!resposta.ok) {
-        setErro(dados.erro || "Não foi possível entrar.");
-        return;
-      }
-
-      router.replace("/home");
-    } catch (e) {
-      setErro("Não foi possível conectar ao servidor.");
-    } finally {
-      setCarregando(false);
-    }
-    ------------------------------------------------------------------- */
+  if (!email || !senha) {
+    setErro("Preencha email e senha.");
+    return;
   }
+
+  setCarregando(true);
+  try {
+    await login(email, senha); 
+    router.replace("/home");
+  } catch (e) {
+    setErro(e.message);
+  } finally {
+    setCarregando(false);
+  }
+}
 
   const conteudoFormulario = (
     <>

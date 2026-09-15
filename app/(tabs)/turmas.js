@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE } from "../../components/estilo";
@@ -14,40 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-
-// API — GET /turmas
-// Além de nome, série, escola e alunos, a resposta precisa trazer também
-// "atividades" (quantas atividades a turma tem). No back é um COUNT a mais
-// no SELECT, agrupado por turma.
-const TURMAS_INICIAIS = [
-  {
-    id: "1",
-    nome: "9º Ano A",
-    serie: "9º ano - Ensino Fundamental",
-    escola: "E.E. Marechal Rondon",
-    alunos: 28,
-    atividades: 6,
-    cor: "#2E6FB0",
-  },
-  {
-    id: "2",
-    nome: "1ª Série B",
-    serie: "1ª série - Ensino Médio",
-    escola: "E.E. Marechal Rondon",
-    alunos: 32,
-    atividades: 4,
-    cor: "#8B5EA6",
-  },
-  {
-    id: "3",
-    nome: "7º Ano C",
-    serie: "7º ano - Ensino Fundamental",
-    escola: "Colégio Santa Clara",
-    alunos: 25,
-    atividades: 3,
-    cor: "#DDA015",
-  },
-];
+import { listarTurmas, criarTurma, atualizarTurma, excluirTurma as excluirTurmaApi } from "../../constants/api";
 
 const CORES_TURMA = ["#2E6FB0", "#8B5EA6", "#DDA015", "#2F7D5C", "#B4443A"];
 
@@ -64,7 +31,7 @@ function iniciais(nome) {
 }
 
 function turmaVazia() {
-  return { id: null, nome: "", serie: "", escola: "" };
+  return { id: null, nome: "", escola: "" };
 }
 
 export default function Turmas() {
@@ -73,12 +40,37 @@ export default function Turmas() {
   const router = useRouter();
   const { turmaBusca } = useLocalSearchParams();
 
-  const [turmas, setTurmas] = useState(TURMAS_INICIAIS);
+  const [turmas, setTurmas] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
   const [busca, setBusca] = useState(turmaBusca ? String(turmaBusca) : "");
   const [modalAberto, setModalAberto] = useState(false);
   const [turmaEmEdicao, setTurmaEmEdicao] = useState(turmaVazia());
 
   const editando = turmaEmEdicao.id !== null;
+
+  useEffect(() => {
+    async function carregar() {
+      setCarregando(true);
+      setErro("");
+      try {
+        const dados = await listarTurmas();
+        const comCor = dados.map((t, i) => ({
+          ...t,
+          id: t.id_turma,
+          cor: CORES_TURMA[i % CORES_TURMA.length],
+          alunos: t.alunos ?? 0,
+          atividades: t.atividades ?? 0,
+        }));
+        setTurmas(comCor);
+      } catch (e) {
+        setErro(e.message);
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+  }, []);
 
   const turmasFiltradas = turmas.filter((t) =>
     `${t.nome} ${t.escola}`.toLowerCase().includes(busca.toLowerCase())
@@ -98,29 +90,36 @@ export default function Turmas() {
     setModalAberto(false);
   }
 
-  function salvarTurma() {
+  async function salvarTurma() {
     if (!turmaEmEdicao.nome.trim()) return;
 
-    if (editando) {
-      setTurmas((atuais) =>
-        atuais.map((t) => (t.id === turmaEmEdicao.id ? { ...t, ...turmaEmEdicao } : t))
-      );
-    } else {
-      const nova = {
-        ...turmaEmEdicao,
-        id: String(Date.now()),
-        alunos: 0,
-        atividades: 0,
-        cor: CORES_TURMA[turmas.length % CORES_TURMA.length],
-      };
-      setTurmas((atuais) => [nova, ...atuais]);
+    try {
+      if (editando) {
+        const atualizada = await atualizarTurma(turmaEmEdicao.id, turmaEmEdicao.nome, turmaEmEdicao.escola);
+        setTurmas((atuais) =>
+          atuais.map((t) => (t.id === turmaEmEdicao.id ? { ...t, ...atualizada, id: t.id, cor: t.cor } : t))
+        );
+      } else {
+        const nova = await criarTurma(turmaEmEdicao.nome, turmaEmEdicao.escola);
+        setTurmas((atuais) => [
+          { ...nova, id: nova.id_turma, alunos: 0, atividades: 0, cor: CORES_TURMA[atuais.length % CORES_TURMA.length] },
+          ...atuais,
+        ]);
+      }
+      setModalAberto(false);
+    } catch (e) {
+      setErro(e.message);
     }
-    setModalAberto(false);
   }
 
-  function excluirTurma() {
-    setTurmas((atuais) => atuais.filter((t) => t.id !== turmaEmEdicao.id));
-    setModalAberto(false);
+  async function excluirTurma() {
+    try {
+      await excluirTurmaApi(turmaEmEdicao.id);
+      setTurmas((atuais) => atuais.filter((t) => t.id !== turmaEmEdicao.id));
+      setModalAberto(false);
+    } catch (e) {
+      setErro(e.message);
+    }
   }
 
   return (
@@ -172,6 +171,9 @@ export default function Turmas() {
             )}
           </View>
 
+          {erro ? <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text> : null}
+          {carregando ? <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>Carregando...</Text> : null}
+
           <View style={styles.lista}>
             {turmasFiltradas.map((turma) => (
               <TouchableOpacity
@@ -189,7 +191,7 @@ export default function Turmas() {
                     {turma.nome}
                   </Text>
                   <Text style={styles.turmaDetalhe} numberOfLines={1}>
-                    {turma.serie} · {turma.escola}
+                    {turma.escola}
                   </Text>
                   <Text style={styles.turmaMeta} numberOfLines={1}>
                     <Text style={styles.turmaMetaForte}>{turma.alunos}</Text> alunos ·{" "}
@@ -235,15 +237,6 @@ export default function Turmas() {
               value={turmaEmEdicao.nome}
               onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, nome: v }))}
               placeholder="Ex: 9º Ano A"
-              placeholderTextColor={COR.tintaFraca}
-              style={styles.campoTexto}
-            />
-
-            <Text style={styles.rotulo}>Série / Ano</Text>
-            <TextInput
-              value={turmaEmEdicao.serie}
-              onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, serie: v }))}
-              placeholder="Ex: 9º ano - Ensino Fundamental"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
             />
@@ -341,8 +334,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    // A cor da turma marca a borda esquerda inteira, em vez de virar um
-    // fundo pastel atrás de um ícone que era igual em todas as linhas.
     borderLeftWidth: 3,
     paddingVertical: 14,
     paddingHorizontal: 16,
