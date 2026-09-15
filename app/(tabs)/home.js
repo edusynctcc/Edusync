@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import IconeEdusync from "../../components/IconeEdusync";
 import {
@@ -13,6 +12,16 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+
+function saudacao() {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+// API — GET /auth/me
+const NOME_PROFESSOR = "Ana";
 
 // Correções esperando o professor. É uma LISTA porque o desktop mostra os
 // itens e o celular só conta quantos são.
@@ -120,7 +129,6 @@ function dataDeHoje() {
 export default function Home() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
-  const ehMobilePequeno = width < 360;
   const [buscaHome, setBuscaHome] = useState("");
   const router = useRouter();
 
@@ -146,7 +154,12 @@ export default function Home() {
         <ScrollView style={styles.conteudo} contentContainerStyle={styles.conteudoDesktop}>
           <View style={styles.miolo}>
             <View style={styles.cabecalhoLinha}>
-              <Text style={styles.dataDesktop}>{dataDeHoje()}</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.dataDesktop}>{dataDeHoje()}</Text>
+                <Text style={styles.saudacaoDesktop}>
+                  {saudacao()}, {NOME_PROFESSOR}
+                </Text>
+              </View>
 
               <TouchableOpacity
                 style={styles.botaoNovaDesktop}
@@ -267,10 +280,14 @@ export default function Home() {
 
   return (
     <View style={styles.tela}>
-      <CabecalhoMobile ehMobilePequeno={ehMobilePequeno} />
 
       <ScrollView style={styles.conteudo} contentContainerStyle={styles.conteudoMobile}>
-        <Text style={styles.dataMobile}>{dataDeHoje()}</Text>
+        <View style={styles.saudacaoBloco}>
+          <Text style={styles.dataMobile}>{dataDeHoje()}</Text>
+          <Text style={styles.saudacaoMobile}>
+            {saudacao()}, {NOME_PROFESSOR}
+          </Text>
+        </View>
 
         <View style={styles.buscaBox}>
           <Ionicons name="search" size={16} color={COR.tintaFraca} />
@@ -397,11 +414,14 @@ const styles = StyleSheet.create({
   conteudoDesktop: { padding: 34, paddingBottom: 40, alignItems: "center" },
   miolo: { width: "100%", maxWidth: 940 },
 
-  dataDesktop: { fontFamily: FONTE.media, flex: 1, minWidth: 0, fontSize: 14, fontWeight: "500", color: COR.tintaMedia },
-  dataMobile: { fontFamily: FONTE.media, fontSize: 13.5, fontWeight: "500", color: COR.tintaMedia, marginBottom: 18 },
+  dataDesktop: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaFraca, marginBottom: 3 },
+  saudacaoDesktop: { fontFamily: FONTE.semi, fontSize: 25, fontWeight: "600", color: COR.tintaForte, letterSpacing: -0.4 },
+  saudacaoBloco: { marginBottom: 18, width: "100%" },
+  dataMobile: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaFraca, marginBottom: 3 },
+  saudacaoMobile: { fontFamily: FONTE.semi, fontSize: 21, fontWeight: "600", color: COR.tintaForte },
   cabecalhoLinha: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     gap: 16,
     width: "100%",
     marginBottom: 22,
@@ -503,7 +523,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 9,
     width: "100%",
-    backgroundColor: COR.campo,
+    backgroundColor: "#E3E8EA",
     borderRadius: RAIO.controle,
     paddingHorizontal: 13,
     paddingVertical: 11,
@@ -554,7 +574,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
-    backgroundColor: COR.marinho,
+    backgroundColor: COR.marcador,
     borderRadius: RAIO.controle,
     paddingVertical: 13,
     marginTop: 15,

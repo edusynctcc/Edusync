@@ -43,6 +43,61 @@ const RECURSOS = [
   },
 ];
 
+// Traduz o erro que vem da API numa frase que o professor entende.
+//
+// Olha o status HTTP e também o texto, porque cada back-end responde de um
+// jeito. Se o seu devolver algo diferente, é aqui que se ajusta.
+//
+//   409 ou "já existe"/"duplicate"/"unique" -> e-mail já cadastrado
+//   400/422                                 -> dado inválido
+//   falha de rede                           -> servidor fora do ar
+function lerErroDoCadastro(e) {
+  const status = e?.status ?? e?.response?.status ?? e?.codigo;
+  const texto = String(e?.message || "").toLowerCase();
+
+  const jaExiste =
+    status === 409 ||
+    texto.includes("já existe") ||
+    texto.includes("ja existe") ||
+    texto.includes("já cadastrad") ||
+    texto.includes("ja cadastrad") ||
+    texto.includes("already exists") ||
+    texto.includes("duplicate") ||
+    texto.includes("unique") ||
+    texto.includes("er_dup_entry") ||
+    texto.includes("em uso");
+
+  if (jaExiste) {
+    return {
+      mensagem: "Esse e-mail já tem uma conta.",
+      convite: "Entre com ele ou use outro e-mail.",
+      levaPara: "/login",
+      textoDoLink: "Ir para o login",
+    };
+  }
+
+  const dadoInvalido = status === 400 || status === 422 || texto.includes("inválid") || texto.includes("invalid");
+  if (dadoInvalido) {
+    return { mensagem: e?.message || "Confira os dados e tente de novo.", convite: "", levaPara: null };
+  }
+
+  const semRede =
+    texto.includes("network") ||
+    texto.includes("failed to fetch") ||
+    texto.includes("timeout") ||
+    texto.includes("econnrefused");
+
+  if (semRede) {
+    return {
+      mensagem: "Não consegui falar com o servidor.",
+      convite: "Confira se o back-end está rodando.",
+      levaPara: null,
+    };
+  }
+
+  return { mensagem: e?.message || "Não foi possível criar a conta. Tente de novo.", convite: "", levaPara: null };
+}
+
 export default function Cadastro() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
@@ -53,35 +108,59 @@ export default function Cadastro() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState(null);
 
- async function handleCadastro() {
-  setErro("");
+  async function handleCadastro() {
+    setErro(null);
 
-  if (!nome || !email || !senha || !confirmarSenha) {
-    setErro("Preencha todos os campos.");
-    return;
-  }
-  if (senha.length < 6) {
-    setErro("A senha precisa ter pelo menos 6 caracteres.");
-    return;
-  }
-  if (senha !== confirmarSenha) {
-    setErro("As senhas não coincidem.");
-    return;
+    // trim antes de validar: sem isso, um espaço no fim passa na checagem de
+    // "preenchido" e vai pro banco junto com o nome.
+    const nomeLimpo = nome.trim();
+    const emailLimpo = email.trim().toLowerCase();
+
+    if (!nomeLimpo || !emailLimpo || !senha || !confirmarSenha) {
+      setErro({ mensagem: "Preencha todos os campos.", convite: "", levaPara: null });
+      return;
+    }
+    if (!emailLimpo.includes("@") || !emailLimpo.includes(".")) {
+      setErro({ mensagem: "Esse e-mail não parece válido.", convite: "", levaPara: null });
+      return;
+    }
+    if (senha.length < 6) {
+      setErro({ mensagem: "A senha precisa ter pelo menos 6 caracteres.", convite: "", levaPara: null });
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      setErro({ mensagem: "As senhas não coincidem.", convite: "", levaPara: null });
+      return;
+    }
+
+    setCarregando(true);
+    try {
+      await registrar(nomeLimpo, emailLimpo, senha);
+      router.replace({ pathname: "/login", params: { email: emailLimpo } });
+    } catch (e) {
+      setErro(lerErroDoCadastro(e));
+    } finally {
+      setCarregando(false);
+    }
   }
 
-  setCarregando(true);
-  try {
-    await registrar(nome, email, senha);
-    router.replace({ pathname: "/login", params: { email } });
-  } catch (e) {
-    setErro(e.message);
-  } finally {
-    setCarregando(false);
-  }
-}
-  
+  const caixaDeErro = erro ? (
+    <View style={styles.avisoErro}>
+      <Ionicons name="alert-circle-outline" size={16} color="#DC2626" style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.textoErro}>{erro.mensagem}</Text>
+        {erro.convite ? <Text style={styles.textoErroApoio}>{erro.convite}</Text> : null}
+        {erro.levaPara ? (
+          <Link href={erro.levaPara} style={styles.erroLink}>
+            {erro.textoDoLink}
+          </Link>
+        ) : null}
+      </View>
+    </View>
+  ) : null;
+
   const conteudoFormulario = (
     <>
       <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
@@ -110,6 +189,7 @@ export default function Cadastro() {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          autoCorrect={false}
           keyboardType="email-address"
         />
       </View>
@@ -140,15 +220,11 @@ export default function Cadastro() {
           value={confirmarSenha}
           onChangeText={setConfirmarSenha}
           secureTextEntry={!mostrarSenha}
+          onSubmitEditing={handleCadastro}
         />
       </View>
 
-      {erro ? (
-        <View style={styles.avisoErro}>
-          <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
-          <Text style={styles.textoErro}>{erro}</Text>
-        </View>
-      ) : null}
+      {caixaDeErro}
 
       <TouchableOpacity
         style={[styles.botao, carregando && styles.botaoDesabilitado]}
@@ -188,8 +264,8 @@ export default function Cadastro() {
             </Text>
 
             <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para você
-              foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para que
+              você foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -249,22 +325,10 @@ const styles = StyleSheet.create({
     backgroundColor: COR_SOBREPOSICAO,
   },
 
-  tela: {
-    flex: 1,
-    backgroundColor: COR.marinho,
-  },
-  areaTeclado: {
-    flex: 1,
-  },
-  scrollTransparente: {
-    backgroundColor: "transparent",
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+  tela: { flex: 1, backgroundColor: COR.marinho },
+  areaTeclado: { flex: 1 },
+  scrollTransparente: { backgroundColor: "transparent" },
+  scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
 
   telaDesktop: {
     flex: 1,
@@ -289,52 +353,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     elevation: 12,
   },
-  colunaForm: {
-    flex: 1,
-    padding: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  divisorVertical: {
-    width: 1,
-    backgroundColor: "#E9ECF2",
-  },
-  colunaPromo: {
-    flex: 1.15,
-    padding: 48,
-    justifyContent: "center",
-  },
+  colunaForm: { flex: 1, padding: 48, alignItems: "center", justifyContent: "center" },
+  divisorVertical: { width: 1, backgroundColor: "#E9ECF2" },
+  colunaPromo: { flex: 1.15, padding: 48, justifyContent: "center" },
   promoTitulo: {
-    fontFamily: FONTE.bold, fontSize: 24,
+    fontFamily: FONTE.bold,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
     lineHeight: 32,
     marginBottom: 12,
   },
-  promoTituloDestaque: {
-    color: "#F5811F",
-  },
+  promoTituloDestaque: { color: "#F5811F" },
   promoTexto: {
-    fontFamily: FONTE.regular, fontSize: 13.5,
+    fontFamily: FONTE.regular,
+    fontSize: 13.5,
     color: "#5B6472",
     lineHeight: 20,
     marginBottom: 18,
   },
-  promoLink: {
-    color: "#2F6FED",
-    fontWeight: "600",
-  },
-  promoDivisor: {
-    height: 1,
-    backgroundColor: "#E9ECF2",
-    marginBottom: 18,
-  },
-  promoItem: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 14,
-    alignItems: "flex-start",
-  },
+  promoLink: { color: "#2F6FED", fontWeight: "600" },
+  promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
+  promoItem: { flexDirection: "row", gap: 12, marginBottom: 14, alignItems: "flex-start" },
   promoIconeBox: {
     width: 34,
     height: 34,
@@ -343,20 +383,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  promoItemTexto: {
-    flex: 1,
-  },
+  promoItemTexto: { flex: 1 },
   promoItemTitulo: {
-    fontFamily: FONTE.bold, fontSize: 13,
+    fontFamily: FONTE.bold,
+    fontSize: 13,
     fontWeight: "700",
     color: COR.tintaForte,
     marginBottom: 2,
   },
-  promoItemDescricao: {
-    fontFamily: FONTE.regular, fontSize: 12,
-    color: "#7A8393",
-    lineHeight: 17,
-  },
+  promoItemDescricao: { fontFamily: FONTE.regular, fontSize: 12, color: "#7A8393", lineHeight: 17 },
   promoCta: {
     flexDirection: "row",
     alignItems: "center",
@@ -376,19 +411,16 @@ const styles = StyleSheet.create({
   },
   promoCtaTexto: {
     flex: 1,
-    fontFamily: FONTE.semi, fontSize: 11.5,
+    fontFamily: FONTE.semi,
+    fontSize: 11.5,
     fontWeight: "600",
     color: COR.tintaMedia,
   },
-  promoCtaBotao: {
-    backgroundColor: "#2F6FED",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
+  promoCtaBotao: { backgroundColor: "#2F6FED", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   promoCtaBotaoTexto: {
     color: COR.branco,
-    fontFamily: FONTE.bold, fontSize: 11.5,
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
     fontWeight: "700",
   },
 
@@ -405,19 +437,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
   },
-  logo: {
-    width: 100,
-    height: 66,
-    marginBottom: 4,
-  },
-  titulo: {
-    fontFamily: FONTE.bold, fontSize: 20,
-    fontWeight: "700",
-    color: COR.tintaForte,
-    marginTop: 4,
-  },
+  logo: { width: 100, height: 66, marginBottom: 4 },
+  titulo: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte, marginTop: 4 },
   subtitulo: {
-    fontFamily: FONTE.regular, fontSize: 13,
+    fontFamily: FONTE.regular,
+    fontSize: 13,
     color: COR.tintaMedia,
     marginBottom: 14,
     marginTop: 2,
@@ -425,7 +449,8 @@ const styles = StyleSheet.create({
   },
   rotulo: {
     alignSelf: "flex-start",
-    fontFamily: FONTE.semi, fontSize: 12.5,
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
     fontWeight: "600",
     color: COR.tintaMedia,
     marginBottom: 5,
@@ -442,30 +467,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: COR.fundo,
   },
-  campoIcone: {
-    marginRight: 8,
-  },
+  campoIcone: { marginRight: 8 },
   campoTexto: {
     flex: 1,
     paddingVertical: 9,
-    fontFamily: FONTE.regular, fontSize: 14,
+    fontFamily: FONTE.regular,
+    fontSize: 14,
     color: COR.tintaForte,
   },
   avisoErro: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    alignItems: "flex-start",
+    gap: 8,
     backgroundColor: "#FEF2F2",
     borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 10,
     alignSelf: "stretch",
   },
-  textoErro: {
-    color: "#DC2626",
-    fontFamily: FONTE.regular, fontSize: 12.5,
+  textoErro: { color: "#DC2626", fontFamily: FONTE.semi, fontWeight: "600", fontSize: 12.5 },
+  textoErroApoio: { color: "#B24A45", fontFamily: FONTE.regular, fontSize: 12, marginTop: 2 },
+  erroLink: {
+    color: "#2F6FED",
+    fontFamily: FONTE.bold,
+    fontWeight: "700",
+    fontSize: 12.5,
+    marginTop: 6,
   },
+
   botao: {
     flexDirection: "row",
     gap: 8,
@@ -482,27 +512,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  botaoDesabilitado: {
-    opacity: 0.7,
-  },
-  textoBotao: {
-    color: COR.branco,
-    fontWeight: "700",
-    fontFamily: FONTE.bold, fontSize: 14.5,
-  },
-  rodape: {
-    flexDirection: "row",
-    marginTop: 18,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  rodapeTexto: {
-    fontFamily: FONTE.regular, fontSize: 12.5,
-    color: COR.tintaMedia,
-  },
-  rodapeLink: {
-    fontFamily: FONTE.bold, fontSize: 12.5,
-    color: COR.avisoTexto,
-    fontWeight: "700",
-  },
+  botaoDesabilitado: { opacity: 0.7 },
+  textoBotao: { color: COR.branco, fontWeight: "700", fontFamily: FONTE.bold, fontSize: 14.5 },
+  rodape: { flexDirection: "row", marginTop: 18, flexWrap: "wrap", justifyContent: "center" },
+  rodapeTexto: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaMedia },
+  rodapeLink: { fontFamily: FONTE.bold, fontSize: 12.5, color: COR.avisoTexto, fontWeight: "700" },
 });

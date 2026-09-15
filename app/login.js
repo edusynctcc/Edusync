@@ -43,6 +43,66 @@ const RECURSOS = [
   },
 ];
 
+// Traduz o erro que vem da API numa frase que o professor entende.
+//
+// Olha o status HTTP e também o texto, porque cada back-end responde de um
+// jeito. Se o seu devolver algo diferente, é aqui que se ajusta.
+//
+//   404  ou "não encontrado"        -> conta não existe  -> oferece cadastro
+//   401/403 ou "senha"/"credencial" -> senha errada
+//   falha de rede                   -> servidor fora do ar
+function lerErroDoLogin(e) {
+  const status = e?.status ?? e?.response?.status ?? e?.codigo;
+  const texto = String(e?.message || "").toLowerCase();
+
+  const contaNaoExiste =
+    status === 404 ||
+    texto.includes("não encontr") ||
+    texto.includes("nao encontr") ||
+    texto.includes("not found") ||
+    texto.includes("não existe") ||
+    texto.includes("nao existe") ||
+    texto.includes("não cadastrad") ||
+    texto.includes("nao cadastrad");
+
+  if (contaNaoExiste) {
+    return {
+      mensagem: "Não encontramos uma conta com esse e-mail.",
+      convite: "Você precisa se cadastrar primeiro.",
+      levaPara: "/cadastro",
+      textoDoLink: "Criar conta",
+    };
+  }
+
+  const senhaErrada =
+    status === 401 ||
+    status === 403 ||
+    texto.includes("senha") ||
+    texto.includes("credenc") ||
+    texto.includes("invalid") ||
+    texto.includes("unauthorized");
+
+  if (senhaErrada) {
+    return { mensagem: "E-mail ou senha incorretos.", convite: "", levaPara: null };
+  }
+
+  const semRede =
+    texto.includes("network") ||
+    texto.includes("failed to fetch") ||
+    texto.includes("timeout") ||
+    texto.includes("econnrefused");
+
+  if (semRede) {
+    return {
+      mensagem: "Não consegui falar com o servidor.",
+      convite: "Confira se o back-end está rodando.",
+      levaPara: null,
+    };
+  }
+
+  return { mensagem: e?.message || "Não foi possível entrar. Tente de novo.", convite: "", levaPara: null };
+}
+
 export default function Login() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
@@ -52,26 +112,45 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState(null);
 
   async function handleLogin() {
-  setErro("");
+    setErro(null);
 
-  if (!email || !senha) {
-    setErro("Preencha email e senha.");
-    return;
+    // trim no e-mail: um espaço colado sem querer faz o login falhar sem
+    // motivo aparente, e é dos erros mais chatos de achar.
+    const emailLimpo = email.trim().toLowerCase();
+
+    if (!emailLimpo || !senha) {
+      setErro({ mensagem: "Preencha e-mail e senha.", convite: "", levaPara: null });
+      return;
+    }
+
+    setCarregando(true);
+    try {
+      await login(emailLimpo, senha);
+      router.replace("/home");
+    } catch (e) {
+      setErro(lerErroDoLogin(e));
+    } finally {
+      setCarregando(false);
+    }
   }
 
-  setCarregando(true);
-  try {
-    await login(email, senha); 
-    router.replace("/home");
-  } catch (e) {
-    setErro(e.message);
-  } finally {
-    setCarregando(false);
-  }
-}
+  const caixaDeErro = erro ? (
+    <View style={styles.avisoErro}>
+      <Ionicons name="alert-circle-outline" size={16} color="#DC2626" style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.textoErro}>{erro.mensagem}</Text>
+        {erro.convite ? <Text style={styles.textoErroApoio}>{erro.convite}</Text> : null}
+        {erro.levaPara ? (
+          <Link href={erro.levaPara} style={styles.erroLink}>
+            {erro.textoDoLink}
+          </Link>
+        ) : null}
+      </View>
+    </View>
+  ) : null;
 
   const conteudoFormulario = (
     <>
@@ -89,6 +168,7 @@ export default function Login() {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          autoCorrect={false}
           keyboardType="email-address"
         />
       </View>
@@ -103,6 +183,7 @@ export default function Login() {
           value={senha}
           onChangeText={setSenha}
           secureTextEntry={!mostrarSenha}
+          onSubmitEditing={handleLogin}
         />
         <TouchableOpacity onPress={() => setMostrarSenha((v) => !v)} hitSlop={8}>
           <Ionicons name={mostrarSenha ? "eye-outline" : "eye-off-outline"} size={18} color="#8A93A6" />
@@ -114,12 +195,7 @@ export default function Login() {
         <Text style={styles.linkPequenoDestaque}>Esqueceu sua senha?</Text>
       </View>
 
-      {erro ? (
-        <View style={styles.avisoErro}>
-          <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
-          <Text style={styles.textoErro}>{erro}</Text>
-        </View>
-      ) : null}
+      {caixaDeErro}
 
       <TouchableOpacity
         style={[styles.botao, carregando && styles.botaoDesabilitado]}
@@ -159,8 +235,8 @@ export default function Login() {
             </Text>
 
             <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para você
-              foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para que
+              você foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -220,22 +296,10 @@ const styles = StyleSheet.create({
     backgroundColor: COR_SOBREPOSICAO,
   },
 
-  tela: {
-    flex: 1,
-    backgroundColor: COR.marinho,
-  },
-  areaTeclado: {
-    flex: 1,
-  },
-  scrollTransparente: {
-    backgroundColor: "transparent",
-  },
-  scroll: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+  tela: { flex: 1, backgroundColor: COR.marinho },
+  areaTeclado: { flex: 1 },
+  scrollTransparente: { backgroundColor: "transparent" },
+  scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
 
   telaDesktop: {
     flex: 1,
@@ -260,52 +324,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     elevation: 12,
   },
-  colunaForm: {
-    flex: 1,
-    padding: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  divisorVertical: {
-    width: 1,
-    backgroundColor: "#E9ECF2",
-  },
-  colunaPromo: {
-    flex: 1.15,
-    padding: 48,
-    justifyContent: "center",
-  },
+  colunaForm: { flex: 1, padding: 48, alignItems: "center", justifyContent: "center" },
+  divisorVertical: { width: 1, backgroundColor: "#E9ECF2" },
+  colunaPromo: { flex: 1.15, padding: 48, justifyContent: "center" },
   promoTitulo: {
-    fontFamily: FONTE.bold, fontSize: 24,
+    fontFamily: FONTE.bold,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
     lineHeight: 32,
     marginBottom: 12,
   },
-  promoTituloDestaque: {
-    color: "#F5811F",
-  },
+  promoTituloDestaque: { color: "#F5811F" },
   promoTexto: {
-    fontFamily: FONTE.regular, fontSize: 13.5,
+    fontFamily: FONTE.regular,
+    fontSize: 13.5,
     color: "#5B6472",
     lineHeight: 20,
     marginBottom: 18,
   },
-  promoLink: {
-    color: "#2F6FED",
-    fontWeight: "600",
-  },
-  promoDivisor: {
-    height: 1,
-    backgroundColor: "#E9ECF2",
-    marginBottom: 18,
-  },
-  promoItem: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 14,
-    alignItems: "flex-start",
-  },
+  promoLink: { color: "#2F6FED", fontWeight: "600" },
+  promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
+  promoItem: { flexDirection: "row", gap: 12, marginBottom: 14, alignItems: "flex-start" },
   promoIconeBox: {
     width: 34,
     height: 34,
@@ -314,20 +354,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  promoItemTexto: {
-    flex: 1,
-  },
+  promoItemTexto: { flex: 1 },
   promoItemTitulo: {
-    fontFamily: FONTE.bold, fontSize: 13,
+    fontFamily: FONTE.bold,
+    fontSize: 13,
     fontWeight: "700",
     color: COR.tintaForte,
     marginBottom: 2,
   },
-  promoItemDescricao: {
-    fontFamily: FONTE.regular, fontSize: 12,
-    color: "#7A8393",
-    lineHeight: 17,
-  },
+  promoItemDescricao: { fontFamily: FONTE.regular, fontSize: 12, color: "#7A8393", lineHeight: 17 },
   promoCta: {
     flexDirection: "row",
     alignItems: "center",
@@ -347,19 +382,16 @@ const styles = StyleSheet.create({
   },
   promoCtaTexto: {
     flex: 1,
-    fontFamily: FONTE.semi, fontSize: 11.5,
+    fontFamily: FONTE.semi,
+    fontSize: 11.5,
     fontWeight: "600",
     color: COR.tintaMedia,
   },
-  promoCtaBotao: {
-    backgroundColor: "#2F6FED",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
+  promoCtaBotao: { backgroundColor: "#2F6FED", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
   promoCtaBotaoTexto: {
     color: COR.branco,
-    fontFamily: FONTE.bold, fontSize: 11.5,
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
     fontWeight: "700",
   },
 
@@ -376,26 +408,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
   },
-  logo: {
-    width: 120,
-    height: 80,
-    marginBottom: 8,
-  },
-  titulo: {
-    fontFamily: FONTE.bold, fontSize: 20,
-    fontWeight: "700",
-    color: COR.tintaForte,
-    marginTop: 4,
-  },
+  logo: { width: 120, height: 80, marginBottom: 8 },
+  titulo: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte, marginTop: 4 },
   subtitulo: {
-    fontFamily: FONTE.regular, fontSize: 13,
+    fontFamily: FONTE.regular,
+    fontSize: 13,
     color: COR.tintaMedia,
     marginBottom: 22,
     marginTop: 2,
   },
   rotulo: {
     alignSelf: "flex-start",
-    fontFamily: FONTE.semi, fontSize: 12.5,
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
     fontWeight: "600",
     color: COR.tintaMedia,
     marginBottom: 6,
@@ -412,13 +437,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: COR.fundo,
   },
-  campoIcone: {
-    marginRight: 8,
-  },
+  campoIcone: { marginRight: 8 },
   campoTexto: {
     flex: 1,
     paddingVertical: 13,
-    fontFamily: FONTE.regular, fontSize: 14,
+    fontFamily: FONTE.regular,
+    fontSize: 14,
     color: COR.tintaForte,
   },
   linhaOpcoes: {
@@ -428,30 +452,30 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 6,
   },
-  linkPequeno: {
-    fontFamily: FONTE.regular, fontSize: 12,
-    color: COR.tintaMedia,
-  },
-  linkPequenoDestaque: {
-    fontFamily: FONTE.semi, fontSize: 12,
-    color: "#2F6FED",
-    fontWeight: "600",
-  },
+  linkPequeno: { fontFamily: FONTE.regular, fontSize: 12, color: COR.tintaMedia },
+  linkPequenoDestaque: { fontFamily: FONTE.semi, fontSize: 12, color: "#2F6FED", fontWeight: "600" },
+
   avisoErro: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    alignItems: "flex-start",
+    gap: 8,
     backgroundColor: "#FEF2F2",
     borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 10,
     alignSelf: "stretch",
   },
-  textoErro: {
-    color: "#DC2626",
-    fontFamily: FONTE.regular, fontSize: 12.5,
+  textoErro: { color: "#DC2626", fontFamily: FONTE.semi, fontWeight: "600", fontSize: 12.5 },
+  textoErroApoio: { color: "#B24A45", fontFamily: FONTE.regular, fontSize: 12, marginTop: 2 },
+  erroLink: {
+    color: "#2F6FED",
+    fontFamily: FONTE.bold,
+    fontWeight: "700",
+    fontSize: 12.5,
+    marginTop: 6,
   },
+
   botao: {
     flexDirection: "row",
     gap: 8,
@@ -468,27 +492,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  botaoDesabilitado: {
-    opacity: 0.7,
-  },
-  textoBotao: {
-    color: COR.branco,
-    fontWeight: "700",
-    fontFamily: FONTE.bold, fontSize: 14.5,
-  },
-  rodape: {
-    flexDirection: "row",
-    marginTop: 20,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  rodapeTexto: {
-    fontFamily: FONTE.regular, fontSize: 12.5,
-    color: COR.tintaMedia,
-  },
-  rodapeLink: {
-    fontFamily: FONTE.bold, fontSize: 12.5,
-    color: COR.avisoTexto,
-    fontWeight: "700",
-  },
+  botaoDesabilitado: { opacity: 0.7 },
+  textoBotao: { color: COR.branco, fontWeight: "700", fontFamily: FONTE.bold, fontSize: 14.5 },
+  rodape: { flexDirection: "row", marginTop: 20, flexWrap: "wrap", justifyContent: "center" },
+  rodapeTexto: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaMedia },
+  rodapeLink: { fontFamily: FONTE.bold, fontSize: 12.5, color: COR.avisoTexto, fontWeight: "700" },
 });
