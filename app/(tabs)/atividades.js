@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Modal,
   Platform,
@@ -46,8 +47,8 @@ const ATIVIDADES_INICIAIS = [
     quando: "Hoje",
     icone: "function-variant",
     biblioteca: "mci",
-    corFundo: "#F1E9FB",
-    corIcone: "#8B5CF6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "2",
@@ -57,8 +58,8 @@ const ATIVIDADES_INICIAIS = [
     quando: "Há 4 dias",
     icone: "format-list-bulleted",
     biblioteca: "mci",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "3",
@@ -68,8 +69,8 @@ const ATIVIDADES_INICIAIS = [
     quando: "Há 8 dias",
     icone: "shape-outline",
     biblioteca: "mci",
-    corFundo: "#FEF0E4",
-    corIcone: "#F5A623",
+    corFundo: COR.avisoFundo,
+    corIcone: COR.avisoTexto,
   },
   {
     id: "4",
@@ -79,8 +80,8 @@ const ATIVIDADES_INICIAIS = [
     quando: "Há 14 dias",
     icone: "school-outline",
     biblioteca: "ion",
-    corFundo: "#FCE7F3",
-    corIcone: "#DB2777",
+    corFundo: COR.avisoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "5",
@@ -90,8 +91,8 @@ const ATIVIDADES_INICIAIS = [
     quando: "Há um mês",
     icone: "fraction-one-half",
     biblioteca: "mci",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
   },
   {
     id: "6",
@@ -101,16 +102,9 @@ const ATIVIDADES_INICIAIS = [
     quando: "Há um mês",
     icone: "chart-line",
     biblioteca: "mci",
-    corFundo: "#E7F8EF",
-    corIcone: "#22C55E",
+    corFundo: COR.okFundo,
+    corIcone: COR.ok,
   },
-];
-
-const RESUMO = [
-  { valor: "132", rotulo: "Downloads", icone: "checkmark-circle", cor: "#3B82F6" },
-  { valor: "68%", rotulo: "Taxa média de atividade", icone: "trending-up", cor: "#22C55E" },
-  { valor: "16", rotulo: "Atividades ativas", icone: "layers-outline", cor: "#3B82F6" },
-  { valor: "7", rotulo: "Atividades criadas essa semana", icone: "time-outline", cor: "#F5A623" },
 ];
 
 export default function Atividades() {
@@ -118,19 +112,14 @@ export default function Atividades() {
   const ehDesktop = width >= 900;
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
-  // Vindo de "Ver atividade original", o título chega por parâmetro.
   const { atividadeTitulo } = useLocalSearchParams();
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
   const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
 
-  // Lista em estado pra dar pra excluir e editar item.
   const [atividades, setAtividades] = useState(ATIVIDADES_INICIAIS);
-  // Guarda o item cujo menu "editar/excluir" está aberto (null = fechado).
   const [menuAtivo, setMenuAtivo] = useState(null);
-  // Guarda o item que está com o modal de confirmação de exclusão aberto.
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
 
-  // Abre a tela de criar atividade em modo de edição.
   function irParaEdicao(item) {
     setMenuAtivo(null);
     router.push({
@@ -153,13 +142,12 @@ export default function Atividades() {
     setAtividadeParaExcluir(null);
   }
 
-  // Filtra a lista pelo texto digitado na busca.
   const atividadesFiltradas = atividades.filter((item) =>
     item.titulo.toLowerCase().includes(busca.toLowerCase())
   );
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+    <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
@@ -176,7 +164,7 @@ export default function Atividades() {
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
-                <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+                <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Atividades</Text>
               </TouchableOpacity>
             </View>
@@ -184,24 +172,24 @@ export default function Atividades() {
 
           <View style={styles.buscaLinha}>
             <View style={styles.buscaBox}>
-              <Ionicons name="search" size={16} color="#94A3B8" />
+              <Ionicons name="search" size={16} color={COR.tintaFraca} />
               <TextInput
                 value={busca}
                 onChangeText={setBusca}
                 placeholder="Buscar atividade..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={COR.tintaFraca}
                 style={styles.buscaInput}
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
                 </TouchableOpacity>
               )}
             </View>
             <TouchableOpacity style={styles.turmaFiltro}>
-              <Ionicons name="people-outline" size={14} color="#3B82F6" />
+              <Ionicons name="people-outline" size={14} color={COR.marcador} />
               <Text style={styles.turmaFiltroTexto}>Todas as turmas</Text>
-              <Ionicons name="chevron-down" size={14} color="#3B82F6" />
+              <Ionicons name="chevron-down" size={14} color={COR.marcador} />
             </TouchableOpacity>
           </View>
 
@@ -228,7 +216,6 @@ export default function Atividades() {
                 key={item.id}
                 style={[styles.atividadeCard, !ehDesktop && styles.atividadeCardMobile]}
               >
-                {/* Linha 1 (sempre): ícone + título/descrição */}
                 <View style={styles.atividadeLinhaTopo}>
                   <View
                     style={[styles.atividadeIconeCirculo, { backgroundColor: item.corFundo }]}
@@ -253,19 +240,15 @@ export default function Atividades() {
                     </Text>
                   </View>
 
-                  {/* Botão "..." — abre o menu de editar/excluir. Fica
-                      separado do "Ver atividade" pra não confundir as duas
-                      ações. */}
                   <TouchableOpacity
                     style={styles.botaoMenu}
                     activeOpacity={0.7}
                     hitSlop={8}
                     onPress={() => setMenuAtivo(item)}
                   >
-                    <Ionicons name="ellipsis-vertical" size={16} color="#94A3B8" />
+                    <Ionicons name="ellipsis-vertical" size={16} color={COR.tintaFraca} />
                   </TouchableOpacity>
 
-                  {/* No desktop, botão + data ficam nessa mesma linha, à direita */}
                   {ehDesktop && (
                     <View style={styles.atividadeAcao}>
                       <TouchableOpacity
@@ -287,8 +270,6 @@ export default function Atividades() {
                   )}
                 </View>
 
-                {/* No mobile, botão + data descem pra uma segunda linha,
-                    embaixo, com largura total — evita espremer o texto */}
                 {!ehDesktop && (
                   <View style={styles.atividadeLinhaBaixoMobile}>
                     <Text style={styles.atividadeData}>
@@ -312,43 +293,6 @@ export default function Atividades() {
             ))}
           </View>
 
-          <View style={[styles.resumoBox, ehDesktop && styles.resumoBoxDesktop]}>
-            <Text style={[styles.resumoTitulo, ehDesktop && styles.resumoTituloDesktop]}>
-              Resumo das atividades
-            </Text>
-            <View style={styles.resumoGrade}>
-              {RESUMO.map((item) => (
-                <View
-                  key={item.rotulo}
-                  style={[styles.resumoItem, ehDesktop && styles.resumoItemDesktop]}
-                >
-                  <View
-                    style={[
-                      styles.resumoIconeCirculo,
-                      ehDesktop && styles.resumoIconeCirculoDesktop,
-                    ]}
-                  >
-                    <Ionicons name={item.icone} size={ehDesktop ? 20 : 16} color={item.cor} />
-                  </View>
-                  <View>
-                    <Text style={[styles.resumoValor, ehDesktop && styles.resumoValorDesktop]}>
-                      {item.valor}
-                    </Text>
-                    <Text style={[styles.resumoRotulo, ehDesktop && styles.resumoRotuloDesktop]}>
-                      {item.rotulo}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={[styles.botaoRelatorio, ehDesktop && styles.botaoRelatorioDesktop]}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="bar-chart-outline" size={16} color="#3B82F6" />
-              <Text style={styles.resumoLink}>Ver relatório completo</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
 
@@ -357,7 +301,6 @@ export default function Atividades() {
         style={ehDesktop ? { bottom: 32, right: 32 } : { bottom: 74, right: 14 }}
       />
 
-      {/* Menu "editar/excluir" de uma atividade */}
       <Modal
         visible={!!menuAtivo}
         transparent
@@ -375,7 +318,7 @@ export default function Atividades() {
               activeOpacity={0.7}
               onPress={() => irParaEdicao(menuAtivo)}
             >
-              <Ionicons name="pencil-outline" size={17} color="#3B82F6" />
+              <Ionicons name="pencil-outline" size={17} color={COR.marcador} />
               <Text style={styles.menuOpcaoTexto}>Editar atividade</Text>
             </TouchableOpacity>
 
@@ -387,14 +330,13 @@ export default function Atividades() {
                 setMenuAtivo(null);
               }}
             >
-              <Ionicons name="trash-outline" size={17} color="#EF4444" />
-              <Text style={[styles.menuOpcaoTexto, { color: "#EF4444" }]}>Excluir atividade</Text>
+              <Ionicons name="trash-outline" size={17} color={COR.perigo} />
+              <Text style={[styles.menuOpcaoTexto, { color: COR.perigo }]}>Excluir atividade</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* Confirmação de exclusão */}
       <Modal
         visible={!!atividadeParaExcluir}
         transparent
@@ -404,7 +346,7 @@ export default function Atividades() {
         <View style={styles.modalFundo}>
           <View style={styles.modalCard}>
             <View style={styles.modalIconeCirculo}>
-              <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              <Ionicons name="trash-outline" size={22} color={COR.perigo} />
             </View>
             <Text style={styles.modalTitulo}>Excluir esta atividade?</Text>
             <Text style={styles.modalTexto}>
@@ -434,11 +376,7 @@ export default function Atividades() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
-
-  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
+  tela: { flex: 1, backgroundColor: COR.fundo },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -454,29 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontSize: 20, fontWeight: "700", color: "#0B1E3D" },
-  toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
-  sinoClaro: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E7EBF3",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
-  },
+  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
 
   buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 14 },
   buscaBox: {
@@ -484,41 +400,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.controle,
     borderWidth: 1,
-    borderColor: "#E7EBF3",
+    borderColor: COR.linha,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { flex: 1, fontSize: 13, color: "#0B1E3D", padding: 0 },
+  buscaInput: { flex: 1, fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaForte, padding: 0 },
   turmaFiltro: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E8F0FE",
-    borderRadius: 10,
+    backgroundColor: COR.emAndamentoFundo,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 12,
   },
-  turmaFiltroTexto: { fontSize: 12, fontWeight: "600", color: "#3B82F6" },
+  turmaFiltroTexto: { fontFamily: FONTE.semi, fontSize: 12, fontWeight: "600", color: COR.marcador },
 
   filtrosLinha: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 16 },
   filtroPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#EDF1F7",
+    backgroundColor: COR.linhaSuave,
   },
-  filtroPillAtivo: { backgroundColor: "#3B82F6" },
-  filtroTexto: { fontSize: 12.5, fontWeight: "600", color: "#64748B" },
-  filtroTextoAtivo: { color: "#FFFFFF" },
+  filtroPillAtivo: { backgroundColor: COR.marinho },
+  filtroTexto: { fontFamily: FONTE.semi, fontSize: 12.5, fontWeight: "600", color: COR.tintaMedia },
+  filtroTextoAtivo: { color: COR.branco },
 
   lista: { width: "100%", gap: 10, marginBottom: 20 },
   atividadeCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 14,
   },
   atividadeCardMobile: { gap: 10 },
@@ -532,33 +448,32 @@ const styles = StyleSheet.create({
   atividadeIconeCirculo: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  atividadeTextos: { flex: 1, minWidth: 0 },
-  atividadeTitulo: { fontSize: 13.5, fontWeight: "700", color: "#0B1E3D" },
-  atividadeDescricao: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
-  atividadeAcao: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
-  botaoVer: {
-    backgroundColor: "#3B82F6",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  botaoVerTexto: { color: "#FFFFFF", fontSize: 11.5, fontWeight: "700" },
-  atividadeData: { fontSize: 10, color: "#94A3B8" },
-  botaoMenu: {
-    width: 28,
-    height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
+  atividadeTextos: { flex: 1, minWidth: 0 },
+  atividadeTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaForte },
+  atividadeDescricao: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
+  atividadeAcao: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
+  botaoVer: {
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  botaoVerTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11.5, fontWeight: "700" },
+  atividadeData: { fontFamily: FONTE.regular, fontSize: 10, color: COR.tintaFraca },
+  botaoMenu: {
+    width: 28,
+    height: 28,
+    borderRadius: RAIO.superficie,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
 
-  // ----- menu editar/excluir + modal de confirmação -----
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.45)",
@@ -569,14 +484,14 @@ const styles = StyleSheet.create({
   menuCartao: {
     width: "100%",
     maxWidth: 300,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 16,
     padding: 8,
   },
   menuTituloAtividade: {
-    fontSize: 11.5,
+    fontFamily: FONTE.bold, fontSize: 11.5,
     fontWeight: "700",
-    color: "#94A3B8",
+    color: COR.tintaFraca,
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 4,
@@ -587,15 +502,15 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 10,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
   },
-  menuOpcaoTexto: { fontSize: 14, fontWeight: "600", color: "#0B1E3D" },
+  menuOpcaoTexto: { fontFamily: FONTE.semi, fontSize: 14, fontWeight: "600", color: COR.tintaForte },
 
   modalCard: {
     width: "100%",
     maxWidth: 340,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     padding: 22,
     alignItems: "center",
   },
@@ -603,21 +518,21 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: COR.perigoFundo,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
   modalTitulo: {
-    fontSize: 15.5,
+    fontFamily: FONTE.bold, fontSize: 15.5,
     fontWeight: "700",
-    color: "#0B1E3D",
+    color: COR.tintaForte,
     marginBottom: 6,
     textAlign: "center",
   },
   modalTexto: {
-    fontSize: 12.5,
-    color: "#64748B",
+    fontFamily: FONTE.regular, fontSize: 12.5,
+    color: COR.tintaMedia,
     textAlign: "center",
     marginBottom: 18,
     lineHeight: 18,
@@ -628,70 +543,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     borderWidth: 1.5,
-    borderColor: "#E7EBF3",
+    borderColor: COR.linha,
   },
-  modalBotaoCancelarTexto: { fontSize: 13.5, fontWeight: "700", color: "#64748B" },
+  modalBotaoCancelarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaMedia },
   modalBotaoExcluir: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "#EF4444",
+    borderRadius: RAIO.controle,
+    backgroundColor: COR.perigoFundo,
   },
-  modalBotaoExcluirTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
+  modalBotaoExcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
 
-  resumoBox: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#EEF1F6",
-    padding: 18,
-    marginBottom: 20,
-  },
-  resumoBoxDesktop: { padding: 28 },
-  resumoTitulo: { fontSize: 14, fontWeight: "700", color: "#0B1E3D", marginBottom: 14 },
-  resumoTituloDesktop: { fontSize: 17, marginBottom: 22 },
-  resumoGrade: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    rowGap: 16,
-    columnGap: 12,
-    marginBottom: 14,
-  },
-  resumoItem: { flexDirection: "row", alignItems: "center", gap: 8, width: "46%" },
-  resumoItemDesktop: { width: "23%", gap: 12 },
-  resumoIconeCirculo: { alignItems: "center", justifyContent: "center" },
-  resumoIconeCirculoDesktop: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#F4F6FA",
-  },
-  resumoValor: { fontSize: 15, fontWeight: "700", color: "#0B1E3D" },
-  resumoValorDesktop: { fontSize: 22 },
-  resumoRotulo: { fontSize: 10.5, color: "#94A3B8" },
-  resumoRotuloDesktop: { fontSize: 12.5, marginTop: 2 },
-  botaoRelatorio: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  botaoRelatorioDesktop: {
-    alignSelf: "flex-start",
-    backgroundColor: "#E8F0FE",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  resumoLink: {
-    textAlign: "center",
-    fontSize: 12.5,
-    fontWeight: "600",
-    color: "#3B82F6",
-  },
 });

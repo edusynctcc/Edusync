@@ -1,27 +1,81 @@
-// A fonte do título é a Baloo 2: instale com
-// npx expo install expo-font @expo-google-fonts/baloo-2 e carregue no app/_layout.tsx.
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
+import IconeEdusync from "../../components/IconeEdusync";
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Image,
   useWindowDimensions,
 } from "react-native";
 
-// Lista que a busca do Home percorre.
+// Correções esperando o professor. É uma LISTA porque o desktop mostra os
+// itens e o celular só conta quantos são.
 //
-// ---------------------------------------------------------------------------
-// API — GET /turmas  +  GET /atividades
-// Esses títulos são fixos e espelham os mocks de turmas.js e atividades.js.
-// Pra virem do back-end, troque a constante por estado e busque os dois:
+// API — GET /correcoes?status=pendente
+// A resposta já é uma lista, então dá pra jogar direto aqui:
+//
+//   const [pendentes, setPendentes] = useState([]);
+//
+//   useEffect(() => {
+//     fetch("http://localhost:3000/correcoes?status=pendente", {
+//       headers: { Authorization: `Bearer ${token}` },
+//     })
+//       .then((r) => r.json())
+//       .then(setPendentes);
+//   }, []);
+const PENDENTES = [
+  { id: 1, atividade: "Prova de Álgebra", turma: "9º Ano A", folhas: 28 },
+  { id: 2, atividade: "Lista de Exercícios", turma: "1ª Série B", folhas: 31 },
+];
+
+// Turmas do professor.
+//
+// API — GET /turmas
+// O ícone é o mesmo em todas as linhas: marca o tipo do item, não a turma.
+const TURMAS = [
+  { id: "1", nome: "9º Ano A", serie: "9º ano · Ens. Fundamental", alunos: 28 },
+  { id: "2", nome: "1ª Série B", serie: "1ª série · Ensino Médio", alunos: 32 },
+  { id: "3", nome: "7º Ano C", serie: "7º ano · Ens. Fundamental", alunos: 25 },
+];
+
+// Últimas atividades criadas. Mesmos dados de atividades.js.
+//
+// API — GET /atividades?ordenar=recentes&limite=4
+const ATIVIDADES_RECENTES = [
+  { id: "1", titulo: "Prova de Álgebra", turma: "9º Ano A", quando: "Hoje" },
+  { id: "2", titulo: "Lista de Exercícios", turma: "1ª Série B", quando: "Há 4 dias" },
+  { id: "3", titulo: "Trabalho de Geometria", turma: "7º Ano C", quando: "Há 8 dias" },
+  { id: "4", titulo: "Prova Bimestral", turma: "9º Ano A", quando: "Há 14 dias" },
+];
+
+// Atalhos do CELULAR. No desktop a lateral já faz esse papel.
+//
+// API — GET /auth/me
+// Os totais são contagens que o back-end calcula (as mesmas do Perfil). Peça
+// pra virem junto na resposta do /auth/me.
+const ATALHOS_MOBILE = [
+  { chave: "turmas", titulo: "Turmas", valor: "3", icone: "turmas", rota: "/turmas" },
+  { chave: "atividades", titulo: "Atividades", valor: "6", icone: "atividades", rota: "/atividades" },
+  { chave: "scanner", titulo: "Scanner", valor: "12", icone: "scanner", rota: "/scanner" },
+  {
+    chave: "correcoes",
+    titulo: "Correções",
+    selo: `${PENDENTES.length} pendentes`,
+    icone: "correcoes",
+    rota: "/correcoes",
+  },
+];
+
+// Lista que a busca do celular percorre.
+//
+// API — GET /turmas + GET /atividades
+// Monte o índice juntando as duas respostas:
 //
 //   const [indiceBusca, setIndiceBusca] = useState([]);
 //
@@ -40,7 +94,6 @@ import {
 //     }
 //     carregar();
 //   }, []);
-// ---------------------------------------------------------------------------
 const INDICE_BUSCA = [
   { tipo: "turma", titulo: "9º Ano A", subtitulo: "E.E. Marechal Rondon" },
   { tipo: "turma", titulo: "1ª Série B", subtitulo: "E.E. Marechal Rondon" },
@@ -53,79 +106,21 @@ const INDICE_BUSCA = [
   { tipo: "atividade", titulo: "Projeto de Estatística", subtitulo: "Pesquisa e análise de dados" },
 ];
 
-// Nome que aparece na saudação e as iniciais do avatar.
-//
-// API — GET /auth/me
-// Devolve os dados do professor logado a partir do token:
-//
-//   const [professor, setProfessor] = useState(null);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/auth/me", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setProfessor);
-//   }, []);
-//
-// As iniciais dá pra montar do próprio nome, sem campo novo no banco:
-//   const iniciais = professor.nome.split(" ").map((p) => p[0]).slice(0, 2).join("");
-const NOME_PROFESSOR = "Ana";
-const INICIAIS_PROFESSOR = "AS";
-
-const ATALHOS = [
-  {
-    chave: "turmas",
-    titulo: "Minhas turmas",
-    descricao: "Gerencie suas turmas e veja os alunos.",
-    icone: "people-outline",
-    corFundo: "#E8F0FE",
-    corIcone: "#3B82F6",
-    biblioteca: "ion",
-    rota: "/turmas",
-  },
-  {
-    chave: "atividades",
-    titulo: "Atividades",
-    descricao: "Visualize e edite suas atividades criadas.",
-    icone: "clipboard-outline",
-    corFundo: "#E7F8EF",
-    corIcone: "#22C55E",
-    biblioteca: "ion",
-    rota: "/atividades",
-  },
-  {
-    chave: "scanner",
-    titulo: "Scanner",
-    descricao: "Escaneie ou envie atividades para correção.",
-    icone: "camera-outline",
-    corFundo: "#F1E9FB",
-    corIcone: "#8B5CF6",
-    biblioteca: "ion",
-    rota: "/scanner",
-  },
-  {
-    chave: "correcoes",
-    titulo: "Correções",
-    descricao: "Acompanhe o progresso das correções da IA.",
-    icone: "create-outline",
-    corFundo: "#FEF0E4",
-    corIcone: "#F5A623",
-    biblioteca: "ion",
-    rota: "/correcoes",
-  },
-  // Atalhos do "Acesso rápido".
+const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const MESES = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
+
+function dataDeHoje() {
+  const hoje = new Date();
+  return `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]}`;
+}
 
 export default function Home() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
-  const ehTelaLarga = width >= 1300;
   const ehMobilePequeno = width < 360;
-  // 2 colunas (1 só em celular pequeno).
-  const colunasGrade = ehMobilePequeno ? 1 : 2;
-  const larguraCardGrade = colunasGrade === 1 ? "100%" : "48%";
-  const [dicaVisivel, setDicaVisivel] = useState(true);
   const [buscaHome, setBuscaHome] = useState("");
   const router = useRouter();
 
@@ -133,6 +128,8 @@ export default function Home() {
   const resultadosBusca = buscaNormalizada
     ? INDICE_BUSCA.filter((item) => item.titulo.toLowerCase().includes(buscaNormalizada))
     : [];
+
+  const temPendentes = PENDENTES.length > 0;
 
   function abrirResultado(item) {
     setBuscaHome("");
@@ -143,202 +140,248 @@ export default function Home() {
     }
   }
 
-  return (
-    // paddingTop reserva o espaço da navbar do topo.
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
-      {!ehDesktop && <CabecalhoMobile ehMobilePequeno={ehMobilePequeno} />}
+  if (ehDesktop) {
+    return (
+      <View style={styles.telaDesktop}>
+        <ScrollView style={styles.conteudo} contentContainerStyle={styles.conteudoDesktop}>
+          <View style={styles.miolo}>
+            <View style={styles.cabecalhoLinha}>
+              <Text style={styles.dataDesktop}>{dataDeHoje()}</Text>
 
-      <ScrollView
-        style={styles.conteudo}
-        contentContainerStyle={[
-          styles.conteudoInterno,
-          ehDesktop && styles.conteudoInternoDesktop,
-        ]}
-      >
-        <View
-          style={[
-            ehDesktop ? styles.miolo : { width: "100%" },
-            ehTelaLarga && { maxWidth: 1300 },
-          ]}
-        >
-          {ehDesktop ? (
-            // O avatar fica na navbar, não aqui.
-            <View style={styles.cabecalhoDesktopLinha}>
-              <View style={styles.avatarSaudacaoLinha}>
-                <View style={styles.avatarGrandeDesktop}>
-                  <Text style={styles.avatarGrandeTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
-                <View>
-                  <Text style={styles.saudacaoDesktop}>
-                    Olá, Prof. {NOME_PROFESSOR}!
-                  </Text>
-                  <Text style={styles.subtituloDesktop}>
-                    O que você deseja fazer hoje?
-                  </Text>
-                </View>
-              </View>
+              <TouchableOpacity
+                style={styles.botaoNovaDesktop}
+                activeOpacity={0.85}
+                onPress={() => router.push("/criar-atividade")}
+              >
+                <Ionicons name="add" size={16} color={COR.branco} />
+                <Text style={styles.botaoNovaDesktopTexto}>Nova atividade</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <>
-              <View style={styles.avatarGrandeWrap}>
-                <View style={styles.avatarGrande}>
-                  <Text style={styles.avatarGrandeTexto}>{INICIAIS_PROFESSOR}</Text>
-                </View>
+
+            {temPendentes ? (
+              <View style={styles.blocoPendentes}>
+                <Text style={styles.blocoTitulo}>
+                  {PENDENTES.length} {PENDENTES.length === 1 ? "correção" : "correções"} para revisar
+                </Text>
+
+                {PENDENTES.map((item, indice) => (
+                  <View
+                    key={item.id}
+                    style={[styles.blocoLinha, indice === 0 && styles.blocoLinhaPrimeira]}
+                  >
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.blocoNome} numberOfLines={1}>
+                        {item.atividade}
+                      </Text>
+                      <Text style={styles.blocoMeta} numberOfLines={1}>
+                        {item.turma} · {item.folhas} folhas
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.botaoRevisar}
+                      activeOpacity={0.8}
+                      onPress={() => router.push("/correcoes")}
+                    >
+                      <Text style={styles.botaoRevisarTexto}>Revisar</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.blocoVazio}>
+                <Text style={styles.blocoVazioTitulo}>Nada para revisar</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/scanner")}>
+                  <Text style={styles.blocoVazioLink}>Escanear uma folha</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.secao}>
+              <View style={styles.secaoCabecalho}>
+                <Text style={styles.secaoTitulo}>Suas turmas</Text>
+                <TouchableOpacity activeOpacity={0.6} onPress={() => router.push("/turmas")}>
+                  <Text style={styles.verTodas}>Ver todas</Text>
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.saudacao}>Olá, Prof. {NOME_PROFESSOR}!</Text>
-              <Text style={styles.subtitulo}>O que você deseja fazer hoje?</Text>
-            </>
+              {TURMAS.map((turma) => (
+                <TouchableOpacity
+                  key={turma.id}
+                  style={styles.linhaTurma}
+                  activeOpacity={0.55}
+                  onPress={() => router.push({ pathname: "/turmas", params: { turmaBusca: turma.nome } })}
+                >
+                  <IconeEdusync
+                    nome="turmas"
+                    tamanho={17}
+                    cor={COR.tintaFraca}
+                    style={styles.iconeTurma}
+                  />
+                  <Text style={styles.turmaNome} numberOfLines={1}>
+                    {turma.nome}
+                  </Text>
+                  <Text style={styles.turmaSerie} numberOfLines={1}>
+                    {turma.serie}
+                  </Text>
+                  <Text style={styles.turmaAlunos}>{turma.alunos} alunos</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.secao}>
+              <View style={styles.secaoCabecalho}>
+                <Text style={styles.secaoTitulo}>Atividades recentes</Text>
+                <TouchableOpacity activeOpacity={0.6} onPress={() => router.push("/atividades")}>
+                  <Text style={styles.verTodas}>Ver todas</Text>
+                </TouchableOpacity>
+              </View>
+
+              {ATIVIDADES_RECENTES.map((atividade) => (
+                <TouchableOpacity
+                  key={atividade.id}
+                  style={styles.linhaAtividade}
+                  activeOpacity={0.55}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/atividades",
+                      params: { atividadeTitulo: atividade.titulo },
+                    })
+                  }
+                >
+                  <Text style={styles.atividadeQuando}>{atividade.quando}</Text>
+                  <Text style={styles.atividadeTitulo} numberOfLines={1}>
+                    {atividade.titulo}
+                  </Text>
+                  <Text style={styles.atividadeTurma} numberOfLines={1}>
+                    · {atividade.turma}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.tela}>
+      <CabecalhoMobile ehMobilePequeno={ehMobilePequeno} />
+
+      <ScrollView style={styles.conteudo} contentContainerStyle={styles.conteudoMobile}>
+        <Text style={styles.dataMobile}>{dataDeHoje()}</Text>
+
+        <View style={styles.buscaBox}>
+          <Ionicons name="search" size={16} color={COR.tintaFraca} />
+          <TextInput
+            value={buscaHome}
+            onChangeText={setBuscaHome}
+            placeholder="Buscar turma ou atividade"
+            placeholderTextColor={COR.tintaFraca}
+            style={styles.buscaInput}
+          />
+          {buscaHome.length > 0 && (
+            <TouchableOpacity onPress={() => setBuscaHome("")} hitSlop={8}>
+              <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
+            </TouchableOpacity>
           )}
+        </View>
 
-          {/* Busca — no desktop já tem a busca da navbar (lupinha lá em
-              cima), então essa caixa aqui só aparece no mobile, que não
-              tem navbar com lupinha. */}
-          {!ehDesktop && (
-            <>
-              <View style={styles.buscaHomeBox}>
-                <Ionicons name="search" size={16} color="#94A3B8" />
-                <TextInput
-                  value={buscaHome}
-                  onChangeText={setBuscaHome}
-                  placeholder="Buscar turma ou atividade..."
-                  placeholderTextColor="#94A3B8"
-                  style={styles.buscaHomeInput}
-                />
-                {buscaHome.length > 0 && (
-                  <TouchableOpacity onPress={() => setBuscaHome("")} hitSlop={8}>
-                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {buscaNormalizada.length > 0 && (
-                <View style={styles.resultadosBuscaBox}>
-                  {resultadosBusca.length === 0 ? (
-                    <Text style={styles.resultadoVazioTexto}>
-                      Nada encontrado para "{buscaHome}"
+        {buscaNormalizada.length > 0 && (
+          <View style={styles.resultadosBox}>
+            {resultadosBusca.length === 0 ? (
+              <Text style={styles.resultadoVazio}>Nada encontrado para "{buscaHome}"</Text>
+            ) : (
+              resultadosBusca.map((item) => (
+                <TouchableOpacity
+                  key={`${item.tipo}-${item.titulo}`}
+                  style={styles.resultadoItem}
+                  activeOpacity={0.6}
+                  onPress={() => abrirResultado(item)}
+                >
+                  <Ionicons
+                    name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
+                    size={16}
+                    color={COR.tintaMedia}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.resultadoTitulo} numberOfLines={1}>
+                      {item.titulo}
                     </Text>
-                  ) : (
-                    resultadosBusca.map((item) => (
-                      <TouchableOpacity
-                        key={`${item.tipo}-${item.titulo}`}
-                        style={styles.resultadoItem}
-                        activeOpacity={0.7}
-                        onPress={() => abrirResultado(item)}
-                      >
-                        <View
-                          style={[
-                            styles.resultadoIconeCirculo,
-                            {
-                              backgroundColor: item.tipo === "turma" ? "#E8F0FE" : "#E7F8EF",
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
-                            size={16}
-                            color={item.tipo === "turma" ? "#3B82F6" : "#22C55E"}
-                          />
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.resultadoTitulo} numberOfLines={1}>
-                            {item.titulo}
-                          </Text>
-                          <Text style={styles.resultadoSubtitulo} numberOfLines={1}>
-                            {item.tipo === "turma" ? "Turma" : "Atividade"} · {item.subtitulo}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
-                      </TouchableOpacity>
-                    ))
-                  )}
-                </View>
-              )}
-            </>
-          )}
+                    <Text style={styles.resultadoSubtitulo} numberOfLines={1}>
+                      {item.tipo === "turma" ? "Turma" : "Atividade"} · {item.subtitulo}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color={COR.chevron} />
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        <View style={styles.destaque}>
+          <Text style={styles.destaqueNumero}>
+            {temPendentes
+              ? `${PENDENTES.length} ${PENDENTES.length === 1 ? "correção" : "correções"}`
+              : "Nada pendente"}
+          </Text>
+
+          <Text style={styles.destaqueSub}>
+            {temPendentes
+              ? `${PENDENTES[0].atividade} · ${PENDENTES[0].turma}`
+              : "Escaneie uma folha para começar."}
+          </Text>
 
           <TouchableOpacity
-            style={styles.cardNovaAtividade}
-            activeOpacity={0.9}
-            onPress={() => router.push("/criar-atividade")}
+            style={styles.botaoPrimario}
+            activeOpacity={0.85}
+            onPress={() => router.push(temPendentes ? "/correcoes" : "/scanner")}
           >
-            <View style={styles.cardNovaAtividadeIcone}>
-              <Ionicons name="add" size={22} color="#FFFFFF" />
-            </View>
-            <View style={styles.cardNovaAtividadeTextos}>
-              <Text style={styles.cardNovaAtividadeTitulo}>Nova atividade</Text>
-              <Text style={styles.cardNovaAtividadeDescricao}>
-                Criar e configurar uma nova atividade para uma turma.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+            <Text style={styles.botaoPrimarioTexto}>
+              {temPendentes ? "Revisar agora" : "Escanear atividade"}
+            </Text>
+            <Ionicons name="arrow-forward" size={15} color={COR.branco} />
           </TouchableOpacity>
+        </View>
 
-          <Text style={styles.secaoTitulo}>Acesso rápido</Text>
+        <TouchableOpacity
+          style={styles.botaoSecundario}
+          activeOpacity={0.7}
+          onPress={() => router.push("/criar-atividade")}
+        >
+          <Ionicons name="add" size={17} color={COR.tintaForte} />
+          <Text style={styles.botaoSecundarioTexto}>Nova atividade</Text>
+        </TouchableOpacity>
 
-          <View style={styles.grade}>
-            {ATALHOS.map((item) => (
-              <TouchableOpacity
-                key={item.chave}
-                style={[
-                  styles.atalhoCard,
-                  { width: larguraCardGrade },
-                  ehDesktop && styles.atalhoCardDesktop,
-                ]}
-                activeOpacity={0.85}
-                onPress={() => item.rota && router.push(item.rota)}
-              >
-                <View
-                  style={[
-                    styles.atalhoIconeCirculo,
-                    { backgroundColor: item.corFundo },
-                    ehDesktop && styles.atalhoIconeCirculoDesktop,
-                  ]}
-                >
-                  {item.biblioteca === "mci" ? (
-                    <MaterialCommunityIcons
-                      name={item.icone}
-                      size={ehDesktop ? 22 : 18}
-                      color={item.corIcone}
-                    />
-                  ) : (
-                    <Ionicons
-                      name={item.icone}
-                      size={ehDesktop ? 22 : 18}
-                      color={item.corIcone}
-                    />
-                  )}
+        <Text style={styles.secaoTituloMobile}>Acesso rápido</Text>
+        <View style={styles.listaMobile}>
+          {ATALHOS_MOBILE.map((item, indice) => (
+            <TouchableOpacity
+              key={item.chave}
+              style={[styles.itemMobile, indice === ATALHOS_MOBILE.length - 1 && styles.linhaUltima]}
+              activeOpacity={0.6}
+              onPress={() => router.push(item.rota)}
+            >
+              <IconeEdusync
+                nome={item.icone}
+                tamanho={19}
+                cor={COR.tintaMedia}
+                style={styles.itemIcone}
+              />
+              <Text style={styles.itemTexto}>{item.titulo}</Text>
+
+              {item.selo ? (
+                <View style={styles.selo}>
+                  <Text style={styles.seloTexto}>{item.selo}</Text>
                 </View>
-                <View style={styles.atalhoTextos}>
-                  <Text style={[styles.atalhoTitulo, ehDesktop && styles.atalhoTituloDesktop]}>
-                    {item.titulo}
-                  </Text>
-                  <Text
-                    style={[styles.atalhoDescricao, ehDesktop && styles.atalhoDescricaoDesktop]}
-                  >
-                    {item.descricao}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={ehDesktop ? 18 : 16} color="#94A3B8" />
-              </TouchableOpacity>
-            ))}
-          </View>
+              ) : (
+                <Text style={styles.itemNumero}>{item.valor}</Text>
+              )}
 
-          {dicaVisivel && (
-            <View style={styles.dicaBox}>
-              <Ionicons name="star" size={18} color="#3B82F6" style={{ marginTop: 1 }} />
-              <View style={styles.dicaTextos}>
-                <Text style={styles.dicaTitulo}>Dica rápida</Text>
-                <Text style={styles.dicaDescricao}>
-                  Você pode configurar critérios de correção personalizados para cada tipo de
-                  questão.
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setDicaVisivel(false)}>
-                <Ionicons name="close" size={18} color="#3B82F6" />
-              </TouchableOpacity>
-            </View>
-          )}
+              <Ionicons name="chevron-forward" size={16} color={COR.chevron} />
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -346,217 +389,214 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
-
-  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
+  tela: { flex: 1, backgroundColor: COR.fundo },
+  telaDesktop: { flex: 1, backgroundColor: COR.branco },
 
   conteudo: { flex: 1 },
-  conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
-  conteudoInternoDesktop: { alignItems: "center" },
-  miolo: { width: "92%", maxWidth: 1100 },
+  conteudoMobile: { padding: 18, paddingBottom: 40 },
+  conteudoDesktop: { padding: 34, paddingBottom: 40, alignItems: "center" },
+  miolo: { width: "100%", maxWidth: 940 },
 
-  cabecalhoDesktopLinha: {
+  dataDesktop: { fontFamily: FONTE.media, flex: 1, minWidth: 0, fontSize: 14, fontWeight: "500", color: COR.tintaMedia },
+  dataMobile: { fontFamily: FONTE.media, fontSize: 13.5, fontWeight: "500", color: COR.tintaMedia, marginBottom: 18 },
+  cabecalhoLinha: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 16,
     width: "100%",
-    minHeight: 56,
-    marginTop: 16,
-    marginBottom: 24,
+    marginBottom: 22,
   },
-  avatarSaudacaoLinha: {
+
+  botaoNovaDesktop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    flexShrink: 0,
+  },
+  botaoNovaDesktopTexto: { fontFamily: FONTE.semi, color: COR.branco, fontSize: 13, fontWeight: "600" },
+
+  blocoPendentes: {
+    width: "100%",
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.superficie,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 6,
+    marginBottom: 30,
+  },
+  blocoTitulo: {
+    fontFamily: FONTE.semi,
+    fontSize: 17,
+    fontWeight: "600",
+    color: COR.branco,
+    marginBottom: 4,
+  },
+  blocoLinha: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+    paddingVertical: 13,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.13)",
   },
-  avatarGrandeDesktop: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
+  blocoLinhaPrimeira: { borderTopWidth: 0, paddingTop: 10 },
+  blocoNome: { fontFamily: FONTE.media, fontSize: 14, fontWeight: "500", color: COR.branco },
+  blocoMeta: { fontFamily: FONTE.regular, fontSize: 12, color: COR.marinhoClaro, marginTop: 2 },
+  botaoRevisar: {
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.controle,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    flexShrink: 0,
   },
-  // Fonte Baloo 2 (carregada no app/_layout.tsx).
-  saudacaoDesktop: {
-    fontSize: 20,
-    fontFamily: Platform.OS === "web" ? "Baloo2_800ExtraBold, sans-serif" : "Baloo2_800ExtraBold",
-    color: "#0B1E3D",
-  },
-  subtituloDesktop: { fontSize: 13, color: "#64748B", marginTop: 2 },
+  botaoRevisarTexto: { fontFamily: FONTE.semi, color: COR.marinho, fontSize: 12.5, fontWeight: "600" },
 
-  toolbarDesktop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
-  sinoClaro: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E7EBF3",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 4,
-  },
-
-  avatarGrandeWrap: { alignSelf: "center", marginTop: 8, marginBottom: 16 },
-  avatarGrande: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarGrandeTexto: { color: "#FFFFFF", fontSize: 22, fontWeight: "700" },
-
-  saudacao: {
-    fontSize: 20,
-    fontFamily: Platform.OS === "web" ? "Baloo2_800ExtraBold, sans-serif" : "Baloo2_800ExtraBold",
-    color: "#0B1E3D",
-    textAlign: "center",
-  },
-  subtitulo: { fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 20, textAlign: "center" },
-
-  buscaHomeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  blocoVazio: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E7EBF3",
-    paddingHorizontal: 14,
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.superficie,
+    padding: 20,
+    marginBottom: 30,
+  },
+  blocoVazioTitulo: { fontFamily: FONTE.semi, fontSize: 17, fontWeight: "600", color: COR.branco },
+  blocoVazioLink: { fontFamily: FONTE.media, fontSize: 13, color: COR.marinhoClaro, marginTop: 6 },
+
+  secao: { width: "100%", marginBottom: 26 },
+  secaoCabecalho: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  secaoTitulo: { fontFamily: FONTE.semi, fontSize: 14, fontWeight: "600", color: COR.tintaForte },
+  verTodas: { fontFamily: FONTE.regular, fontSize: 12, color: COR.tintaFraca },
+
+  linhaTurma: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
-    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COR.linhaSuave,
   },
-  buscaHomeInput: { flex: 1, fontSize: 13.5, color: "#0B1E3D", padding: 0 },
+  iconeTurma: { marginRight: 11, flexShrink: 0 },
+  turmaNome: { fontFamily: FONTE.semi, fontSize: 13.5, fontWeight: "600", color: COR.tintaForte, width: 110 },
+  turmaSerie: { fontFamily: FONTE.regular, flex: 1, fontSize: 12.5, color: COR.tintaFraca },
+  turmaAlunos: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaMedia, flexShrink: 0 },
 
-  resultadosBuscaBox: {
+  linhaAtividade: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COR.linhaSuave,
+  },
+  atividadeQuando: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaFraca, width: 92, flexShrink: 0 },
+  atividadeTitulo: { fontFamily: FONTE.media, fontSize: 13.5, fontWeight: "500", color: COR.tintaForte, flexShrink: 1 },
+  atividadeTurma: { fontFamily: FONTE.regular, flex: 1, fontSize: 12.5, color: COR.tintaFraca, marginLeft: 7 },
+
+  buscaBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: COR.campo,
+    borderRadius: RAIO.controle,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    marginBottom: 18,
+  },
+  buscaInput: { fontFamily: FONTE.regular, flex: 1, fontSize: 13.5, color: COR.tintaForte, padding: 0 },
+
+  resultadosBox: {
+    width: "100%",
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#E7EBF3",
-    padding: 8,
-    marginBottom: 16,
-    gap: 2,
+    borderColor: COR.linha,
+    padding: 6,
+    marginBottom: 18,
   },
-  resultadoVazioTexto: {
-    fontSize: 12.5,
-    color: "#94A3B8",
-    padding: 10,
-    textAlign: "center",
-  },
+  resultadoVazio: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaFraca, padding: 10, textAlign: "center" },
   resultadoItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    padding: 8,
-    borderRadius: 10,
+    gap: 11,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
   },
-  resultadoIconeCirculo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  resultadoTitulo: { fontSize: 13, fontWeight: "700", color: "#0B1E3D" },
-  resultadoSubtitulo: { fontSize: 10.5, color: "#94A3B8", marginTop: 1 },
+  resultadoTitulo: { fontFamily: FONTE.media, fontSize: 13.5, fontWeight: "500", color: COR.tintaForte },
+  resultadoSubtitulo: { fontFamily: FONTE.regular, fontSize: 11, color: COR.tintaFraca, marginTop: 1 },
 
-  cardNovaAtividade: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#2F6FE4",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 26,
+  destaque: {
     width: "100%",
-  },
-  cardNovaAtividadeIcone: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardNovaAtividadeTextos: { flex: 1 },
-  cardNovaAtividadeTitulo: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
-  cardNovaAtividadeDescricao: { color: "#D9E6FB", fontSize: 11, marginTop: 2 },
-
-  secaoTitulo: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0B1E3D",
-    marginBottom: 12,
-    width: "100%",
-  },
-
-  grade: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
-  atalhoCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
-    padding: 12,
+    borderColor: COR.linha,
+    borderRadius: RAIO.superficie,
+    padding: 17,
+    marginBottom: 14,
   },
-  atalhoCardDesktop: {
-    gap: 14,
-    padding: 18,
-    borderRadius: 16,
-    minHeight: 92,
+  destaqueNumero: {
+    fontFamily: FONTE.semi,
+    fontSize: 27,
+    fontWeight: "600",
+    color: COR.tintaForte,
+    letterSpacing: -0.7,
   },
-  atalhoIconeCirculo: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  destaqueSub: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaMedia, marginTop: 3 },
+
+  botaoPrimario: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 7,
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
+    paddingVertical: 13,
+    marginTop: 15,
   },
-  atalhoIconeCirculoDesktop: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  atalhoTextos: { flex: 1 },
-  atalhoTitulo: { fontSize: 12.5, fontWeight: "700", color: "#0B1E3D" },
-  atalhoTituloDesktop: { fontSize: 14.5, marginBottom: 2 },
-  atalhoDescricao: { fontSize: 10.5, color: "#94A3B8", marginTop: 2 },
-  atalhoDescricaoDesktop: { fontSize: 12, lineHeight: 16 },
+  botaoPrimarioTexto: { fontFamily: FONTE.semi, color: COR.branco, fontSize: 13.5, fontWeight: "600" },
 
-  dicaBox: {
+  botaoSecundario: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    width: "100%",
-    backgroundColor: "#E8F0FE",
-    borderRadius: 12,
-    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    backgroundColor: COR.branco,
+    borderWidth: 1,
+    borderColor: COR.linha,
+    borderRadius: RAIO.controle,
+    paddingVertical: 13,
+    marginBottom: 24,
   },
-  dicaTextos: { flex: 1 },
-  dicaTitulo: { fontSize: 12.5, fontWeight: "700", color: "#1D4ED8" },
-  dicaDescricao: { fontSize: 11, color: "#3B5A8A", marginTop: 2, lineHeight: 15 },
+  botaoSecundarioTexto: { fontFamily: FONTE.semi, color: COR.tintaForte, fontSize: 13.5, fontWeight: "600" },
+
+  secaoTituloMobile: {
+    fontFamily: FONTE.semi,
+    fontSize: 14,
+    fontWeight: "600",
+    color: COR.tintaForte,
+    marginBottom: 2,
+  },
+  listaMobile: { width: "100%" },
+  itemMobile: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    paddingVertical: 15,
+    paddingHorizontal: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: COR.linhaSuave,
+  },
+  linhaUltima: { borderBottomWidth: 0 },
+  itemIcone: { width: 20, textAlign: "center" },
+  itemTexto: { fontFamily: FONTE.media, flex: 1, fontSize: 14, fontWeight: "500", color: COR.tintaForte },
+  itemNumero: { fontFamily: FONTE.semi, fontSize: 14, fontWeight: "600", color: COR.tintaForte },
+
+  selo: { backgroundColor: COR.avisoFundo, borderRadius: RAIO.etiqueta, paddingHorizontal: 8, paddingVertical: 2 },
+  seloTexto: { fontFamily: FONTE.media, fontSize: 11, fontWeight: "500", color: COR.avisoTexto },
 });

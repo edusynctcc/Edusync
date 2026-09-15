@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Image,
   Platform,
@@ -34,10 +35,10 @@ const INICIAIS_PROFESSOR = "AS";
 //   }, []);
 // ---------------------------------------------------------------------------
 const RESUMO_CONTA = [
-  { valor: "12", rotulo: "Turmas", icone: "people-outline", corFundo: "#E8F0FE", corIcone: "#3B82F6" },
-  { valor: "48", rotulo: "Atividades", icone: "document-text-outline", corFundo: "#E7F8EF", corIcone: "#22C55E" },
-  { valor: "256", rotulo: "Alunos", icone: "school-outline", corFundo: "#F1E9FB", corIcone: "#8B5CF6" },
-  { valor: "87%", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: "#FEF0E4", corIcone: "#F5A623" },
+  { valor: "12", rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { valor: "48", rotulo: "Atividades", icone: "document-text-outline", corFundo: COR.okFundo, corIcone: COR.ok },
+  { valor: "256", rotulo: "Alunos", icone: "school-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { valor: "87%", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
 ];
 
 const CONTA_SEGURANCA = [
@@ -95,13 +96,13 @@ function ItemLista({ item, ultimo }) {
       activeOpacity={0.7}
     >
       <View style={styles.itemIconeCirculo}>
-        <Ionicons name={item.icone} size={17} color="#5C7096" />
+        <Ionicons name={item.icone} size={17} color={COR.tintaMedia} />
       </View>
       <View style={styles.itemTextos}>
         <Text style={styles.itemTitulo}>{item.titulo}</Text>
         <Text style={styles.itemDescricao}>{item.descricao}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color="#CBD5E1" />
+      <Ionicons name="chevron-forward" size={17} color={COR.chevron} />
     </TouchableOpacity>
   );
 }
@@ -124,7 +125,7 @@ export default function Perfil() {
   }
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+    <View style={[styles.tela]}>
       {!ehDesktop && <CabecalhoMobile comSino linkPerfil={false} />}
 
       <ScrollView
@@ -141,18 +142,17 @@ export default function Perfil() {
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
-                <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+                <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Perfil</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Card do professor */}
           <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
             <View style={styles.avatarGrande}>
               <Text style={styles.avatarGrandeTexto}>{INICIAIS_PROFESSOR}</Text>
               <View style={styles.avatarSelo}>
-                <MaterialCommunityIcons name="camera" size={12} color="#FFFFFF" />
+                <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
               </View>
             </View>
 
@@ -161,27 +161,26 @@ export default function Perfil() {
               <Text style={styles.perfilCargo}>Professor(a)</Text>
 
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="mail-outline" size={13} color="#94A3B8" />
+                <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
                 <Text style={styles.perfilContatoTexto}>ana.silva@escola.edu.br</Text>
               </View>
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="call-outline" size={13} color="#94A3B8" />
+                <Ionicons name="call-outline" size={13} color={COR.tintaFraca} />
                 <Text style={styles.perfilContatoTexto}>(11) 98765-4321</Text>
               </View>
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="location-outline" size={13} color="#94A3B8" />
+                <Ionicons name="location-outline" size={13} color={COR.tintaFraca} />
                 <Text style={styles.perfilContatoTexto}>Santarém do Parnaíba, SP</Text>
               </View>
             </View>
 
-            <Ionicons name="chevron-forward" size={18} color="#CBD5E1" style={styles.perfilSeta} />
+            <Ionicons name="chevron-forward" size={18} color={COR.chevron} style={styles.perfilSeta} />
 
             <TouchableOpacity style={styles.mascoteFlutuante} activeOpacity={0.85}>
-              <Ionicons name="help" size={16} color="#FFFFFF" />
+              <Ionicons name="help" size={16} color={COR.branco} />
             </TouchableOpacity>
           </View>
 
-          {/* Resumo da conta */}
           <Text style={styles.secaoTitulo}>Resumo da conta</Text>
           <View
             style={[
@@ -200,7 +199,6 @@ export default function Perfil() {
             ))}
           </View>
 
-          {/* Conta e segurança */}
           <Text style={styles.secaoTitulo}>Conta e segurança</Text>
           <View style={styles.listaCard}>
             {CONTA_SEGURANCA.map((item, indice) => (
@@ -212,7 +210,6 @@ export default function Perfil() {
             ))}
           </View>
 
-          {/* Preferências */}
           <Text style={styles.secaoTitulo}>Preferências</Text>
           <View style={styles.listaCard}>
             {PREFERENCIAS.map((item, indice) => (
@@ -234,11 +231,10 @@ export default function Perfil() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
+  tela: { flex: 1, backgroundColor: COR.fundo },
 
-  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
+  usuarioNome: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.branco },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -254,29 +250,28 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontSize: 20, fontWeight: "700", color: "#0B1E3D" },
+  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
   toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
   avatarPequenoClaro: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#0B1E3D",
+    backgroundColor: COR.marinho,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
+  avatarPequenoClaroTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11, fontWeight: "700" },
+  usuarioNomeClaro: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.tintaForte },
 
-  // ----- card do professor -----
   perfilCard: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 16,
     marginBottom: 20,
     position: "relative",
@@ -286,13 +281,13 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#0B1E3D",
+    backgroundColor: COR.marinho,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
     position: "relative",
   },
-  avatarGrandeTexto: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
+  avatarGrandeTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 18, fontWeight: "700" },
   avatarSelo: {
     position: "absolute",
     bottom: -2,
@@ -300,17 +295,17 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#3B82F6",
+    backgroundColor: COR.marinho,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
+    borderColor: COR.branco,
     alignItems: "center",
     justifyContent: "center",
   },
   perfilTextos: { flex: 1, minWidth: 0 },
-  perfilNome: { fontSize: 15.5, fontWeight: "700", color: "#0B1E3D" },
-  perfilCargo: { fontSize: 12, color: "#3B82F6", fontWeight: "600", marginBottom: 8 },
+  perfilNome: { fontFamily: FONTE.bold, fontSize: 15.5, fontWeight: "700", color: COR.tintaForte },
+  perfilCargo: { fontFamily: FONTE.semi, fontSize: 12, color: COR.marcador, fontWeight: "600", marginBottom: 8 },
   perfilContatoLinha: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
-  perfilContatoTexto: { fontSize: 11.5, color: "#64748B" },
+  perfilContatoTexto: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaMedia },
   perfilSeta: { flexShrink: 0 },
 
   mascoteFlutuante: {
@@ -320,28 +315,27 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#EF4444",
+    backgroundColor: COR.perigoFundo,
     borderWidth: 2,
-    borderColor: "#3B82F6",
+    borderColor: COR.marcador,
     alignItems: "center",
     justifyContent: "center",
   },
 
   secaoTitulo: {
     width: "100%",
-    fontSize: 14,
+    fontFamily: FONTE.bold, fontSize: 14,
     fontWeight: "700",
-    color: "#0B1E3D",
+    color: COR.tintaForte,
     marginBottom: 10,
   },
 
-  // ----- resumo da conta -----
   resumoCard: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 16,
     marginBottom: 20,
   },
@@ -356,48 +350,47 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  resumoValor: { fontSize: 16, fontWeight: "700", color: "#0B1E3D" },
+  resumoValor: { fontFamily: FONTE.bold, fontSize: 16, fontWeight: "700", color: COR.tintaForte },
   resumoRotulo: {
-    fontSize: 10,
-    color: "#94A3B8",
+    fontFamily: FONTE.regular, fontSize: 10,
+    color: COR.tintaFraca,
     marginTop: 2,
     textAlign: "center",
     paddingHorizontal: 2,
   },
 
-  // ----- listas -----
   listaCard: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     paddingHorizontal: 16,
     marginBottom: 20,
   },
   itemLista: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13 },
-  itemListaBorda: { borderBottomWidth: 1, borderBottomColor: "#F4F6FA" },
+  itemListaBorda: { borderBottomWidth: 1, borderBottomColor: COR.fundo },
   itemIconeCirculo: {
     width: 36,
     height: 36,
     borderRadius: 11,
-    backgroundColor: "#F4F6FA",
+    backgroundColor: COR.fundo,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   itemTextos: { flex: 1, minWidth: 0 },
-  itemTitulo: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
-  itemDescricao: { fontSize: 11, color: "#94A3B8", marginTop: 2 },
+  itemTitulo: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.tintaForte },
+  itemDescricao: { fontFamily: FONTE.regular, fontSize: 11, color: COR.tintaFraca, marginTop: 2 },
 
   botaoSair: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COR.branco,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     paddingVertical: 14,
     alignItems: "center",
   },
-  botaoSairTexto: { fontSize: 13.5, fontWeight: "700", color: "#3B82F6" },
+  botaoSairTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.marcador },
 });

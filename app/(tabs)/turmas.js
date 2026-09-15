@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE } from "../../components/estilo";
 import {
   Modal,
   ScrollView,
@@ -14,24 +15,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-const INICIAIS_PROFESSOR = "AS";
-
 // API — GET /turmas
-// Traz só as turmas do professor logado (o back-end filtra pelo token):
-//
-//   const [turmas, setTurmas] = useState([]);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/turmas", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setTurmas);
-//   }, []);
-//
-// Campo "alunos" (a contagem): o back-end pode mandar junto, ou você busca
-// em GET /turmas/:id/alunos quando abrir a turma.
-// ---------------------------------------------------------------------------
+// Além de nome, série, escola e alunos, a resposta precisa trazer também
+// "atividades" (quantas atividades a turma tem). No back é um COUNT a mais
+// no SELECT, agrupado por turma.
 const TURMAS_INICIAIS = [
   {
     id: "1",
@@ -39,7 +26,8 @@ const TURMAS_INICIAIS = [
     serie: "9º ano - Ensino Fundamental",
     escola: "E.E. Marechal Rondon",
     alunos: 28,
-    cor: "#3B82F6",
+    atividades: 6,
+    cor: "#2E6FB0",
   },
   {
     id: "2",
@@ -47,7 +35,8 @@ const TURMAS_INICIAIS = [
     serie: "1ª série - Ensino Médio",
     escola: "E.E. Marechal Rondon",
     alunos: 32,
-    cor: "#8B5CF6",
+    atividades: 4,
+    cor: "#8B5EA6",
   },
   {
     id: "3",
@@ -55,11 +44,24 @@ const TURMAS_INICIAIS = [
     serie: "7º ano - Ensino Fundamental",
     escola: "Colégio Santa Clara",
     alunos: 25,
-    cor: "#22C55E",
+    atividades: 3,
+    cor: "#DDA015",
   },
 ];
 
-const CORES_TURMA = ["#3B82F6", "#8B5CF6", "#22C55E", "#F5A623", "#DB2777"];
+const CORES_TURMA = ["#2E6FB0", "#8B5EA6", "#DDA015", "#2F7D5C", "#B4443A"];
+
+// "9º Ano A" -> "9A".  Se o nome não tiver número, cai nas iniciais das
+// duas primeiras palavras.
+function iniciais(nome) {
+  const texto = String(nome).trim();
+  const numero = (texto.match(/\d+/) || [""])[0];
+  const letra = (texto.match(/([A-Za-zÀ-ÿ])\s*$/) || ["", ""])[1].toUpperCase();
+  if (numero && letra) return numero + letra;
+
+  const palavras = texto.split(/\s+/).filter(Boolean);
+  return palavras.slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "?";
+}
 
 function turmaVazia() {
   return { id: null, nome: "", serie: "", escola: "" };
@@ -69,7 +71,6 @@ export default function Turmas() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
   const router = useRouter();
-  // Vindo da busca do Home, o nome da turma chega por parâmetro.
   const { turmaBusca } = useLocalSearchParams();
 
   const [turmas, setTurmas] = useState(TURMAS_INICIAIS);
@@ -97,28 +98,6 @@ export default function Turmas() {
     setModalAberto(false);
   }
 
-  // Salva a turma do modal: cria uma nova ou atualiza a existente.
-  //
-  // API — POST /turmas  (criar)  e  PUT /turmas/:id  (editar)
-  //
-  //   const rota = editando
-  //     ? `http://localhost:3000/turmas/${turmaEmEdicao.id}`
-  //     : "http://localhost:3000/turmas";
-  //
-  //   const resposta = await fetch(rota, {
-  //     method: editando ? "PUT" : "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //       Authorization: `Bearer ${token}`,
-  //     },
-  //     body: JSON.stringify({
-  //       nome: turmaEmEdicao.nome,
-  //       escola: turmaEmEdicao.escola,
-  //     }),
-  //   });
-  //
-  //   const turmaSalva = await resposta.json();
-  //   // depois de salvar, recarregue a lista com o GET /turmas
   function salvarTurma() {
     if (!turmaEmEdicao.nome.trim()) return;
 
@@ -131,6 +110,7 @@ export default function Turmas() {
         ...turmaEmEdicao,
         id: String(Date.now()),
         alunos: 0,
+        atividades: 0,
         cor: CORES_TURMA[turmas.length % CORES_TURMA.length],
       };
       setTurmas((atuais) => [nova, ...atuais]);
@@ -138,23 +118,13 @@ export default function Turmas() {
     setModalAberto(false);
   }
 
-  // API — DELETE /turmas/:id
-  //
-  //   await fetch(`http://localhost:3000/turmas/${turmaEmEdicao.id}`, {
-  //     method: "DELETE",
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   });
-  //
-  // Atenção: se a turma já tiver atividades e correções, o back-end vai
-  // recusar a exclusão por causa das chaves estrangeiras. Combine com quem
-  // fizer o back-end o que acontece nesse caso (bloquear ou apagar em cascata).
   function excluirTurma() {
     setTurmas((atuais) => atuais.filter((t) => t.id !== turmaEmEdicao.id));
     setModalAberto(false);
   }
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+    <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
@@ -169,7 +139,7 @@ export default function Turmas() {
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
-                <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+                <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Turmas</Text>
               </TouchableOpacity>
             </View>
@@ -179,24 +149,24 @@ export default function Turmas() {
 
           <View style={styles.buscaLinha}>
             <View style={styles.buscaBox}>
-              <Ionicons name="search" size={16} color="#94A3B8" />
+              <Ionicons name="search" size={16} color={COR.tintaFraca} />
               <TextInput
                 value={busca}
                 onChangeText={setBusca}
                 placeholder="Buscar turma ou escola..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={COR.tintaFraca}
                 style={styles.buscaInput}
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
                 </TouchableOpacity>
               )}
             </View>
 
             {ehDesktop && (
               <TouchableOpacity style={styles.botaoNovaTurmaDesktop} onPress={abrirCriar}>
-                <Ionicons name="add" size={18} color="#FFFFFF" />
+                <Ionicons name="add" size={18} color={COR.branco} />
                 <Text style={styles.botaoNovaTurmaDesktopTexto}>Nova turma</Text>
               </TouchableOpacity>
             )}
@@ -206,12 +176,12 @@ export default function Turmas() {
             {turmasFiltradas.map((turma) => (
               <TouchableOpacity
                 key={turma.id}
-                style={styles.turmaCard}
+                style={[styles.turmaCard, { borderLeftColor: turma.cor }]}
                 activeOpacity={0.85}
                 onPress={() => abrirEditar(turma)}
               >
-                <View style={[styles.turmaIconeCirculo, { backgroundColor: `${turma.cor}22` }]}>
-                  <Ionicons name="people" size={20} color={turma.cor} />
+                <View style={[styles.turmaSigla, { backgroundColor: turma.cor }]}>
+                  <Text style={styles.turmaSiglaTexto}>{iniciais(turma.nome)}</Text>
                 </View>
 
                 <View style={styles.turmaTextos}>
@@ -221,16 +191,20 @@ export default function Turmas() {
                   <Text style={styles.turmaDetalhe} numberOfLines={1}>
                     {turma.serie} · {turma.escola}
                   </Text>
-                  <Text style={styles.turmaAlunos}>{turma.alunos} alunos</Text>
+                  <Text style={styles.turmaMeta} numberOfLines={1}>
+                    <Text style={styles.turmaMetaForte}>{turma.alunos}</Text> alunos ·{" "}
+                    <Text style={styles.turmaMetaForte}>{turma.atividades}</Text>{" "}
+                    {turma.atividades === 1 ? "atividade" : "atividades"}
+                  </Text>
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={18} color={COR.tintaFraca} />
               </TouchableOpacity>
             ))}
 
             {turmasFiltradas.length === 0 && (
               <View style={styles.vazioBox}>
-                <Ionicons name="people-outline" size={28} color="#94A3B8" />
+                <Ionicons name="people-outline" size={28} color={COR.tintaFraca} />
                 <Text style={styles.vazioTexto}>Nenhuma turma encontrada.</Text>
               </View>
             )}
@@ -242,16 +216,15 @@ export default function Turmas() {
         <BotaoFlutuante onPress={abrirCriar} style={{ bottom: 74, right: 14 }} />
       )}
 
-      {/* Modal: card único de criar/editar turma, por cima da tela */}
-      <Modal visible={modalAberto} transparent animationType="fade" onRequestClose={fecharModal}>
-        <View style={styles.modalFundo}>
-          <View style={styles.modalCard}>
+      <Modal visible={modalAberto} transparent animationType="slide" onRequestClose={fecharModal}>
+        <View style={[styles.modalFundo, !ehDesktop && styles.modalFundoMobile]}>
+          <View style={[styles.modalCard, !ehDesktop && styles.modalCardMobile]}>
             <View style={styles.modalCabecalho}>
               <Text style={styles.modalTitulo}>
                 {editando ? "Editar turma" : "Criar turma"}
               </Text>
               <TouchableOpacity onPress={fecharModal}>
-                <Ionicons name="close" size={22} color="#64748B" />
+                <Ionicons name="close" size={22} color={COR.tintaMedia} />
               </TouchableOpacity>
             </View>
 
@@ -262,7 +235,7 @@ export default function Turmas() {
               value={turmaEmEdicao.nome}
               onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, nome: v }))}
               placeholder="Ex: 9º Ano A"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
             />
 
@@ -271,7 +244,7 @@ export default function Turmas() {
               value={turmaEmEdicao.serie}
               onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, serie: v }))}
               placeholder="Ex: 9º ano - Ensino Fundamental"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
             />
 
@@ -280,24 +253,14 @@ export default function Turmas() {
               value={turmaEmEdicao.escola}
               onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, escola: v }))}
               placeholder="Ex: E.E. Marechal Rondon"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
             />
-
-            {!editando && (
-              <View style={styles.modalAvisoBox}>
-                <Ionicons name="information-circle" size={16} color="#3B82F6" />
-                <Text style={styles.modalAvisoTexto}>
-                  Não precisa cadastrar os alunos aqui: a IA reconhece o nome de cada aluno ao
-                  corrigir uma atividade e adiciona ele à turma automaticamente.
-                </Text>
-              </View>
-            )}
 
             <View style={styles.modalAcoes}>
               {editando && (
                 <TouchableOpacity style={styles.botaoExcluir} onPress={excluirTurma}>
-                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                  <Ionicons name="trash-outline" size={16} color={COR.perigo} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.botaoCancelar} onPress={fecharModal}>
@@ -317,9 +280,7 @@ export default function Turmas() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
-
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
+  tela: { flex: 1, backgroundColor: COR.fundo },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -335,19 +296,15 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontSize: 20, fontWeight: "700", color: "#0B1E3D" },
-  tituloPagina: { fontSize: 18, fontWeight: "700", color: "#0B1E3D", marginBottom: 14, width: "100%" },
-  toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
+  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
+  tituloPagina: {
+    fontFamily: FONTE.bold,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    marginBottom: 14,
+    width: "100%",
   },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
 
   buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 16 },
   buscaBox: {
@@ -355,54 +312,59 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E7EBF3",
+    borderColor: COR.linha,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { flex: 1, fontSize: 13, color: "#0B1E3D", padding: 0 },
+  buscaInput: { fontFamily: FONTE.regular, flex: 1, fontSize: 13, color: COR.tintaForte, padding: 0 },
 
   botaoNovaTurmaDesktop: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#3B82F6",
+    backgroundColor: COR.marinho,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  botaoNovaTurmaDesktopTexto: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  botaoNovaTurmaDesktopTexto: { fontFamily: FONTE.bold, color: COR.branco, fontSize: 13, fontWeight: "700" },
 
   lista: { width: "100%", gap: 10 },
   turmaCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    gap: 13,
+    backgroundColor: COR.branco,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
-    padding: 14,
+    borderColor: COR.linhaSuave,
+    // A cor da turma marca a borda esquerda inteira, em vez de virar um
+    // fundo pastel atrás de um ícone que era igual em todas as linhas.
+    borderLeftWidth: 3,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  turmaIconeCirculo: {
+  turmaSigla: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
+  turmaSiglaTexto: { fontFamily: FONTE.bold, fontSize: 15, fontWeight: "700", color: COR.branco },
   turmaTextos: { flex: 1, minWidth: 0 },
-  turmaNome: { fontSize: 14, fontWeight: "700", color: "#0B1E3D" },
-  turmaDetalhe: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
-  turmaAlunos: { fontSize: 11, color: "#3B82F6", fontWeight: "600", marginTop: 4 },
+  turmaNome: { fontFamily: FONTE.bold, fontSize: 14, fontWeight: "700", color: COR.tintaForte },
+  turmaDetalhe: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
+  turmaMeta: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 5 },
+  turmaMetaForte: { fontFamily: FONTE.semi, fontWeight: "600", color: COR.tintaMedia },
 
   vazioBox: { alignItems: "center", gap: 8, paddingVertical: 40 },
-  vazioTexto: { fontSize: 13, color: "#94A3B8" },
+  vazioTexto: { fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaFraca },
 
-  // ----- modal criar/editar turma -----
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.55)",
@@ -410,12 +372,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
+  modalFundoMobile: {
+    justifyContent: "flex-end",
+    padding: 0,
+  },
   modalCard: {
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 18,
     padding: 22,
+  },
+  modalCardMobile: {
+    maxWidth: "100%",
+    borderRadius: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
   },
   modalCabecalho: {
     flexDirection: "row",
@@ -423,33 +396,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 6,
   },
-  modalTitulo: { fontSize: 17, fontWeight: "700", color: "#0B1E3D" },
+  modalTitulo: { fontFamily: FONTE.bold, fontSize: 17, fontWeight: "700", color: COR.tintaForte },
 
-  rotulo: { fontSize: 12.5, fontWeight: "600", color: "#334155", marginTop: 14, marginBottom: 6 },
-  obrigatorio: { color: "#EF4444" },
+  rotulo: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: COR.tintaMedia,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  obrigatorio: { color: COR.perigo },
   campoTexto: {
+    fontFamily: FONTE.regular,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COR.linha,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13,
-    color: "#0B1E3D",
-    backgroundColor: "#FFFFFF",
+    color: COR.tintaForte,
+    backgroundColor: COR.branco,
   },
-
-  modalAvisoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#DBEAFE",
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 16,
-  },
-  modalAvisoTexto: { flex: 1, fontSize: 11.5, color: "#3B5A8A", lineHeight: 15 },
 
   modalAcoes: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 },
   botaoExcluir: {
@@ -457,7 +425,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#FCA5A5",
+    borderColor: COR.perigo,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -467,15 +435,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COR.linha,
   },
-  botaoCancelarTexto: { fontSize: 13.5, fontWeight: "700", color: "#334155" },
+  botaoCancelarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaMedia },
   botaoSalvar: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: "#3B82F6",
+    backgroundColor: COR.marinho,
   },
-  botaoSalvarTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
+  botaoSalvarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
 });
