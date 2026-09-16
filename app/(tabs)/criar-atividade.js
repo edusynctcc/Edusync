@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import {
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,8 +14,7 @@ import {
   Image,
   useWindowDimensions,
 } from "react-native";
-
-const INICIAIS_PROFESSOR = "AS";
+import { listarTurmas, criarAtividade, atualizarAtividade } from "../../constants/api";
 
 const TIPOS_RESPOSTA = ["Dissertativa", "Objetiva", "Numérica", "Verdadeiro/Falso"];
 
@@ -36,25 +36,70 @@ export default function CriarAtividade() {
   const router = useRouter();
 
   // Vindo de "Editar atividade", os dados chegam por parâmetro.
-  const { modo, tituloInicial, disciplinaInicial } = useLocalSearchParams();
+  const { modo, id, tituloInicial, idTurmaInicial } = useLocalSearchParams();
   const emEdicao = modo === "editar";
 
   const [titulo, setTitulo] = useState(
     typeof tituloInicial === "string" ? tituloInicial : ""
   );
-  const [disciplina, setDisciplina] = useState(
-    typeof disciplinaInicial === "string" ? disciplinaInicial : ""
-  );
+  const [disciplina, setDisciplina] = useState("");
+  const [descricao, setDescricao] = useState("");
   const [questoes, setQuestoes] = useState([novaQuestao()]);
 
-  function atualizarQuestao(id, campo, valor) {
+  const [turmas, setTurmas] = useState([]);
+  const [turmaSelecionada, setTurmaSelecionada] = useState(null);
+  const [modalTurmaAberto, setModalTurmaAberto] = useState(false);
+
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    async function carregarTurmas() {
+      try {
+        const dados = await listarTurmas();
+        setTurmas(dados);
+        if (idTurmaInicial) {
+          const turmaAtual = dados.find((t) => t.id_turma === Number(idTurmaInicial));
+          if (turmaAtual) setTurmaSelecionada(turmaAtual);
+        }
+      } catch (e) {
+        setErro(e.message);
+      }
+    }
+    carregarTurmas();
+  }, []);
+
+  function atualizarQuestao(idQuestao, campo, valor) {
     setQuestoes((atuais) =>
-      atuais.map((q) => (q.id === id ? { ...q, [campo]: valor } : q))
+      atuais.map((q) => (q.id === idQuestao ? { ...q, [campo]: valor } : q))
     );
   }
 
   function adicionarQuestao() {
     setQuestoes((atuais) => [...atuais, novaQuestao()]);
+  }
+
+  async function publicarAtividade() {
+    if (!titulo.trim() || !disciplina.trim() || !turmaSelecionada) {
+      setErro("Preencha título, disciplina e turma antes de continuar.");
+      return;
+    }
+
+    setSalvando(true);
+    setErro("");
+    try {
+      if (emEdicao) {
+        await atualizarAtividade(id, titulo, disciplina, descricao, turmaSelecionada.id_turma);
+      } else {
+        await criarAtividade(titulo, disciplina, descricao, turmaSelecionada.id_turma);
+      }
+      // Questões ainda não são conectadas à API — isso entra no próximo passo.
+      router.replace("/atividades");
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -87,6 +132,8 @@ export default function CriarAtividade() {
             </TouchableOpacity>
           )}
 
+          {erro ? <Text style={{ color: "#EF4444", marginBottom: 12 }}>{erro}</Text> : null}
+
           {/* Informações gerais */}
           <View style={[styles.secaoCard, ehDesktop && styles.secaoCardDesktop]}>
             <View style={styles.secaoCabecalho}>
@@ -116,11 +163,30 @@ export default function CriarAtividade() {
               style={styles.campoTexto}
             />
 
+            <Text style={styles.rotulo}>Descrição</Text>
+            <TextInput
+              value={descricao}
+              onChangeText={setDescricao}
+              placeholder="Detalhes ou observações sobre a atividade..."
+              placeholderTextColor="#94A3B8"
+              style={[styles.campoTexto, styles.campoTextoArea]}
+              multiline
+            />
+
             <Text style={styles.rotulo}>
-              Turmas <Text style={styles.obrigatorio}>*</Text>
+              Turma <Text style={styles.obrigatorio}>*</Text>
             </Text>
-            <TouchableOpacity style={styles.campoSelect}>
-              <Text style={styles.campoSelectPlaceholder}>Selecione as turmas</Text>
+            <TouchableOpacity
+              style={styles.campoSelect}
+              onPress={() => setModalTurmaAberto(true)}
+            >
+              <Text
+                style={
+                  turmaSelecionada ? styles.campoSelectValor : styles.campoSelectPlaceholder
+                }
+              >
+                {turmaSelecionada ? turmaSelecionada.nome : "Selecione a turma"}
+              </Text>
               <Ionicons name="chevron-down" size={16} color="#64748B" />
             </TouchableOpacity>
           </View>
@@ -136,7 +202,7 @@ export default function CriarAtividade() {
             </View>
           </View>
 
-          {/* Questões da atividade */}
+          {/* Questões da atividade — ainda não conectadas à API */}
           <Text style={styles.secaoTituloGrande}>Questões da atividade</Text>
           <Text style={styles.secaoSubtitulo}>
             A IA usará essas informações para corrigir as imagens.
@@ -238,56 +304,7 @@ export default function CriarAtividade() {
             <Text style={styles.botaoAdicionarQuestaoTexto}>Adicionar questão</Text>
           </TouchableOpacity>
 
-          {/* -------------------------------------------------------------
-              API — POST /atividades (criar) ou PUT /atividades/:id (editar),
-                    e depois POST /atividades/:id/questoes
-
-              Os dois botões abaixo ainda não têm onPress. É aqui que entra
-              o salvamento — em duas etapas, porque a atividade precisa
-              existir antes das questões terem um id_atividade pra apontar:
-
-              async function publicarAtividade() {
-                const cabecalho = {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                };
-
-                // 1. cria (ou atualiza) a atividade
-                const resposta = await fetch(
-                  emEdicao
-                    ? `http://localhost:3000/atividades/${id}`
-                    : "http://localhost:3000/atividades",
-                  {
-                    method: emEdicao ? "PUT" : "POST",
-                    headers: cabecalho,
-                    body: JSON.stringify({
-                      nome: titulo,
-                      descricao,
-                      id_turma: turmaSelecionada,
-                    }),
-                  }
-                );
-
-                const atividade = await resposta.json();
-
-                // 2. manda as questões em lote (o gabarito que a IA vai usar)
-                await fetch(
-                  `http://localhost:3000/atividades/${atividade.id_atividade}/questoes`,
-                  {
-                    method: "POST",
-                    headers: cabecalho,
-                    body: JSON.stringify({ questoes }),
-                  }
-                );
-
-                router.replace("/atividades");
-              }
-
-              Depois é só ligar: onPress={publicarAtividade}
-              ------------------------------------------------------------- */}
           <View style={[styles.acoesFinais, ehDesktop && styles.acoesFinaisDesktop]}>
-            {/* "Salvar rascunho" só faz sentido pra atividade nova — uma
-                que já existe não é mais rascunho */}
             {!emEdicao && (
               <TouchableOpacity
                 style={[styles.botaoRascunho, ehDesktop && styles.botaoRascunhoDesktop]}
@@ -299,14 +316,57 @@ export default function CriarAtividade() {
             )}
             <TouchableOpacity
               style={[styles.botaoPublicar, ehDesktop && styles.botaoPublicarDesktop]}
+              onPress={publicarAtividade}
+              disabled={salvando}
             >
               <Text style={styles.botaoPublicarTexto} numberOfLines={1}>
-                {emEdicao ? "Salvar alterações" : "Publicar atividade"}
+                {salvando ? "Salvando..." : emEdicao ? "Salvar alterações" : "Publicar atividade"}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={modalTurmaAberto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalTurmaAberto(false)}
+      >
+        <View style={styles.modalTurmaFundo}>
+          <View style={styles.modalTurmaCard}>
+            <Text style={styles.modalTurmaTitulo}>Selecione a turma</Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              {turmas.map((t) => (
+                <TouchableOpacity
+                  key={t.id_turma}
+                  style={styles.modalTurmaItem}
+                  onPress={() => {
+                    setTurmaSelecionada(t);
+                    setModalTurmaAberto(false);
+                  }}
+                >
+                  <Text style={styles.modalTurmaItemTexto}>{t.nome}</Text>
+                  {t.escola ? (
+                    <Text style={styles.modalTurmaItemEscola}>{t.escola}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+              {turmas.length === 0 && (
+                <Text style={{ color: "#94A3B8", padding: 12 }}>
+                  Nenhuma turma cadastrada ainda.
+                </Text>
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.modalTurmaFechar}
+              onPress={() => setModalTurmaAberto(false)}
+            >
+              <Text style={styles.modalTurmaFecharTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -314,7 +374,6 @@ export default function CriarAtividade() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
-  // Estilos do cabeçalho (no mobile quem desenha é o CabecalhoMobile).
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 
@@ -402,6 +461,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   campoSelectPlaceholder: { fontSize: 13, color: "#94A3B8" },
+  campoSelectValor: { fontSize: 13, color: "#0B1E3D", fontWeight: "600" },
 
   avisoBox: {
     flexDirection: "row",
@@ -510,4 +570,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   botaoPublicarTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
+
+  modalTurmaFundo: {
+    flex: 1,
+    backgroundColor: "rgba(11,30,61,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalTurmaCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 18,
+  },
+  modalTurmaTitulo: { fontSize: 15, fontWeight: "700", color: "#0B1E3D", marginBottom: 10 },
+  modalTurmaItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  modalTurmaItemTexto: { fontSize: 14, fontWeight: "600", color: "#0B1E3D" },
+  modalTurmaItemEscola: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
+  modalTurmaFechar: {
+    alignItems: "center",
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  modalTurmaFecharTexto: { fontSize: 13.5, fontWeight: "700", color: "#64748B" },
 });

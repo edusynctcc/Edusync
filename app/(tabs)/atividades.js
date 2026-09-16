@@ -1,111 +1,50 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import BotaoFlutuante from "../../components/BotaoFlutuante";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Image,
   useWindowDimensions,
+  View
 } from "react-native";
-
-const INICIAIS_PROFESSOR = "AS";
+import BotaoFlutuante from "../../components/BotaoFlutuante";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
+import { excluirAtividade as excluirAtividadeApi, listarAtividades } from "../../constants/api";
 
 const FILTROS = ["Todas", "Em aberto", "Concluídas"];
 
-// Atividades listadas na tela, hoje fixas.
-//
-// ---------------------------------------------------------------------------
-// API — GET /atividades
-// Aceita filtrar por turma: GET /atividades?id_turma=3
-//
-//   const [atividades, setAtividades] = useState([]);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/atividades", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setAtividades);
-//   }, []);
-// ---------------------------------------------------------------------------
-const ATIVIDADES_INICIAIS = [
-  {
-    id: "1",
-    titulo: "Prova de Álgebra",
-    descricao: "Prova sobre equações e funções",
-    data: "18/03/2026",
-    quando: "Hoje",
-    icone: "function-variant",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "2",
-    titulo: "Lista de Exercícios",
-    descricao: "Exercícios de sistemas lineares",
-    data: "14/03/2026",
-    quando: "Há 4 dias",
-    icone: "format-list-bulleted",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "3",
-    titulo: "Trabalho de Geometria",
-    descricao: "Figuras planas e espaciais",
-    data: "10/03/2026",
-    quando: "Há 8 dias",
-    icone: "shape-outline",
-    biblioteca: "mci",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.avisoTexto,
-  },
-  {
-    id: "4",
-    titulo: "Prova Bimestral",
-    descricao: "Conteúdos do 1º bimestre",
-    data: "04/03/2026",
-    quando: "Há 14 dias",
-    icone: "school-outline",
-    biblioteca: "ion",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "5",
-    titulo: "Exercícios de Frações",
-    descricao: "Operações com frações",
-    data: "15/02/2026",
-    quando: "Há um mês",
-    icone: "fraction-one-half",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "6",
-    titulo: "Projeto de Estatística",
-    descricao: "Pesquisa e análise de dados",
-    data: "16/02/2026",
-    quando: "Há um mês",
-    icone: "chart-line",
-    biblioteca: "mci",
-    corFundo: COR.okFundo,
-    corIcone: COR.ok,
-  },
+// Ícones e cores só existem no front — o back não manda isso, então
+// escolhemos ciclicamente com base no índice da atividade na lista.
+const ICONES = [
+  { icone: "function-variant", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { icone: "format-list-bulleted", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { icone: "shape-outline", biblioteca: "mci", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
+  { icone: "school-outline", biblioteca: "ion", corFundo: COR.avisoFundo, corIcone: COR.marcador },
+  { icone: "chart-line", biblioteca: "mci", corFundo: COR.okFundo, corIcone: COR.ok },
 ];
+
+function formatarData(isoString) {
+  if (!isoString) return { data: "", quando: "" };
+  const data = new Date(isoString);
+  const hoje = new Date();
+  const diffMs = hoje.setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0);
+  const diffDias = Math.round(diffMs / 86400000);
+
+  const dataFormatada = data.toLocaleDateString("pt-BR");
+  let quando;
+  if (diffDias <= 0) quando = "Hoje";
+  else if (diffDias === 1) quando = "Ontem";
+  else if (diffDias < 30) quando = `Há ${diffDias} dias`;
+  else quando = "Há mais de um mês";
+
+  return { data: dataFormatada, quando };
+}
 
 export default function Atividades() {
   const { width } = useWindowDimensions();
@@ -116,30 +55,66 @@ export default function Atividades() {
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
   const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
 
-  const [atividades, setAtividades] = useState(ATIVIDADES_INICIAIS);
+  const [atividades, setAtividades] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
+
+    useFocusEffect(
+    useCallback(() => {
+    async function carregar() {
+      setCarregando(true);
+      setErro("");
+      try {
+        const dados = await listarAtividades();
+        const comVisual = dados.map((a, i) => {
+          const visual = ICONES[i % ICONES.length];
+          const { data, quando } = formatarData(a.criado_em);
+          return {
+            ...a,
+            id: a.id_atividade,
+            titulo: a.nome,
+            descricao: a.descricao || "",
+            idTurma: a.id_turma,
+            data,
+            quando,
+            ...visual,
+          };
+        });
+        setAtividades(comVisual);
+      } catch (e) {
+        setErro(e.message);
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+   }, [])
+  );
 
   function irParaEdicao(item) {
     setMenuAtivo(null);
     router.push({
       pathname: "/criar-atividade",
-      params: { modo: "editar", tituloInicial: item.titulo },
+      params: {
+        modo: "editar",
+        id: item.id,
+        tituloInicial: item.titulo,
+        idTurmaInicial: item.idTurma,
+      },
     });
   }
 
-  // API — DELETE /atividades/:id
-  //
-  //   await fetch(`http://localhost:3000/atividades/${atividadeParaExcluir.id}`, {
-  //     method: "DELETE",
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   });
-  //
-  // Só depois que a resposta voltar OK é que vale tirar da lista na tela —
-  // senão o item some aqui mas continua no banco.
-  function confirmarExclusao() {
-    setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
-    setAtividadeParaExcluir(null);
+  async function confirmarExclusao() {
+    try {
+      await excluirAtividadeApi(atividadeParaExcluir.id);
+      setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
+      setAtividadeParaExcluir(null);
+    } catch (e) {
+      setErro(e.message);
+      setAtividadeParaExcluir(null);
+    }
   }
 
   const atividadesFiltradas = atividades.filter((item) =>
@@ -209,6 +184,11 @@ export default function Atividades() {
               );
             })}
           </View>
+
+          {erro ? <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text> : null}
+          {carregando ? (
+            <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>Carregando...</Text>
+          ) : null}
 
           <View style={styles.lista}>
             {atividadesFiltradas.map((item) => (
@@ -291,8 +271,13 @@ export default function Atividades() {
                 )}
               </View>
             ))}
-          </View>
 
+            {!carregando && atividadesFiltradas.length === 0 && (
+              <Text style={{ color: COR.tintaFraca, textAlign: "center", marginTop: 20 }}>
+                Nenhuma atividade encontrada.
+              </Text>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -557,5 +542,4 @@ const styles = StyleSheet.create({
     backgroundColor: COR.perigoFundo,
   },
   modalBotaoExcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
-
 });
