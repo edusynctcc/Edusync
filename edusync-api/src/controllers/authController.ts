@@ -60,14 +60,34 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function me(req: Request, res: Response) {
+  const id_professor = req.professor!.id;
+
   const professor = await prisma.professor.findUnique({
-    where: { id_professor: req.professor!.id },
-    select: { id_professor: true, nome: true, email: true },
+    where: { id_professor },
+    select: {
+      id_professor: true,
+      nome: true,
+      email: true,
+      _count: {
+        select: { turma: true, atividade: true },
+      },
+    },
   });
 
   if (!professor) {
     return res.status(404).json({ erro: 'Professor não encontrado' });
   }
 
-  return res.json(professor);
+  const totalAlunos = await prisma.aluno.count({
+    where: { turma: { id_professor } },
+  });
+
+  return res.json({
+    id_professor: professor.id_professor,
+    nome: professor.nome,
+    email: professor.email,
+    total_turmas: professor._count.turma,
+    total_atividades: professor._count.atividade,
+    total_alunos: totalAlunos,
+  });
 }

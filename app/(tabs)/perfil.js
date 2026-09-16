@@ -1,5 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
@@ -12,34 +15,15 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { buscarPerfil } from "../../constants/api";
 
-const INICIAIS_PROFESSOR = "AS";
-
-// Números do topo da tela (turmas, atividades, alunos, taxa de correção).
-//
-// ---------------------------------------------------------------------------
-// API — GET /auth/me
-// Traz os dados do professor logado. Esses totais são contagens que o
-// back-end calcula (COUNT nas tabelas turma, atividade, aluno e correcao) —
-// combine com quem fizer o back-end pra virem junto nessa mesma resposta,
-// em vez de o app fazer quatro chamadas só pra montar quatro números.
-//
-//   const [professor, setProfessor] = useState(null);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/auth/me", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setProfessor);
-//   }, []);
-// ---------------------------------------------------------------------------
-const RESUMO_CONTA = [
-  { valor: "12", rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { valor: "48", rotulo: "Atividades", icone: "document-text-outline", corFundo: COR.okFundo, corIcone: COR.ok },
-  { valor: "256", rotulo: "Alunos", icone: "school-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { valor: "87%", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
-];
+function iniciaisProfessor(nome) {
+  if (!nome) return "?";
+  const partes = String(nome).trim().split(/\s+/);
+  const primeira = partes[0]?.[0] || "";
+  const segunda = partes[1]?.[0] || "";
+  return (primeira + segunda).toUpperCase();
+}
 
 const CONTA_SEGURANCA = [
   {
@@ -113,16 +97,43 @@ export default function Perfil() {
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
 
-  // Sai da conta e volta pro login.
-  //
-  // API — não precisa de endpoint: com JWT o logout é local, basta apagar o
-  // token guardado no aparelho.
-  //
-  //   await AsyncStorage.removeItem("token");
-  //   router.replace("/login");
-  function sair() {
+  const [professor, setProfessor] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  useFocusEffect(
+    useCallback(() => {
+      async function carregar() {
+        setCarregando(true);
+        setErro("");
+        try {
+          const dados = await buscarPerfil();
+          setProfessor(dados);
+        } catch (e) {
+          setErro(e.message);
+        } finally {
+          setCarregando(false);
+        }
+      }
+      carregar();
+    }, [])
+  );
+
+  async function sair() {
+    await AsyncStorage.removeItem("token");
     router.replace("/login");
   }
+
+  // "Taxa média de correção" ainda é mockada — depende das tabelas
+  // correcao/resposta, que são fase futura do projeto.
+  const resumoConta = professor
+    ? [
+        { valor: String(professor.total_turmas), rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+        { valor: String(professor.total_atividades), rotulo: "Atividades", icone: "document-text-outline", corFundo: COR.okFundo, corIcone: COR.ok },
+        { valor: String(professor.total_alunos), rotulo: "Alunos", icone: "school-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+        { valor: "—", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
+      ]
+    : [];
 
   return (
     <View style={[styles.tela]}>
@@ -148,56 +159,58 @@ export default function Perfil() {
             </View>
           )}
 
-          <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
-            <View style={styles.avatarGrande}>
-              <Text style={styles.avatarGrandeTexto}>{INICIAIS_PROFESSOR}</Text>
-              <View style={styles.avatarSelo}>
-                <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
-              </View>
-            </View>
+          {erro ? <Text style={{ color: "red", marginBottom: 12 }}>{erro}</Text> : null}
+          {carregando ? (
+            <Text style={{ color: COR.tintaFraca, marginBottom: 12 }}>Carregando...</Text>
+          ) : null}
 
-            <View style={styles.perfilTextos}>
-              <Text style={styles.perfilNome}>Ana Silva Nunes</Text>
-              <Text style={styles.perfilCargo}>Professor(a)</Text>
-
-              <View style={styles.perfilContatoLinha}>
-                <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
-                <Text style={styles.perfilContatoTexto}>ana.silva@escola.edu.br</Text>
-              </View>
-              <View style={styles.perfilContatoLinha}>
-                <Ionicons name="call-outline" size={13} color={COR.tintaFraca} />
-                <Text style={styles.perfilContatoTexto}>(11) 98765-4321</Text>
-              </View>
-              <View style={styles.perfilContatoLinha}>
-                <Ionicons name="location-outline" size={13} color={COR.tintaFraca} />
-                <Text style={styles.perfilContatoTexto}>Santarém do Parnaíba, SP</Text>
-              </View>
-            </View>
-
-            <Ionicons name="chevron-forward" size={18} color={COR.chevron} style={styles.perfilSeta} />
-
-            <TouchableOpacity style={styles.mascoteFlutuante} activeOpacity={0.85}>
-              <Ionicons name="help" size={16} color={COR.branco} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.secaoTitulo}>Resumo da conta</Text>
-          <View
-            style={[
-              styles.resumoCard,
-              ehDesktop ? styles.resumoCardDesktop : styles.resumoCardMobile,
-            ]}
-          >
-            {RESUMO_CONTA.map((item) => (
-              <View key={item.rotulo} style={styles.resumoItem}>
-                <View style={[styles.resumoIconeCirculo, { backgroundColor: item.corFundo }]}>
-                  <Ionicons name={item.icone} size={17} color={item.corIcone} />
+          {professor && (
+            <>
+              <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
+                <View style={styles.avatarGrande}>
+                  <Text style={styles.avatarGrandeTexto}>{iniciaisProfessor(professor.nome)}</Text>
+                  <View style={styles.avatarSelo}>
+                    <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
+                  </View>
                 </View>
-                <Text style={styles.resumoValor}>{item.valor}</Text>
-                <Text style={styles.resumoRotulo}>{item.rotulo}</Text>
+
+                <View style={styles.perfilTextos}>
+                  <Text style={styles.perfilNome}>{professor.nome}</Text>
+                  <Text style={styles.perfilCargo}>Professor(a)</Text>
+
+                  <View style={styles.perfilContatoLinha}>
+                    <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
+                    <Text style={styles.perfilContatoTexto}>{professor.email}</Text>
+                  </View>
+                  {/* Telefone e endereço ainda não existem no banco — sem campo pra mostrar aqui por enquanto. */}
+                </View>
+
+                <Ionicons name="chevron-forward" size={18} color={COR.chevron} style={styles.perfilSeta} />
+
+                <TouchableOpacity style={styles.mascoteFlutuante} activeOpacity={0.85}>
+                  <Ionicons name="help" size={16} color={COR.branco} />
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>
+
+              <Text style={styles.secaoTitulo}>Resumo da conta</Text>
+              <View
+                style={[
+                  styles.resumoCard,
+                  ehDesktop ? styles.resumoCardDesktop : styles.resumoCardMobile,
+                ]}
+              >
+                {resumoConta.map((item) => (
+                  <View key={item.rotulo} style={styles.resumoItem}>
+                    <View style={[styles.resumoIconeCirculo, { backgroundColor: item.corFundo }]}>
+                      <Ionicons name={item.icone} size={17} color={item.corIcone} />
+                    </View>
+                    <Text style={styles.resumoValor}>{item.valor}</Text>
+                    <Text style={styles.resumoRotulo}>{item.rotulo}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
 
           <Text style={styles.secaoTitulo}>Conta e segurança</Text>
           <View style={styles.listaCard}>
