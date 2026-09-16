@@ -94,10 +94,10 @@ export function listarAtividades() {
   return apiFetch(ENDPOINTS.atividades, { autenticado: true });
 }
 
-export function criarAtividade(nome, descricao, id_turma) {
+export function criarAtividade(nome, disciplina, descricao, id_turma) {
   return apiFetch(ENDPOINTS.atividades, {
     method: "POST",
-    body: { nome, descricao, id_turma },
+    body: { nome, disciplina, descricao, id_turma },
     autenticado: true,
   });
 }
@@ -106,10 +106,10 @@ export function buscarAtividade(id) {
   return apiFetch(`${ENDPOINTS.atividades}/${id}`, { autenticado: true });
 }
 
-export function atualizarAtividade(id, nome, descricao, id_turma) {
+export function atualizarAtividade(id, nome, disciplina, descricao, id_turma) {
   return apiFetch(`${ENDPOINTS.atividades}/${id}`, {
     method: "PUT",
-    body: { nome, descricao, id_turma },
+    body: { nome, disciplina, descricao, id_turma },
     autenticado: true,
   });
 }

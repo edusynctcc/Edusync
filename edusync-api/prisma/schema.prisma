@@ -34,6 +34,7 @@ model atividade {
   id_professor Int?
   id_turma     Int
   nome         String     @db.VarChar(100)
+  disciplina   String?    @db.VarChar(80)
   descricao    String?    @db.Text
   imagem       String?    @db.VarChar(255)
   criado_em    DateTime?  @default(now()) @db.Timestamp(0)

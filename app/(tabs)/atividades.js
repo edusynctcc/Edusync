@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -9,94 +9,41 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
   useWindowDimensions,
+  View
 } from "react-native";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
+import { excluirAtividade as excluirAtividadeApi, listarAtividades } from "../../constants/api";
 
 const FILTROS = ["Todas", "Em aberto", "Concluídas"];
 
-const ATIVIDADES_INICIAIS = [
-  {
-    id: "1",
-    titulo: "Prova de Álgebra",
-    descricao: "Prova sobre equações e funções",
-    data: "18/03/2026",
-    quando: "Hoje",
-    status: "em_aberto",
-    icone: "function-variant",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "2",
-    titulo: "Lista de Exercícios",
-    descricao: "Exercícios de sistemas lineares",
-    data: "14/03/2026",
-    quando: "Há 4 dias",
-    status: "em_aberto",
-    icone: "format-list-bulleted",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "3",
-    titulo: "Trabalho de Geometria",
-    descricao: "Figuras planas e espaciais",
-    data: "10/03/2026",
-    quando: "Há 8 dias",
-    status: "em_aberto",
-    icone: "shape-outline",
-    biblioteca: "mci",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.avisoTexto,
-  },
-  {
-    id: "4",
-    titulo: "Prova Bimestral",
-    descricao: "Conteúdos do 1º bimestre",
-    data: "04/03/2026",
-    quando: "Há 14 dias",
-    status: "concluida",
-    icone: "school-outline",
-    biblioteca: "ion",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "5",
-    titulo: "Exercícios de Frações",
-    descricao: "Operações com frações",
-    data: "15/02/2026",
-    quando: "Há um mês",
-    status: "concluida",
-    icone: "fraction-one-half",
-    biblioteca: "mci",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "6",
-    titulo: "Projeto de Estatística",
-    descricao: "Pesquisa e análise de dados",
-    data: "16/02/2026",
-    quando: "Há um mês",
-    status: "concluida",
-    icone: "chart-line",
-    biblioteca: "mci",
-    corFundo: COR.okFundo,
-    corIcone: COR.ok,
-  },
+// Ícones e cores só existem no front — o back não manda isso, então
+// escolhemos ciclicamente com base no índice da atividade na lista.
+const ICONES = [
+  { icone: "function-variant", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { icone: "format-list-bulleted", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
+  { icone: "shape-outline", biblioteca: "mci", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
+  { icone: "school-outline", biblioteca: "ion", corFundo: COR.avisoFundo, corIcone: COR.marcador },
+  { icone: "chart-line", biblioteca: "mci", corFundo: COR.okFundo, corIcone: COR.ok },
 ];
 
-function combinaComFiltro(atividade, filtro) {
-  if (filtro === "Em aberto") return atividade.status === "em_aberto";
-  if (filtro === "Concluídas") return atividade.status === "concluida";
-  return true;
+function formatarData(isoString) {
+  if (!isoString) return { data: "", quando: "" };
+  const data = new Date(isoString);
+  const hoje = new Date();
+  const diffMs = hoje.setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0);
+  const diffDias = Math.round(diffMs / 86400000);
+
+  const dataFormatada = data.toLocaleDateString("pt-BR");
+  let quando;
+  if (diffDias <= 0) quando = "Hoje";
+  else if (diffDias === 1) quando = "Ontem";
+  else if (diffDias < 30) quando = `Há ${diffDias} dias`;
+  else quando = "Há mais de um mês";
+
+  return { data: dataFormatada, quando };
 }
 
 export default function Atividades() {
@@ -110,23 +57,66 @@ export default function Atividades() {
     atividadeTitulo ? String(atividadeTitulo) : "",
   );
 
-  const [atividades, setAtividades] = useState(ATIVIDADES_INICIAIS);
+  const [atividades, setAtividades] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
+
+    useFocusEffect(
+    useCallback(() => {
+    async function carregar() {
+      setCarregando(true);
+      setErro("");
+      try {
+        const dados = await listarAtividades();
+        const comVisual = dados.map((a, i) => {
+          const visual = ICONES[i % ICONES.length];
+          const { data, quando } = formatarData(a.criado_em);
+          return {
+            ...a,
+            id: a.id_atividade,
+            titulo: a.nome,
+            descricao: a.descricao || "",
+            idTurma: a.id_turma,
+            data,
+            quando,
+            ...visual,
+          };
+        });
+        setAtividades(comVisual);
+      } catch (e) {
+        setErro(e.message);
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+   }, [])
+  );
 
   function irParaEdicao(item) {
     setMenuAtivo(null);
     router.push({
       pathname: "/criar-atividade",
-      params: { modo: "editar", tituloInicial: item.titulo },
+      params: {
+        modo: "editar",
+        id: item.id,
+        tituloInicial: item.titulo,
+        idTurmaInicial: item.idTurma,
+      },
     });
   }
 
-  function confirmarExclusao() {
-    setAtividades((atuais) =>
-      atuais.filter((a) => a.id !== atividadeParaExcluir.id),
-    );
-    setAtividadeParaExcluir(null);
+  async function confirmarExclusao() {
+    try {
+      await excluirAtividadeApi(atividadeParaExcluir.id);
+      setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
+      setAtividadeParaExcluir(null);
+    } catch (e) {
+      setErro(e.message);
+      setAtividadeParaExcluir(null);
+    }
   }
 
   const atividadesFiltradas = atividades.filter(
@@ -208,6 +198,11 @@ export default function Atividades() {
               );
             })}
           </View>
+
+          {erro ? <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text> : null}
+          {carregando ? (
+            <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>Carregando...</Text>
+          ) : null}
 
           <View style={styles.lista}>
             {atividadesFiltradas.map((item) => (
@@ -305,17 +300,10 @@ export default function Atividades() {
               </View>
             ))}
 
-            {atividadesFiltradas.length === 0 && (
-              <View style={styles.vazioBox}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={28}
-                  color={COR.tintaFraca}
-                />
-                <Text style={styles.vazioTexto}>
-                  Nenhuma atividade encontrada.
-                </Text>
-              </View>
+            {!carregando && atividadesFiltradas.length === 0 && (
+              <Text style={{ color: COR.tintaFraca, textAlign: "center", marginTop: 20 }}>
+                Nenhuma atividade encontrada.
+              </Text>
             )}
           </View>
         </View>
@@ -646,10 +634,5 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.controle,
     backgroundColor: COR.perigoFundo,
   },
-  modalBotaoExcluirTexto: {
-    fontFamily: FONTE.bold,
-    fontSize: 13.5,
-    fontWeight: "700",
-    color: COR.branco,
-  },
+  modalBotaoExcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
 });
