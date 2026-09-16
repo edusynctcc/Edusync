@@ -23,34 +23,31 @@ const IMAGEM_FUNDO = null;
 const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
 
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
-const propsFundo = IMAGEM_FUNDO ? { source: IMAGEM_FUNDO, resizeMode: "cover" } : {};
+const propsFundo = IMAGEM_FUNDO
+  ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
+  : {};
 
 const RECURSOS = [
   {
     icone: "camera-outline",
     titulo: "Correção automática por imagem",
-    texto: "Envie atividades e receba correções e sugestões de forma automática com IA.",
+    texto:
+      "Envie atividades e receba correções e sugestões de forma automática com IA.",
   },
   {
     icone: "stats-chart-outline",
     titulo: "Organização inteligente de notas",
-    texto: "Acompanhe o desempenho da turma com relatórios completos e organizados.",
+    texto:
+      "Acompanhe o desempenho da turma com relatórios completos e organizados.",
   },
   {
     icone: "time-outline",
     titulo: "Economia de tempo",
-    texto: "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
+    texto:
+      "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
 
-// Traduz o erro que vem da API numa frase que o professor entende.
-//
-// Olha o status HTTP e também o texto, porque cada back-end responde de um
-// jeito. Se o seu devolver algo diferente, é aqui que se ajusta.
-//
-//   404  ou "não encontrado"        -> conta não existe  -> oferece cadastro
-//   401/403 ou "senha"/"credencial" -> senha errada
-//   falha de rede                   -> servidor fora do ar
 function lerErroDoLogin(e) {
   const status = e?.status ?? e?.response?.status ?? e?.codigo;
   const texto = String(e?.message || "").toLowerCase();
@@ -83,7 +80,11 @@ function lerErroDoLogin(e) {
     texto.includes("unauthorized");
 
   if (senhaErrada) {
-    return { mensagem: "E-mail ou senha incorretos.", convite: "", levaPara: null };
+    return {
+      mensagem: "E-mail ou senha incorretos.",
+      convite: "",
+      levaPara: null,
+    };
   }
 
   const semRede =
@@ -100,7 +101,11 @@ function lerErroDoLogin(e) {
     };
   }
 
-  return { mensagem: e?.message || "Não foi possível entrar. Tente de novo.", convite: "", levaPara: null };
+  return {
+    mensagem: e?.message || "Não foi possível entrar. Tente de novo.",
+    convite: "",
+    levaPara: null,
+  };
 }
 
 export default function Login() {
@@ -108,7 +113,9 @@ export default function Login() {
   const isDesktop = width >= LARGURA_DESKTOP;
   const { email: emailVindoDoCadastro } = useLocalSearchParams();
 
-  const [email, setEmail] = useState(emailVindoDoCadastro ? String(emailVindoDoCadastro) : "");
+  const [email, setEmail] = useState(
+    emailVindoDoCadastro ? String(emailVindoDoCadastro) : "",
+  );
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -117,12 +124,14 @@ export default function Login() {
   async function handleLogin() {
     setErro(null);
 
-    // trim no e-mail: um espaço colado sem querer faz o login falhar sem
-    // motivo aparente, e é dos erros mais chatos de achar.
     const emailLimpo = email.trim().toLowerCase();
 
     if (!emailLimpo || !senha) {
-      setErro({ mensagem: "Preencha e-mail e senha.", convite: "", levaPara: null });
+      setErro({
+        mensagem: "Preencha e-mail e senha.",
+        convite: "",
+        levaPara: null,
+      });
       return;
     }
 
@@ -139,10 +148,17 @@ export default function Login() {
 
   const caixaDeErro = erro ? (
     <View style={styles.avisoErro}>
-      <Ionicons name="alert-circle-outline" size={16} color="#DC2626" style={{ marginTop: 1 }} />
+      <Ionicons
+        name="alert-circle-outline"
+        size={16}
+        color="#DC2626"
+        style={{ marginTop: 1 }}
+      />
       <View style={{ flex: 1 }}>
         <Text style={styles.textoErro}>{erro.mensagem}</Text>
-        {erro.convite ? <Text style={styles.textoErroApoio}>{erro.convite}</Text> : null}
+        {erro.convite ? (
+          <Text style={styles.textoErroApoio}>{erro.convite}</Text>
+        ) : null}
         {erro.levaPara ? (
           <Link href={erro.levaPara} style={styles.erroLink}>
             {erro.textoDoLink}
@@ -154,13 +170,22 @@ export default function Login() {
 
   const conteudoFormulario = (
     <>
-      <Image source={require("../assets/images/logoTexto.png")} style={styles.logo} resizeMode="contain" />
+      <Image
+        source={require("../assets/images/logoTexto.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.titulo}>Bem-vindo de volta</Text>
       <Text style={styles.subtitulo}>Entre com sua conta de professor</Text>
 
       <Text style={styles.rotulo}>E-mail</Text>
       <View style={styles.campoLinha}>
-        <Ionicons name="mail-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
+        <Ionicons
+          name="mail-outline"
+          size={18}
+          color="#8A93A6"
+          style={styles.campoIcone}
+        />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite seu email"
@@ -175,7 +200,12 @@ export default function Login() {
 
       <Text style={styles.rotulo}>Senha</Text>
       <View style={styles.campoLinha}>
-        <Ionicons name="lock-closed-outline" size={18} color="#8A93A6" style={styles.campoIcone} />
+        <Ionicons
+          name="lock-closed-outline"
+          size={18}
+          color="#8A93A6"
+          style={styles.campoIcone}
+        />
         <TextInput
           style={styles.campoTexto}
           placeholder="Digite sua senha"
@@ -185,8 +215,15 @@ export default function Login() {
           secureTextEntry={!mostrarSenha}
           onSubmitEditing={handleLogin}
         />
-        <TouchableOpacity onPress={() => setMostrarSenha((v) => !v)} hitSlop={8}>
-          <Ionicons name={mostrarSenha ? "eye-outline" : "eye-off-outline"} size={18} color="#8A93A6" />
+        <TouchableOpacity
+          onPress={() => setMostrarSenha((v) => !v)}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
+            size={18}
+            color="#8A93A6"
+          />
         </TouchableOpacity>
       </View>
 
@@ -203,8 +240,12 @@ export default function Login() {
         disabled={carregando}
         activeOpacity={0.85}
       >
-        <Text style={styles.textoBotao}>{carregando ? "Entrando..." : "Entrar na Plataforma"}</Text>
-        {!carregando && <Ionicons name="arrow-forward" size={18} color={COR.branco} />}
+        <Text style={styles.textoBotao}>
+          {carregando ? "Entrando..." : "Entrar na Plataforma"}
+        </Text>
+        {!carregando && (
+          <Ionicons name="arrow-forward" size={18} color={COR.branco} />
+        )}
       </TouchableOpacity>
 
       <View style={styles.rodape}>
@@ -231,12 +272,15 @@ export default function Login() {
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
-              <Text style={styles.promoTituloDestaque}>menos tempo para corrigir.</Text>
+              <Text style={styles.promoTituloDestaque}>
+                menos tempo para corrigir.
+              </Text>
             </Text>
 
             <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas notas de forma inteligente, para que
-              você foque no que realmente importa: <Text style={styles.promoLink}>seus alunos</Text>.
+              O Edusync automatiza a correção de atividades e organiza suas
+              notas de forma inteligente, para que você foque no que realmente
+              importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
 
             <View style={styles.promoDivisor} />
@@ -257,7 +301,9 @@ export default function Login() {
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color={COR.branco} />
               </View>
-              <Text style={styles.promoCtaTexto}>Quer saber mais sobre o nosso projeto?</Text>
+              <Text style={styles.promoCtaTexto}>
+                Quer saber mais sobre o nosso projeto?
+              </Text>
               <TouchableOpacity style={styles.promoCtaBotao}>
                 <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
               </TouchableOpacity>
@@ -299,7 +345,12 @@ const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.marinho },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
-  scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  scroll: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
 
   telaDesktop: {
     flex: 1,
@@ -324,7 +375,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     elevation: 12,
   },
-  colunaForm: { flex: 1, padding: 48, alignItems: "center", justifyContent: "center" },
+  colunaForm: {
+    flex: 1,
+    padding: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   divisorVertical: { width: 1, backgroundColor: "#E9ECF2" },
   colunaPromo: { flex: 1.15, padding: 48, justifyContent: "center" },
   promoTitulo: {
@@ -335,7 +391,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginBottom: 12,
   },
-  promoTituloDestaque: { color: "#F5811F" },
+  promoTituloDestaque: { color: COR.destaque },
   promoTexto: {
     fontFamily: FONTE.regular,
     fontSize: 13.5,
@@ -345,7 +401,12 @@ const styles = StyleSheet.create({
   },
   promoLink: { color: "#2F6FED", fontWeight: "600" },
   promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
-  promoItem: { flexDirection: "row", gap: 12, marginBottom: 14, alignItems: "flex-start" },
+  promoItem: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+    alignItems: "flex-start",
+  },
   promoIconeBox: {
     width: 34,
     height: 34,
@@ -362,7 +423,12 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
     marginBottom: 2,
   },
-  promoItemDescricao: { fontFamily: FONTE.regular, fontSize: 12, color: "#7A8393", lineHeight: 17 },
+  promoItemDescricao: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: "#7A8393",
+    lineHeight: 17,
+  },
   promoCta: {
     flexDirection: "row",
     alignItems: "center",
@@ -387,7 +453,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COR.tintaMedia,
   },
-  promoCtaBotao: { backgroundColor: "#2F6FED", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
+  promoCtaBotao: {
+    backgroundColor: "#2F6FED",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
   promoCtaBotaoTexto: {
     color: COR.branco,
     fontFamily: FONTE.bold,
@@ -409,7 +480,13 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   logo: { width: 120, height: 80, marginBottom: 8 },
-  titulo: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte, marginTop: 4 },
+  titulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    marginTop: 4,
+  },
   subtitulo: {
     fontFamily: FONTE.regular,
     fontSize: 13,
@@ -452,8 +529,17 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 6,
   },
-  linkPequeno: { fontFamily: FONTE.regular, fontSize: 12, color: COR.tintaMedia },
-  linkPequenoDestaque: { fontFamily: FONTE.semi, fontSize: 12, color: "#2F6FED", fontWeight: "600" },
+  linkPequeno: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaMedia,
+  },
+  linkPequenoDestaque: {
+    fontFamily: FONTE.semi,
+    fontSize: 12,
+    color: "#2F6FED",
+    fontWeight: "600",
+  },
 
   avisoErro: {
     flexDirection: "row",
@@ -466,8 +552,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignSelf: "stretch",
   },
-  textoErro: { color: "#DC2626", fontFamily: FONTE.semi, fontWeight: "600", fontSize: 12.5 },
-  textoErroApoio: { color: "#B24A45", fontFamily: FONTE.regular, fontSize: 12, marginTop: 2 },
+  textoErro: {
+    color: "#DC2626",
+    fontFamily: FONTE.semi,
+    fontWeight: "600",
+    fontSize: 12.5,
+  },
+  textoErroApoio: {
+    color: "#B24A45",
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    marginTop: 2,
+  },
   erroLink: {
     color: "#2F6FED",
     fontFamily: FONTE.bold,
@@ -493,8 +589,27 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   botaoDesabilitado: { opacity: 0.7 },
-  textoBotao: { color: COR.branco, fontWeight: "700", fontFamily: FONTE.bold, fontSize: 14.5 },
-  rodape: { flexDirection: "row", marginTop: 20, flexWrap: "wrap", justifyContent: "center" },
-  rodapeTexto: { fontFamily: FONTE.regular, fontSize: 12.5, color: COR.tintaMedia },
-  rodapeLink: { fontFamily: FONTE.bold, fontSize: 12.5, color: COR.avisoTexto, fontWeight: "700" },
+  textoBotao: {
+    color: COR.branco,
+    fontWeight: "700",
+    fontFamily: FONTE.bold,
+    fontSize: 14.5,
+  },
+  rodape: {
+    flexDirection: "row",
+    marginTop: 20,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  rodapeTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    color: COR.tintaMedia,
+  },
+  rodapeLink: {
+    fontFamily: FONTE.bold,
+    fontSize: 12.5,
+    color: COR.destaque,
+    fontWeight: "700",
+  },
 });

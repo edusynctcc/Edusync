@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, useRouter, usePathname } from "expo-router";
+import { Tabs, usePathname, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -22,10 +22,22 @@ const SISTEMA: any = Platform.select({
 });
 
 const FONTE: any = {
-  regular: Platform.OS === "web" ? `PublicSans_400Regular, ${SISTEMA}` : "PublicSans_400Regular",
-  media: Platform.OS === "web" ? `PublicSans_500Medium, ${SISTEMA}` : "PublicSans_500Medium",
-  semi: Platform.OS === "web" ? `PublicSans_600SemiBold, ${SISTEMA}` : "PublicSans_600SemiBold",
-  bold: Platform.OS === "web" ? `PublicSans_700Bold, ${SISTEMA}` : "PublicSans_700Bold",
+  regular:
+    Platform.OS === "web"
+      ? `PublicSans_400Regular, ${SISTEMA}`
+      : "PublicSans_400Regular",
+  media:
+    Platform.OS === "web"
+      ? `PublicSans_500Medium, ${SISTEMA}`
+      : "PublicSans_500Medium",
+  semi:
+    Platform.OS === "web"
+      ? `PublicSans_600SemiBold, ${SISTEMA}`
+      : "PublicSans_600SemiBold",
+  bold:
+    Platform.OS === "web"
+      ? `PublicSans_700Bold, ${SISTEMA}`
+      : "PublicSans_700Bold",
 };
 
 const COR: any = {
@@ -45,22 +57,43 @@ const TRANSICAO_WEB: any =
     ? { transitionProperty: "background-color", transitionDuration: "150ms" }
     : null;
 
-const SEM_CONTORNO_WEB: any = Platform.OS === "web" ? { outlineStyle: "none" } : null;
-
+const SEM_CONTORNO_WEB: any =
+  Platform.OS === "web" ? { outlineStyle: "none" } : null;
 
 const ITENS_LATERAL = [
   { rota: "/home", rotulo: "Home", icone: "grid-outline", iconeAtivo: "grid" },
-  { rota: "/turmas", rotulo: "Turmas", icone: "people-outline", iconeAtivo: "people" },
-  { rota: "/atividades", rotulo: "Atividades", icone: "document-text-outline", iconeAtivo: "document-text" },
-  { rota: "/scanner", rotulo: "Scanner", icone: "scan-outline", iconeAtivo: "scan" },
-  { rota: "/correcoes", rotulo: "Correções", icone: "checkmark-done-outline", iconeAtivo: "checkmark-done" },
-  { rota: "/perfil", rotulo: "Perfil", icone: "person-outline", iconeAtivo: "person" },
+  {
+    rota: "/turmas",
+    rotulo: "Turmas",
+    icone: "people-outline",
+    iconeAtivo: "people",
+  },
+  {
+    rota: "/atividades",
+    rotulo: "Atividades",
+    icone: "document-text-outline",
+    iconeAtivo: "document-text",
+  },
+  {
+    rota: "/scanner",
+    rotulo: "Scanner",
+    icone: "scan-outline",
+    iconeAtivo: "scan",
+  },
+  {
+    rota: "/correcoes",
+    rotulo: "Correções",
+    icone: "checkmark-done-outline",
+    iconeAtivo: "checkmark-done",
+  },
+  {
+    rota: "/perfil",
+    rotulo: "Perfil",
+    icone: "person-outline",
+    iconeAtivo: "person",
+  },
 ];
 
-// Índice que a busca percorre.
-//
-// API — GET /turmas + GET /atividades
-// Mesma ideia do Home: troque a constante por estado e busque os dois.
 const INDICE_BUSCA = [
   { tipo: "turma", titulo: "9º Ano A" },
   { tipo: "turma", titulo: "1ª Série B" },
@@ -82,7 +115,7 @@ function LateralDesktop() {
     buscaTexto.trim().length === 0
       ? []
       : INDICE_BUSCA.filter((item) =>
-          item.titulo.toLowerCase().includes(buscaTexto.toLowerCase())
+          item.titulo.toLowerCase().includes(buscaTexto.toLowerCase()),
         );
 
   function abrirResultado(item: any) {
@@ -90,12 +123,14 @@ function LateralDesktop() {
     if (item.tipo === "turma") {
       router.push({ pathname: "/turmas", params: { turmaBusca: item.titulo } });
     } else {
-      router.push({ pathname: "/atividades", params: { atividadeTitulo: item.titulo } });
+      router.push({
+        pathname: "/atividades",
+        params: { atividadeTitulo: item.titulo },
+      });
     }
   }
 
   function sair() {
-    // Com a API no ar, apague o token guardado antes de redirecionar.
     router.replace("/login");
   }
 
@@ -132,7 +167,11 @@ function LateralDesktop() {
                 onPress={() => abrirResultado(item)}
               >
                 <Ionicons
-                  name={item.tipo === "turma" ? "people-outline" : "document-text-outline"}
+                  name={
+                    item.tipo === "turma"
+                      ? "people-outline"
+                      : "document-text-outline"
+                  }
                   size={14}
                   color={COR.tintaMedia}
                 />
@@ -166,7 +205,12 @@ function LateralDesktop() {
                   size={18}
                   color={ativo ? COR.marinho : COR.marinhoClaro}
                 />
-                <Text style={[styles.itemLateralTexto, ativo && styles.itemLateralTextoAtivo]}>
+                <Text
+                  style={[
+                    styles.itemLateralTexto,
+                    ativo && styles.itemLateralTextoAtivo,
+                  ]}
+                >
                   {item.rotulo}
                 </Text>
               </Pressable>
@@ -179,7 +223,11 @@ function LateralDesktop() {
 
       <Pressable
         onPress={sair}
-        style={({ hovered }: any) => [styles.sairLinha, TRANSICAO_WEB, hovered && styles.itemLateralHover]}
+        style={({ hovered }: any) => [
+          styles.sairLinha,
+          TRANSICAO_WEB,
+          hovered && styles.itemLateralHover,
+        ]}
       >
         <Ionicons name="log-out-outline" size={17} color={COR.perigo} />
         <Text style={styles.sairTexto}>Sair</Text>
@@ -192,7 +240,7 @@ function BarraMobile({ state, navigation }: any) {
   const rotaAtual = state.routes[state.index]?.name;
 
   const itensMenu = state.routes.filter(
-    (route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name)
+    (route: any) => !ROTAS_OCULTAS_DA_BARRA.includes(route.name),
   );
 
   const posicaoNaBarra = (nome: string) => {
@@ -201,7 +249,7 @@ function BarraMobile({ state, navigation }: any) {
   };
 
   const itensOrdenados = [...itensMenu].sort(
-    (a: any, b: any) => posicaoNaBarra(a.name) - posicaoNaBarra(b.name)
+    (a: any, b: any) => posicaoNaBarra(a.name) - posicaoNaBarra(b.name),
   );
 
   return (
@@ -218,10 +266,20 @@ function BarraMobile({ state, navigation }: any) {
               activeOpacity={0.85}
               onPress={() => navigation.navigate(route.name)}
             >
-              <View style={[styles.botaoCentral, focado && styles.botaoCentralAtivo]}>
+              <View
+                style={[
+                  styles.botaoCentral,
+                  focado && styles.botaoCentralAtivo,
+                ]}
+              >
                 <Ionicons name={icone} size={24} color={COR.branco} />
               </View>
-              <Text style={[styles.rotuloInferior, focado && styles.rotuloInferiorAtivo]}>
+              <Text
+                style={[
+                  styles.rotuloInferior,
+                  focado && styles.rotuloInferiorAtivo,
+                ]}
+              >
                 {ROTULOS_POR_ROTA[route.name]}
               </Text>
             </TouchableOpacity>
@@ -235,9 +293,16 @@ function BarraMobile({ state, navigation }: any) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate(route.name)}
           >
-            <Ionicons name={icone} size={21} color={focado ? COR.branco : COR.marinhoClaro} />
+            <Ionicons
+              name={icone}
+              size={21}
+              color={focado ? COR.branco : COR.marinhoClaro}
+            />
             <Text
-              style={[styles.rotuloInferior, focado && styles.rotuloInferiorAtivo]}
+              style={[
+                styles.rotuloInferior,
+                focado && styles.rotuloInferiorAtivo,
+              ]}
               numberOfLines={1}
             >
               {ROTULOS_POR_ROTA[route.name]}
@@ -269,9 +334,20 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   turmas: "Turmas",
 };
 
-const ROTAS_OCULTAS_DA_BARRA: string[] = ["criar-atividade", "perfil", "processando", "editar"];
+const ROTAS_OCULTAS_DA_BARRA: string[] = [
+  "criar-atividade",
+  "perfil",
+  "processando",
+  "editar",
+];
 
-const ORDEM_BARRA_MOBILE: string[] = ["home", "turmas", "scanner", "atividades", "correcoes"];
+const ORDEM_BARRA_MOBILE: string[] = [
+  "home",
+  "turmas",
+  "scanner",
+  "atividades",
+  "correcoes",
+];
 const ROTA_ACAO_CENTRAL = "scanner";
 
 export default function TabsLayout() {
@@ -284,7 +360,9 @@ export default function TabsLayout() {
 
       <View style={[styles.area, ehDesktop && styles.areaDesktop]}>
         <Tabs
-          tabBar={(props: any) => (ehDesktop ? null : <BarraMobile {...props} />)}
+          tabBar={(props: any) =>
+            ehDesktop ? null : <BarraMobile {...props} />
+          }
           screenOptions={{ headerShown: false }}
         >
           <Tabs.Screen name="home" />
@@ -327,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     zIndex: 20,
   },
-  logoLateral: { width: 140, height: 36, marginLeft: 6, marginBottom: 18 },
+  logoLateral: { width: 134, height: 36, marginLeft: 6, marginBottom: 18 },
 
   buscaCaixa: {
     position: "relative",
@@ -341,7 +419,13 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     zIndex: 30,
   },
-  buscaInput: { fontFamily: FONTE.media, flex: 1, height: "100%", color: COR.branco, fontSize: 12.5 },
+  buscaInput: {
+    fontFamily: FONTE.media,
+    flex: 1,
+    height: "100%",
+    color: COR.branco,
+    fontSize: 12.5,
+  },
   buscaResultados: {
     position: "absolute",
     top: 42,
@@ -363,7 +447,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 8,
   },
-  buscaResultadoTexto: { fontFamily: FONTE.media, flex: 1, fontSize: 12.5, color: COR.tintaForte, fontWeight: "500" },
+  buscaResultadoTexto: {
+    fontFamily: FONTE.media,
+    flex: 1,
+    fontSize: 12.5,
+    color: COR.tintaForte,
+    fontWeight: "500",
+  },
 
   lateralItens: { gap: 3 },
   itemEnvolucro: { position: "relative", justifyContent: "center" },
@@ -387,7 +477,12 @@ const styles = StyleSheet.create({
   },
   itemLateralHover: { backgroundColor: "rgba(255,255,255,0.07)" },
   itemLateralAtivo: { backgroundColor: COR.branco },
-  itemLateralTexto: { fontFamily: FONTE.media, fontSize: 13, color: COR.marinhoClaro, fontWeight: "500" },
+  itemLateralTexto: {
+    fontFamily: FONTE.media,
+    fontSize: 13,
+    color: COR.marinhoClaro,
+    fontWeight: "500",
+  },
   itemLateralTextoAtivo: { color: COR.marinho, fontWeight: "600" },
 
   sairLinha: {
@@ -400,7 +495,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.09)",
   },
-  sairTexto: { fontFamily: FONTE.semi, fontSize: 12.5, color: COR.perigo, fontWeight: "600" },
+  sairTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    color: COR.perigo,
+    fontWeight: "600",
+  },
 
   barraInferior: {
     flexDirection: "row",
@@ -410,8 +510,18 @@ const styles = StyleSheet.create({
     paddingTop: 9,
     paddingBottom: 12,
   },
-  itemInferior: { flex: 1, alignItems: "center", justifyContent: "flex-end", gap: 4 },
-  rotuloInferior: { fontFamily: FONTE.semi, fontSize: 10, fontWeight: "600", color: COR.marinhoClaro },
+  itemInferior: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  rotuloInferior: {
+    fontFamily: FONTE.semi,
+    fontSize: 10,
+    fontWeight: "600",
+    color: COR.marinhoClaro,
+  },
   rotuloInferiorAtivo: { color: COR.branco },
 
   botaoCentral: {

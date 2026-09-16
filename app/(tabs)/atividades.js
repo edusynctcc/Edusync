@@ -1,12 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import BotaoFlutuante from "../../components/BotaoFlutuante";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,30 +10,14 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Image,
   useWindowDimensions,
 } from "react-native";
-
-const INICIAIS_PROFESSOR = "AS";
+import BotaoFlutuante from "../../components/BotaoFlutuante";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 
 const FILTROS = ["Todas", "Em aberto", "Concluídas"];
 
-// Atividades listadas na tela, hoje fixas.
-//
-// ---------------------------------------------------------------------------
-// API — GET /atividades
-// Aceita filtrar por turma: GET /atividades?id_turma=3
-//
-//   const [atividades, setAtividades] = useState([]);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/atividades", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setAtividades);
-//   }, []);
-// ---------------------------------------------------------------------------
 const ATIVIDADES_INICIAIS = [
   {
     id: "1",
@@ -45,6 +25,7 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Prova sobre equações e funções",
     data: "18/03/2026",
     quando: "Hoje",
+    status: "em_aberto",
     icone: "function-variant",
     biblioteca: "mci",
     corFundo: COR.emAndamentoFundo,
@@ -56,6 +37,7 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Exercícios de sistemas lineares",
     data: "14/03/2026",
     quando: "Há 4 dias",
+    status: "em_aberto",
     icone: "format-list-bulleted",
     biblioteca: "mci",
     corFundo: COR.emAndamentoFundo,
@@ -67,6 +49,7 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Figuras planas e espaciais",
     data: "10/03/2026",
     quando: "Há 8 dias",
+    status: "em_aberto",
     icone: "shape-outline",
     biblioteca: "mci",
     corFundo: COR.avisoFundo,
@@ -78,6 +61,7 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Conteúdos do 1º bimestre",
     data: "04/03/2026",
     quando: "Há 14 dias",
+    status: "concluida",
     icone: "school-outline",
     biblioteca: "ion",
     corFundo: COR.avisoFundo,
@@ -89,6 +73,7 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Operações com frações",
     data: "15/02/2026",
     quando: "Há um mês",
+    status: "concluida",
     icone: "fraction-one-half",
     biblioteca: "mci",
     corFundo: COR.emAndamentoFundo,
@@ -100,12 +85,19 @@ const ATIVIDADES_INICIAIS = [
     descricao: "Pesquisa e análise de dados",
     data: "16/02/2026",
     quando: "Há um mês",
+    status: "concluida",
     icone: "chart-line",
     biblioteca: "mci",
     corFundo: COR.okFundo,
     corIcone: COR.ok,
   },
 ];
+
+function combinaComFiltro(atividade, filtro) {
+  if (filtro === "Em aberto") return atividade.status === "em_aberto";
+  if (filtro === "Concluídas") return atividade.status === "concluida";
+  return true;
+}
 
 export default function Atividades() {
   const { width } = useWindowDimensions();
@@ -114,7 +106,9 @@ export default function Atividades() {
   const router = useRouter();
   const { atividadeTitulo } = useLocalSearchParams();
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
-  const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
+  const [busca, setBusca] = useState(
+    atividadeTitulo ? String(atividadeTitulo) : "",
+  );
 
   const [atividades, setAtividades] = useState(ATIVIDADES_INICIAIS);
   const [menuAtivo, setMenuAtivo] = useState(null);
@@ -128,22 +122,17 @@ export default function Atividades() {
     });
   }
 
-  // API — DELETE /atividades/:id
-  //
-  //   await fetch(`http://localhost:3000/atividades/${atividadeParaExcluir.id}`, {
-  //     method: "DELETE",
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   });
-  //
-  // Só depois que a resposta voltar OK é que vale tirar da lista na tela —
-  // senão o item some aqui mas continua no banco.
   function confirmarExclusao() {
-    setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
+    setAtividades((atuais) =>
+      atuais.filter((a) => a.id !== atividadeParaExcluir.id),
+    );
     setAtividadeParaExcluir(null);
   }
 
-  const atividadesFiltradas = atividades.filter((item) =>
-    item.titulo.toLowerCase().includes(busca.toLowerCase())
+  const atividadesFiltradas = atividades.filter(
+    (item) =>
+      combinaComFiltro(item, filtroAtivo) &&
+      item.titulo.toLowerCase().includes(busca.toLowerCase()),
   );
 
   return (
@@ -159,11 +148,17 @@ export default function Atividades() {
         ]}
       >
         <View
-          style={[ehDesktop ? styles.miolo : { width: "100%" }, ehTelaLarga && { maxWidth: 1300 }]}
+          style={[
+            ehDesktop ? styles.miolo : { width: "100%" },
+            ehTelaLarga && { maxWidth: 1300 },
+          ]}
         >
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.voltarLinha}
+              >
                 <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Atividades</Text>
               </TouchableOpacity>
@@ -182,15 +177,14 @@ export default function Atividades() {
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={COR.tintaFraca}
+                  />
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity style={styles.turmaFiltro}>
-              <Ionicons name="people-outline" size={14} color={COR.marcador} />
-              <Text style={styles.turmaFiltroTexto}>Todas as turmas</Text>
-              <Ionicons name="chevron-down" size={14} color={COR.marcador} />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.filtrosLinha}>
@@ -202,7 +196,12 @@ export default function Atividades() {
                   onPress={() => setFiltroAtivo(filtro)}
                   style={[styles.filtroPill, ativo && styles.filtroPillAtivo]}
                 >
-                  <Text style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}>
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      ativo && styles.filtroTextoAtivo,
+                    ]}
+                  >
                     {filtro}
                   </Text>
                 </TouchableOpacity>
@@ -214,11 +213,17 @@ export default function Atividades() {
             {atividadesFiltradas.map((item) => (
               <View
                 key={item.id}
-                style={[styles.atividadeCard, !ehDesktop && styles.atividadeCardMobile]}
+                style={[
+                  styles.atividadeCard,
+                  !ehDesktop && styles.atividadeCardMobile,
+                ]}
               >
                 <View style={styles.atividadeLinhaTopo}>
                   <View
-                    style={[styles.atividadeIconeCirculo, { backgroundColor: item.corFundo }]}
+                    style={[
+                      styles.atividadeIconeCirculo,
+                      { backgroundColor: item.corFundo },
+                    ]}
                   >
                     {item.biblioteca === "mci" ? (
                       <MaterialCommunityIcons
@@ -227,7 +232,11 @@ export default function Atividades() {
                         color={item.corIcone}
                       />
                     ) : (
-                      <Ionicons name={item.icone} size={20} color={item.corIcone} />
+                      <Ionicons
+                        name={item.icone}
+                        size={20}
+                        color={item.corIcone}
+                      />
                     )}
                   </View>
 
@@ -246,7 +255,11 @@ export default function Atividades() {
                     hitSlop={8}
                     onPress={() => setMenuAtivo(item)}
                   >
-                    <Ionicons name="ellipsis-vertical" size={16} color={COR.tintaFraca} />
+                    <Ionicons
+                      name="ellipsis-vertical"
+                      size={16}
+                      color={COR.tintaFraca}
+                    />
                   </TouchableOpacity>
 
                   {ehDesktop && (
@@ -291,14 +304,28 @@ export default function Atividades() {
                 )}
               </View>
             ))}
-          </View>
 
+            {atividadesFiltradas.length === 0 && (
+              <View style={styles.vazioBox}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={28}
+                  color={COR.tintaFraca}
+                />
+                <Text style={styles.vazioTexto}>
+                  Nenhuma atividade encontrada.
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
 
       <BotaoFlutuante
         onPress={() => router.push("/criar-atividade")}
-        style={ehDesktop ? { bottom: 32, right: 32 } : { bottom: 74, right: 14 }}
+        style={
+          ehDesktop ? { bottom: 32, right: 32 } : { bottom: 74, right: 14 }
+        }
       />
 
       <Modal
@@ -331,7 +358,9 @@ export default function Atividades() {
               }}
             >
               <Ionicons name="trash-outline" size={17} color={COR.perigo} />
-              <Text style={[styles.menuOpcaoTexto, { color: COR.perigo }]}>Excluir atividade</Text>
+              <Text style={[styles.menuOpcaoTexto, { color: COR.perigo }]}>
+                Excluir atividade
+              </Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -350,7 +379,8 @@ export default function Atividades() {
             </View>
             <Text style={styles.modalTitulo}>Excluir esta atividade?</Text>
             <Text style={styles.modalTexto}>
-              "{atividadeParaExcluir?.titulo}" será removida e essa ação não pode ser desfeita.
+              "{atividadeParaExcluir?.titulo}" será removida e essa ação não
+              pode ser desfeita.
             </Text>
             <View style={styles.modalAcoes}>
               <TouchableOpacity
@@ -392,9 +422,19 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
+  tituloPaginaDesktop: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
 
-  buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 14 },
+  buscaLinha: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginBottom: 14,
+  },
   buscaBox: {
     flex: 1,
     flexDirection: "row",
@@ -407,18 +447,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { flex: 1, fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaForte, padding: 0 },
-  turmaFiltro: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: COR.emAndamentoFundo,
-    borderRadius: RAIO.controle,
-    paddingHorizontal: 12,
+  buscaInput: {
+    flex: 1,
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaForte,
+    padding: 0,
   },
-  turmaFiltroTexto: { fontFamily: FONTE.semi, fontSize: 12, fontWeight: "600", color: COR.marcador },
 
-  filtrosLinha: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 16 },
+  filtrosLinha: {
+    flexDirection: "row",
+    gap: 8,
+    width: "100%",
+    marginBottom: 16,
+  },
   filtroPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -426,10 +468,26 @@ const styles = StyleSheet.create({
     backgroundColor: COR.linhaSuave,
   },
   filtroPillAtivo: { backgroundColor: COR.marinho },
-  filtroTexto: { fontFamily: FONTE.semi, fontSize: 12.5, fontWeight: "600", color: COR.tintaMedia },
+  filtroTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: COR.tintaMedia,
+  },
   filtroTextoAtivo: { color: COR.branco },
 
   lista: { width: "100%", gap: 10, marginBottom: 20 },
+  vazioBox: {
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 40,
+    width: "100%",
+  },
+  vazioTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaFraca,
+  },
   atividadeCard: {
     backgroundColor: COR.branco,
     borderRadius: 14,
@@ -454,8 +512,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   atividadeTextos: { flex: 1, minWidth: 0 },
-  atividadeTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaForte },
-  atividadeDescricao: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
+  atividadeTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  atividadeDescricao: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
   atividadeAcao: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
   botaoVer: {
     backgroundColor: COR.marinho,
@@ -463,8 +531,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  botaoVerTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11.5, fontWeight: "700" },
-  atividadeData: { fontFamily: FONTE.regular, fontSize: 10, color: COR.tintaFraca },
+  botaoVerTexto: {
+    color: COR.branco,
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+  atividadeData: {
+    fontFamily: FONTE.regular,
+    fontSize: 10,
+    color: COR.tintaFraca,
+  },
   botaoMenu: {
     width: 28,
     height: 28,
@@ -489,7 +566,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   menuTituloAtividade: {
-    fontFamily: FONTE.bold, fontSize: 11.5,
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
     fontWeight: "700",
     color: COR.tintaFraca,
     paddingHorizontal: 10,
@@ -504,7 +582,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: RAIO.controle,
   },
-  menuOpcaoTexto: { fontFamily: FONTE.semi, fontSize: 14, fontWeight: "600", color: COR.tintaForte },
+  menuOpcaoTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 14,
+    fontWeight: "600",
+    color: COR.tintaForte,
+  },
 
   modalCard: {
     width: "100%",
@@ -524,14 +607,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalTitulo: {
-    fontFamily: FONTE.bold, fontSize: 15.5,
+    fontFamily: FONTE.bold,
+    fontSize: 15.5,
     fontWeight: "700",
     color: COR.tintaForte,
     marginBottom: 6,
     textAlign: "center",
   },
   modalTexto: {
-    fontFamily: FONTE.regular, fontSize: 12.5,
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
     color: COR.tintaMedia,
     textAlign: "center",
     marginBottom: 18,
@@ -547,7 +632,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COR.linha,
   },
-  modalBotaoCancelarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaMedia },
+  modalBotaoCancelarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.tintaMedia,
+  },
   modalBotaoExcluir: {
     flex: 1,
     alignItems: "center",
@@ -556,6 +646,10 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.controle,
     backgroundColor: COR.perigoFundo,
   },
-  modalBotaoExcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
-
+  modalBotaoExcluirTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.branco,
+  },
 });

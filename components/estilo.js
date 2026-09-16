@@ -7,16 +7,30 @@ const SISTEMA = Platform.select({
 });
 
 export const FONTE = {
-  regular: Platform.OS === "web" ? `PublicSans_400Regular, ${SISTEMA}` : "PublicSans_400Regular",
-  media: Platform.OS === "web" ? `PublicSans_500Medium, ${SISTEMA}` : "PublicSans_500Medium",
-  semi: Platform.OS === "web" ? `PublicSans_600SemiBold, ${SISTEMA}` : "PublicSans_600SemiBold",
-  bold: Platform.OS === "web" ? `PublicSans_700Bold, ${SISTEMA}` : "PublicSans_700Bold",
+  regular:
+    Platform.OS === "web"
+      ? `PublicSans_400Regular, ${SISTEMA}`
+      : "PublicSans_400Regular",
+  media:
+    Platform.OS === "web"
+      ? `PublicSans_500Medium, ${SISTEMA}`
+      : "PublicSans_500Medium",
+  semi:
+    Platform.OS === "web"
+      ? `PublicSans_600SemiBold, ${SISTEMA}`
+      : "PublicSans_600SemiBold",
+  bold:
+    Platform.OS === "web"
+      ? `PublicSans_700Bold, ${SISTEMA}`
+      : "PublicSans_700Bold",
 };
 
 export const COR = {
   marinho: "#0B1E3D",
   marinhoFundo: "#081730",
   marinhoClaro: "#9FB3D4",
+  amareloLogo: "#FFD447",
+  destaque: "#F5811F",
 
   tintaForte: "#17242E",
   tintaMedia: "#55646F",
@@ -48,4 +62,5 @@ export const TRANSICAO_WEB =
     ? { transitionProperty: "background-color", transitionDuration: "150ms" }
     : null;
 
-export const SEM_CONTORNO_WEB = Platform.OS === "web" ? { outlineStyle: "none" } : null;
+export const SEM_CONTORNO_WEB =
+  Platform.OS === "web" ? { outlineStyle: "none" } : null;

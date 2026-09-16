@@ -1,10 +1,6 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
-  Image,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,33 +8,40 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 
 const INICIAIS_PROFESSOR = "AS";
 
-// Números do topo da tela (turmas, atividades, alunos, taxa de correção).
-//
-// ---------------------------------------------------------------------------
-// API — GET /auth/me
-// Traz os dados do professor logado. Esses totais são contagens que o
-// back-end calcula (COUNT nas tabelas turma, atividade, aluno e correcao) —
-// combine com quem fizer o back-end pra virem junto nessa mesma resposta,
-// em vez de o app fazer quatro chamadas só pra montar quatro números.
-//
-//   const [professor, setProfessor] = useState(null);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/auth/me", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setProfessor);
-//   }, []);
-// ---------------------------------------------------------------------------
 const RESUMO_CONTA = [
-  { valor: "12", rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { valor: "48", rotulo: "Atividades", icone: "document-text-outline", corFundo: COR.okFundo, corIcone: COR.ok },
-  { valor: "256", rotulo: "Alunos", icone: "school-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { valor: "87%", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
+  {
+    valor: "12",
+    rotulo: "Turmas",
+    icone: "people-outline",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
+  },
+  {
+    valor: "48",
+    rotulo: "Atividades",
+    icone: "document-text-outline",
+    corFundo: COR.okFundo,
+    corIcone: COR.ok,
+  },
+  {
+    valor: "256",
+    rotulo: "Alunos",
+    icone: "school-outline",
+    corFundo: COR.emAndamentoFundo,
+    corIcone: COR.marcador,
+  },
+  {
+    valor: "87%",
+    rotulo: "Taxa média de correção",
+    icone: "checkmark-circle-outline",
+    corFundo: COR.avisoFundo,
+    corIcone: COR.avisoTexto,
+  },
 ];
 
 const CONTA_SEGURANCA = [
@@ -113,20 +116,13 @@ export default function Perfil() {
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
 
-  // Sai da conta e volta pro login.
-  //
-  // API — não precisa de endpoint: com JWT o logout é local, basta apagar o
-  // token guardado no aparelho.
-  //
-  //   await AsyncStorage.removeItem("token");
-  //   router.replace("/login");
   function sair() {
     router.replace("/login");
   }
 
   return (
     <View style={[styles.tela]}>
-      {!ehDesktop && <CabecalhoMobile comSino linkPerfil={false} />}
+      {!ehDesktop && <CabecalhoMobile linkPerfil={false} />}
 
       <ScrollView
         style={styles.conteudo}
@@ -137,23 +133,28 @@ export default function Perfil() {
         ]}
       >
         <View
-          style={[ehDesktop ? styles.miolo : { width: "100%" }, ehTelaLarga && { maxWidth: 900 }]}
+          style={[
+            ehDesktop ? styles.miolo : { width: "100%" },
+            ehTelaLarga && { maxWidth: 900 },
+          ]}
         >
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.voltarLinha}
+              >
                 <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Perfil</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
+          <View
+            style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}
+          >
             <View style={styles.avatarGrande}>
               <Text style={styles.avatarGrandeTexto}>{INICIAIS_PROFESSOR}</Text>
-              <View style={styles.avatarSelo}>
-                <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
-              </View>
             </View>
 
             <View style={styles.perfilTextos}>
@@ -161,24 +162,41 @@ export default function Perfil() {
               <Text style={styles.perfilCargo}>Professor(a)</Text>
 
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
-                <Text style={styles.perfilContatoTexto}>ana.silva@escola.edu.br</Text>
+                <Ionicons
+                  name="mail-outline"
+                  size={13}
+                  color={COR.tintaFraca}
+                />
+                <Text style={styles.perfilContatoTexto}>
+                  ana.silva@escola.edu.br
+                </Text>
               </View>
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="call-outline" size={13} color={COR.tintaFraca} />
+                <Ionicons
+                  name="call-outline"
+                  size={13}
+                  color={COR.tintaFraca}
+                />
                 <Text style={styles.perfilContatoTexto}>(11) 98765-4321</Text>
               </View>
               <View style={styles.perfilContatoLinha}>
-                <Ionicons name="location-outline" size={13} color={COR.tintaFraca} />
-                <Text style={styles.perfilContatoTexto}>Santarém do Parnaíba, SP</Text>
+                <Ionicons
+                  name="location-outline"
+                  size={13}
+                  color={COR.tintaFraca}
+                />
+                <Text style={styles.perfilContatoTexto}>
+                  Santarém do Parnaíba, SP
+                </Text>
               </View>
             </View>
 
-            <Ionicons name="chevron-forward" size={18} color={COR.chevron} style={styles.perfilSeta} />
-
-            <TouchableOpacity style={styles.mascoteFlutuante} activeOpacity={0.85}>
-              <Ionicons name="help" size={16} color={COR.branco} />
-            </TouchableOpacity>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={COR.chevron}
+              style={styles.perfilSeta}
+            />
           </View>
 
           <Text style={styles.secaoTitulo}>Resumo da conta</Text>
@@ -190,7 +208,12 @@ export default function Perfil() {
           >
             {RESUMO_CONTA.map((item) => (
               <View key={item.rotulo} style={styles.resumoItem}>
-                <View style={[styles.resumoIconeCirculo, { backgroundColor: item.corFundo }]}>
+                <View
+                  style={[
+                    styles.resumoIconeCirculo,
+                    { backgroundColor: item.corFundo },
+                  ]}
+                >
                   <Ionicons name={item.icone} size={17} color={item.corIcone} />
                 </View>
                 <Text style={styles.resumoValor}>{item.valor}</Text>
@@ -221,7 +244,11 @@ export default function Perfil() {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.botaoSair} activeOpacity={0.8} onPress={sair}>
+          <TouchableOpacity
+            style={styles.botaoSair}
+            activeOpacity={0.8}
+            onPress={sair}
+          >
             <Text style={styles.botaoSairTexto}>Sair da conta</Text>
           </TouchableOpacity>
         </View>
@@ -232,9 +259,6 @@ export default function Perfil() {
 
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.fundo },
-
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.branco },
 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
@@ -250,18 +274,12 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
-  toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COR.marinho,
-    alignItems: "center",
-    justifyContent: "center",
+  tituloPaginaDesktop: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    fontWeight: "700",
+    color: COR.tintaForte,
   },
-  avatarPequenoClaroTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.tintaForte },
 
   perfilCard: {
     width: "100%",
@@ -274,7 +292,6 @@ const styles = StyleSheet.create({
     borderColor: COR.linhaSuave,
     padding: 16,
     marginBottom: 20,
-    position: "relative",
   },
   perfilCardDesktop: { padding: 22 },
   avatarGrande: {
@@ -285,46 +302,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    position: "relative",
   },
-  avatarGrandeTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 18, fontWeight: "700" },
-  avatarSelo: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: COR.marinho,
-    borderWidth: 2,
-    borderColor: COR.branco,
-    alignItems: "center",
-    justifyContent: "center",
+  avatarGrandeTexto: {
+    color: COR.branco,
+    fontFamily: FONTE.bold,
+    fontSize: 18,
   },
   perfilTextos: { flex: 1, minWidth: 0 },
-  perfilNome: { fontFamily: FONTE.bold, fontSize: 15.5, fontWeight: "700", color: COR.tintaForte },
-  perfilCargo: { fontFamily: FONTE.semi, fontSize: 12, color: COR.marcador, fontWeight: "600", marginBottom: 8 },
-  perfilContatoLinha: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
-  perfilContatoTexto: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaMedia },
-  perfilSeta: { flexShrink: 0 },
-
-  mascoteFlutuante: {
-    position: "absolute",
-    top: -12,
-    right: -8,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COR.perigoFundo,
-    borderWidth: 2,
-    borderColor: COR.marcador,
-    alignItems: "center",
-    justifyContent: "center",
+  perfilNome: {
+    fontFamily: FONTE.bold,
+    fontSize: 15.5,
+    fontWeight: "700",
+    color: COR.tintaForte,
   },
+  perfilCargo: {
+    fontFamily: FONTE.semi,
+    fontSize: 12,
+    color: COR.marcador,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  perfilContatoLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
+  perfilContatoTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaMedia,
+  },
+  perfilSeta: { flexShrink: 0 },
 
   secaoTitulo: {
     width: "100%",
-    fontFamily: FONTE.bold, fontSize: 14,
+    fontFamily: FONTE.bold,
+    fontSize: 14,
     fontWeight: "700",
     color: COR.tintaForte,
     marginBottom: 10,
@@ -350,9 +364,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  resumoValor: { fontFamily: FONTE.bold, fontSize: 16, fontWeight: "700", color: COR.tintaForte },
+  resumoValor: {
+    fontFamily: FONTE.bold,
+    fontSize: 16,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
   resumoRotulo: {
-    fontFamily: FONTE.regular, fontSize: 10,
+    fontFamily: FONTE.regular,
+    fontSize: 10,
     color: COR.tintaFraca,
     marginTop: 2,
     textAlign: "center",
@@ -368,7 +388,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 20,
   },
-  itemLista: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13 },
+  itemLista: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 13,
+  },
   itemListaBorda: { borderBottomWidth: 1, borderBottomColor: COR.fundo },
   itemIconeCirculo: {
     width: 36,
@@ -380,8 +405,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   itemTextos: { flex: 1, minWidth: 0 },
-  itemTitulo: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.tintaForte },
-  itemDescricao: { fontFamily: FONTE.regular, fontSize: 11, color: COR.tintaFraca, marginTop: 2 },
+  itemTitulo: {
+    fontFamily: FONTE.semi,
+    fontSize: 13,
+    fontWeight: "600",
+    color: COR.tintaForte,
+  },
+  itemDescricao: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
 
   botaoSair: {
     width: "100%",
@@ -392,5 +427,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  botaoSairTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.marcador },
+  botaoSairTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.marcador,
+  },
 });

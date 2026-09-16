@@ -1,19 +1,4 @@
-// Conteúdo para colocar em app/welcome.js (arquivo novo, direto dentro de
-// app/, fora de (tabs) — igual login.js e cadastro.js).
-//
-// Tela de boas-vindas: a primeira tela que a pessoa vê ao abrir o app,
-// antes de login/cadastro.
-//
-// No mobile: fundo em degradê + onda + card branco (logo, "Bem-vindo!",
-// botões "Criar Conta"/"Entrar", ícones de login social só visuais).
-//
-// No desktop essa tela nem aparece: a pessoa é redirecionada direto pra
-// /login (o welcome é só uma introdução pensada pra tela de celular).
-//
-// Depois de colar esse arquivo, troque o redirect em app/index.js pra
-// mandar pra "/welcome" em vez de "/login" (essa tela é que deve ser a
-// primeira agora).
-
+import { Ionicons } from "@expo/vector-icons";
 import { Redirect, Stack, useRouter } from "expo-router";
 import {
   Image,
@@ -25,7 +10,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 
 const LARGURA_DESKTOP = 900;
@@ -67,7 +51,11 @@ export default function Welcome() {
 
       <View style={styles.contasSociaisLinha}>
         {CONTAS_SOCIAIS.map((conta) => (
-          <TouchableOpacity key={conta.chave} style={styles.contaSocialCirculo} activeOpacity={0.8}>
+          <TouchableOpacity
+            key={conta.chave}
+            style={styles.contaSocialCirculo}
+            activeOpacity={0.8}
+          >
             <Ionicons name={conta.icone} size={20} color={conta.cor} />
           </TouchableOpacity>
         ))}
@@ -75,12 +63,10 @@ export default function Welcome() {
     </>
   );
 
-  // ---------- no desktop essa tela nem existe: manda direto pro login ----------
   if (isDesktop) {
     return <Redirect href="/login" />;
   }
 
-  // ---------- versão mobile: degradê + onda + card ----------
   return (
     <View style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -95,7 +81,13 @@ export default function Welcome() {
               <Stop offset="1" stopColor="#3B82F6" />
             </LinearGradient>
           </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#fundoDegrade)" />
+          <Rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            fill="url(#fundoDegrade)"
+          />
         </Svg>
 
         <Svg
@@ -133,7 +125,6 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  // ----- mobile -----
   tela: { flex: 1, backgroundColor: "#0B1E3D" },
   areaTopo: { height: "38%", position: "relative" },
   onda: { position: "absolute", bottom: -1, left: 0 },
@@ -166,9 +157,14 @@ const styles = StyleSheet.create({
   },
   logoImagem: { width: 64, height: 64 },
 
-  // ----- compartilhado -----
   logo: { width: 120, height: 80, marginBottom: 8 },
-  titulo: { fontSize: 24, fontWeight: "700", color: "#0B1E3D", marginBottom: 8, textAlign: "center" },
+  titulo: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#0B1E3D",
+    marginBottom: 8,
+    textAlign: "center",
+  },
   subtitulo: {
     fontSize: 13.5,
     color: "#64748B",

@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
 import {
   ScrollView,
   StyleSheet,
@@ -10,10 +9,10 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE } from "../../components/estilo";
 
-const INICIAIS_PROFESSOR = "AS";
-
-const ETAPAS_PROCESSAMENTO = [
+const ETAPAS = [
   "Lendo o documento...",
   "Identificando o aluno...",
   "Comparando com o gabarito...",
@@ -29,59 +28,17 @@ export default function Processando() {
   const atividadeTitulo = params.atividadeTitulo || "Atividade";
   const atividadeTurma = params.atividadeTurma || "";
 
-  const [etapa, setEtapa] = useState("preview"); // "preview" | "processando"
+  const [etapa, setEtapa] = useState("preview");
   const [progresso, setProgresso] = useState(0);
   const intervaloRef = useRef(null);
 
-  const indiceEtapaTexto = Math.min(
-    ETAPAS_PROCESSAMENTO.length - 1,
-    Math.floor((progresso / 100) * ETAPAS_PROCESSAMENTO.length)
+  const indiceEtapa = Math.min(
+    ETAPAS.length - 1,
+    Math.floor((progresso / 100) * ETAPAS.length),
   );
 
-  // Sai do preview e começa o processamento (hoje só uma animação).
-  //
-  // -------------------------------------------------------------------------
-  // API — POST /correcoes  (é a chamada mais importante do app)
-  //
-  // Manda a foto da folha; o back-end roda o OCR, passa o resultado pro
-  // agente de IA e grava a correção com as notas de cada questão.
-  //
-  //   async function confirmarECorrigir() {
-  //     setEtapa("processando");
-  //
-  //     const formulario = new FormData();
-  //     formulario.append("imagem", {
-  //       uri: imagemUri,              // veio do Scanner, via params
-  //       name: "folha.jpg",
-  //       type: "image/jpeg",
-  //     });
-  //     formulario.append("id_atividade", id_atividade);
-  //
-  //     try {
-  //       const resposta = await fetch("http://localhost:3000/correcoes", {
-  //         method: "POST",
-  //         headers: { Authorization: `Bearer ${token}` },
-  //         // repare: NÃO defina Content-Type aqui — o fetch monta sozinho
-  //         // o boundary do multipart, e se você escrever na mão ele quebra
-  //         body: formulario,
-  //       });
-  //
-  //       const correcao = await resposta.json();
-  //       router.replace({ pathname: "/editar", params: { id: correcao.id_correcao } });
-  //     } catch (e) {
-  //       // avisar o professor e deixar tentar de novo
-  //     }
-  //   }
-  //
-  // OCR + IA levam alguns segundos, então a barra de progresso deixa de ser
-  // decorativa: ela passa a esperar essa resposta chegar.
-  // -------------------------------------------------------------------------
   function confirmarECorrigir() {
     setEtapa("processando");
-  }
-
-  function tirarNovamente() {
-    router.back();
   }
 
   useEffect(() => {
@@ -102,14 +59,13 @@ export default function Processando() {
   }, [etapa]);
 
   useEffect(() => {
-    if (progresso === 100) {
-      const tempo = setTimeout(() => router.replace("/editar"), 500);
-      return () => clearTimeout(tempo);
-    }
+    if (progresso !== 100) return;
+    const tempo = setTimeout(() => router.replace("/editar"), 500);
+    return () => clearTimeout(tempo);
   }, [progresso]);
 
   return (
-    <View style={[styles.tela, ehDesktop && { paddingTop: 76 }]}>
+    <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
@@ -123,51 +79,89 @@ export default function Processando() {
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <View style={styles.voltarLinha}>
-                <Ionicons name="scan-outline" size={18} color="#0B1E3D" />
+                <Ionicons
+                  name="scan-outline"
+                  size={18}
+                  color={COR.tintaForte}
+                />
                 <Text style={styles.tituloPaginaDesktop}>Enviar correção</Text>
               </View>
             </View>
           )}
 
           {etapa === "preview" ? (
-            <View style={[styles.cardCentral, ehDesktop && styles.cardCentralDesktop]}>
+            <View
+              style={[
+                styles.cardCentral,
+                ehDesktop && styles.cardCentralDesktop,
+              ]}
+            >
               <View style={styles.previewCaixa}>
-                <Ionicons name="document-text-outline" size={48} color="#3B82F6" />
+                <Ionicons
+                  name="document-text-outline"
+                  size={48}
+                  color={COR.marcador}
+                />
                 <Text style={styles.previewCaixaTexto}>Folha capturada</Text>
               </View>
 
               <Text style={styles.atividadeTitulo}>{atividadeTitulo}</Text>
-              {!!atividadeTurma && <Text style={styles.atividadeTurma}>{atividadeTurma}</Text>}
+              {!!atividadeTurma && (
+                <Text style={styles.atividadeTurma}>{atividadeTurma}</Text>
+              )}
 
               <Text style={styles.previewDica}>
                 Confira se a folha ficou legível antes de enviar pra correção.
               </Text>
 
               <View style={styles.botoesLinha}>
-                <TouchableOpacity style={styles.botaoSecundario} onPress={tirarNovamente}>
-                  <Ionicons name="camera-reverse-outline" size={17} color="#3B82F6" />
-                  <Text style={styles.botaoSecundarioTexto}>Tirar novamente</Text>
+                <TouchableOpacity
+                  style={styles.botaoSecundario}
+                  activeOpacity={0.85}
+                  onPress={() => router.back()}
+                >
+                  <Ionicons
+                    name="camera-reverse-outline"
+                    size={17}
+                    color={COR.marcador}
+                  />
+                  <Text style={styles.botaoSecundarioTexto}>
+                    Tirar novamente
+                  </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.botaoPrimario} onPress={confirmarECorrigir}>
-                  <Text style={styles.botaoPrimarioTexto}>Confirmar e corrigir</Text>
-                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                <TouchableOpacity
+                  style={styles.botaoPrimario}
+                  activeOpacity={0.85}
+                  onPress={confirmarECorrigir}
+                >
+                  <Text style={styles.botaoPrimarioTexto}>
+                    Confirmar e corrigir
+                  </Text>
+                  <Ionicons name="arrow-forward" size={17} color={COR.branco} />
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <View style={[styles.cardCentral, ehDesktop && styles.cardCentralDesktop]}>
+            <View
+              style={[
+                styles.cardCentral,
+                ehDesktop && styles.cardCentralDesktop,
+              ]}
+            >
               <View style={styles.spinnerCirculo}>
-                <Ionicons name="sparkles" size={30} color="#3B82F6" />
+                <Ionicons name="sparkles" size={30} color={COR.marcador} />
               </View>
 
-              <Text style={styles.processandoTitulo}>Analisando atividade com IA</Text>
-              <Text style={styles.processandoEtapa}>
-                {ETAPAS_PROCESSAMENTO[indiceEtapaTexto]}
+              <Text style={styles.processandoTitulo}>
+                Analisando atividade com IA
               </Text>
+              <Text style={styles.processandoEtapa}>{ETAPAS[indiceEtapa]}</Text>
 
               <View style={styles.barraFundo}>
-                <View style={[styles.barraPreenchida, { width: `${progresso}%` }]} />
+                <View
+                  style={[styles.barraPreenchida, { width: `${progresso}%` }]}
+                />
               </View>
               <Text style={styles.progressoTexto}>{progresso}%</Text>
             </View>
@@ -179,13 +173,21 @@ export default function Processando() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
-
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
+  tela: { flex: 1, backgroundColor: COR.fundo },
 
   conteudo: { flex: 1 },
-  conteudoInterno: { padding: 20, paddingBottom: 60, alignItems: "center", justifyContent: "center", flexGrow: 1 },
-  conteudoInternoDesktop: { alignItems: "center", justifyContent: "flex-start", paddingTop: 32 },
+  conteudoInterno: {
+    padding: 20,
+    paddingBottom: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    flexGrow: 1,
+  },
+  conteudoInternoDesktop: {
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 32,
+  },
   miolo: { width: "92%", maxWidth: 560, alignSelf: "center" },
 
   cabecalhoDesktopLinha: {
@@ -197,25 +199,18 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontSize: 20, fontWeight: "700", color: "#0B1E3D" },
-  toolbarDesktop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatarPequenoClaro: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#0B1E3D",
-    alignItems: "center",
-    justifyContent: "center",
+  tituloPaginaDesktop: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    color: COR.tintaForte,
   },
-  avatarPequenoClaroTexto: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  usuarioNomeClaro: { fontSize: 13, fontWeight: "600", color: "#0B1E3D" },
 
   cardCentral: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#EEF1F6",
+    borderColor: COR.linhaSuave,
     padding: 24,
     alignItems: "center",
   },
@@ -225,23 +220,39 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 4 / 3,
     maxHeight: 220,
-    backgroundColor: "#EAF1FE",
+    backgroundColor: COR.emAndamentoFundo,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#BFDBFE",
+    borderColor: COR.linha,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     marginBottom: 18,
   },
-  previewCaixaTexto: { fontSize: 12.5, fontWeight: "600", color: "#3B82F6" },
-
-  atividadeTitulo: { fontSize: 16, fontWeight: "700", color: "#0B1E3D", textAlign: "center" },
-  atividadeTurma: { fontSize: 12.5, color: "#94A3B8", marginTop: 3, textAlign: "center" },
-  previewDica: {
+  previewCaixaTexto: {
+    fontFamily: FONTE.semi,
     fontSize: 12,
-    color: "#64748B",
+    color: COR.marcador,
+  },
+
+  atividadeTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 16,
+    color: COR.tintaForte,
+    textAlign: "center",
+  },
+  atividadeTurma: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaFraca,
+    marginTop: 3,
+    textAlign: "center",
+  },
+  previewDica: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaMedia,
     textAlign: "center",
     marginTop: 14,
     marginBottom: 20,
@@ -256,36 +267,50 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     borderWidth: 1.5,
-    borderColor: "#3B82F6",
+    borderColor: COR.marcador,
     borderRadius: 12,
     paddingVertical: 13,
   },
-  botaoSecundarioTexto: { fontSize: 13, fontWeight: "700", color: "#3B82F6" },
+  botaoSecundarioTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.marcador,
+  },
   botaoPrimario: {
     flex: 1.3,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#3B82F6",
+    backgroundColor: COR.marinho,
     borderRadius: 12,
     paddingVertical: 13,
   },
-  botaoPrimarioTexto: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+  botaoPrimarioTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.branco,
+  },
 
   spinnerCirculo: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#EAF1FE",
+    backgroundColor: COR.emAndamentoFundo,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
   },
-  processandoTitulo: { fontSize: 16, fontWeight: "700", color: "#0B1E3D", textAlign: "center" },
+  processandoTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 16,
+    color: COR.tintaForte,
+    textAlign: "center",
+  },
   processandoEtapa: {
-    fontSize: 12.5,
-    color: "#64748B",
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaMedia,
     marginTop: 6,
     marginBottom: 22,
     textAlign: "center",
@@ -294,9 +319,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#EDF1F7",
+    backgroundColor: COR.linhaSuave,
     overflow: "hidden",
   },
-  barraPreenchida: { height: "100%", backgroundColor: "#3B82F6", borderRadius: 4 },
-  progressoTexto: { fontSize: 11.5, color: "#94A3B8", marginTop: 8, fontWeight: "600" },
+  barraPreenchida: {
+    height: "100%",
+    backgroundColor: COR.marcador,
+    borderRadius: 4,
+  },
+  progressoTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 11,
+    color: COR.tintaFraca,
+    marginTop: 8,
+  },
 });

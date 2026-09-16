@@ -1,8 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   ScrollView,
   StyleSheet,
@@ -12,39 +10,11 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 
 const FILTROS = ["Todas", "Aguardando você", "Em processamento", "Concluídas"];
 
-// status: "processando" | "pendente" | "concluida"
-//
-//   processando -> a IA está corrigindo as folhas agora
-//   pendente    -> a IA terminou e está ESPERANDO A REVISÃO do professor
-//                  (é este que aparece no bloco escuro da Home)
-//   concluida   -> o professor já revisou e fechou a nota
-//
-// Ou seja: "pendente" não quer dizer "sem corrigir" — quer dizer "corrigido
-// pela IA, faltando a palavra final do professor". Por isso toda correção
-// pendente tem corrigidos > 0.
-//
-// ---------------------------------------------------------------------------
-// API — GET /correcoes
-// Aceita o filtro de status que os chips da tela usam:
-//   GET /correcoes?status=pendente | em_andamento | concluida
-//
-//   const [correcoes, setCorrecoes] = useState([]);
-//
-//   useEffect(() => {
-//     fetch("http://localhost:3000/correcoes", {
-//       headers: { Authorization: `Bearer ${token}` },
-//     })
-//       .then((r) => r.json())
-//       .then(setCorrecoes);
-//   }, []);
-//
-// Vale recarregar toda vez que a tela ganhar foco (useFocusEffect do
-// expo-router), senão o professor volta do Editar e a lista continua com o
-// status antigo.
-// ---------------------------------------------------------------------------
 const CORRECOES = [
   {
     id: "1",
@@ -109,9 +79,24 @@ const CORRECOES = [
 ];
 
 const CONFIG_STATUS = {
-  concluida: { rotulo: "Concluída", cor: COR.ok, corFundo: COR.okFundo, icone: "checkmark-circle" },
-  processando: { rotulo: "Processando", cor: COR.marcador, corFundo: COR.emAndamentoFundo, icone: "sync-outline" },
-  pendente: { rotulo: "Aguardando você", cor: COR.avisoTexto, corFundo: COR.avisoFundo, icone: "time-outline" },
+  concluida: {
+    rotulo: "Concluída",
+    cor: COR.ok,
+    corFundo: COR.okFundo,
+    icone: "checkmark-circle",
+  },
+  processando: {
+    rotulo: "Processando",
+    cor: COR.marcador,
+    corFundo: COR.emAndamentoFundo,
+    icone: "sync-outline",
+  },
+  pendente: {
+    rotulo: "Aguardando você",
+    cor: COR.avisoTexto,
+    corFundo: COR.avisoFundo,
+    icone: "time-outline",
+  },
 };
 
 function correcaoCombinaComFiltro(correcao, filtro) {
@@ -129,28 +114,56 @@ export default function Correcoes() {
   const router = useRouter();
   const { atividadeTitulo } = useLocalSearchParams();
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
-  const [busca, setBusca] = useState(atividadeTitulo ? String(atividadeTitulo) : "");
+  const [busca, setBusca] = useState(
+    atividadeTitulo ? String(atividadeTitulo) : "",
+  );
 
-  const totalConcluidas = CORRECOES.filter((c) => c.status === "concluida").length;
-  const totalProcessando = CORRECOES.filter((c) => c.status === "processando").length;
-  const totalPendentes = CORRECOES.filter((c) => c.status === "pendente").length;
+  const totalConcluidas = CORRECOES.filter(
+    (c) => c.status === "concluida",
+  ).length;
+  const totalProcessando = CORRECOES.filter(
+    (c) => c.status === "processando",
+  ).length;
+  const totalPendentes = CORRECOES.filter(
+    (c) => c.status === "pendente",
+  ).length;
 
   const RESUMO = [
-    { valor: String(totalConcluidas), rotulo: "Concluídas", icone: "checkmark-circle", cor: COR.ok },
-    { valor: String(totalProcessando), rotulo: "Em processamento", icone: "sync-outline", cor: COR.marcador },
-    { valor: String(totalPendentes), rotulo: "Aguardando você", icone: "time-outline", cor: COR.avisoTexto },
-    { valor: String(CORRECOES.length), rotulo: "Total enviadas", icone: "layers-outline", cor: COR.marcador },
+    {
+      valor: String(totalConcluidas),
+      rotulo: "Concluídas",
+      icone: "checkmark-circle",
+      cor: COR.ok,
+    },
+    {
+      valor: String(totalProcessando),
+      rotulo: "Em processamento",
+      icone: "sync-outline",
+      cor: COR.marcador,
+    },
+    {
+      valor: String(totalPendentes),
+      rotulo: "Aguardando você",
+      icone: "time-outline",
+      cor: COR.avisoTexto,
+    },
+    {
+      valor: String(CORRECOES.length),
+      rotulo: "Total enviadas",
+      icone: "layers-outline",
+      cor: COR.marcador,
+    },
   ];
 
   const correcoesFiltradas = CORRECOES.filter(
     (c) =>
       correcaoCombinaComFiltro(c, filtroAtivo) &&
-      c.titulo.toLowerCase().includes(busca.toLowerCase())
+      c.titulo.toLowerCase().includes(busca.toLowerCase()),
   );
 
   return (
     <View style={styles.tela}>
-      {!ehDesktop && <CabecalhoMobile comSino />}
+      {!ehDesktop && <CabecalhoMobile />}
 
       <ScrollView
         style={styles.conteudo}
@@ -161,11 +174,17 @@ export default function Correcoes() {
         ]}
       >
         <View
-          style={[ehDesktop ? styles.miolo : { width: "100%" }, ehTelaLarga && { maxWidth: 1300 }]}
+          style={[
+            ehDesktop ? styles.miolo : { width: "100%" },
+            ehTelaLarga && { maxWidth: 1300 },
+          ]}
         >
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.voltarLinha}
+              >
                 <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Correções</Text>
               </TouchableOpacity>
@@ -186,7 +205,11 @@ export default function Correcoes() {
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={COR.tintaFraca}
+                  />
                 </TouchableOpacity>
               )}
             </View>
@@ -197,7 +220,9 @@ export default function Correcoes() {
                 onPress={() => router.push("/scanner")}
               >
                 <Ionicons name="camera-outline" size={17} color={COR.branco} />
-                <Text style={styles.botaoScannerDesktopTexto}>Ir para o Scanner</Text>
+                <Text style={styles.botaoScannerDesktopTexto}>
+                  Ir para o Scanner
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -211,7 +236,12 @@ export default function Correcoes() {
                   onPress={() => setFiltroAtivo(filtro)}
                   style={[styles.filtroPill, ativo && styles.filtroPillAtivo]}
                 >
-                  <Text style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}>
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      ativo && styles.filtroTextoAtivo,
+                    ]}
+                  >
                     {filtro}
                   </Text>
                 </TouchableOpacity>
@@ -226,17 +256,26 @@ export default function Correcoes() {
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.correcaoCard, !ehDesktop && styles.correcaoCardMobile]}
+                  style={[
+                    styles.correcaoCard,
+                    !ehDesktop && styles.correcaoCardMobile,
+                  ]}
                   activeOpacity={0.85}
-                  onPress={() =>
-                    item.status !== "processando" && router.push("/editar")
-                  }
+                  disabled={item.status === "processando"}
+                  onPress={() => router.push("/editar")}
                 >
                   <View style={styles.correcaoLinhaTopo}>
                     <View
-                      style={[styles.correcaoIconeCirculo, { backgroundColor: item.corFundo }]}
+                      style={[
+                        styles.correcaoIconeCirculo,
+                        { backgroundColor: item.corFundo },
+                      ]}
                     >
-                      <MaterialCommunityIcons name={item.icone} size={20} color={item.corIcone} />
+                      <MaterialCommunityIcons
+                        name={item.icone}
+                        size={20}
+                        color={item.corIcone}
+                      />
                     </View>
 
                     <View style={styles.correcaoTextos}>
@@ -248,9 +287,20 @@ export default function Correcoes() {
                       </Text>
                     </View>
 
-                    <View style={[styles.statusBadge, { backgroundColor: status.corFundo }]}>
-                      <Ionicons name={status.icone} size={12} color={status.cor} />
-                      <Text style={[styles.statusBadgeTexto, { color: status.cor }]}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: status.corFundo },
+                      ]}
+                    >
+                      <Ionicons
+                        name={status.icone}
+                        size={12}
+                        color={status.cor}
+                      />
+                      <Text
+                        style={[styles.statusBadgeTexto, { color: status.cor }]}
+                      >
                         {status.rotulo}
                       </Text>
                     </View>
@@ -262,25 +312,28 @@ export default function Correcoes() {
                         item.status === "processando"
                           ? "sync-outline"
                           : item.status === "pendente"
-                          ? "time-outline"
-                          : "checkmark-circle-outline"
+                            ? "time-outline"
+                            : "checkmark-circle-outline"
                       }
                       size={13}
                       color={status.cor}
                     />
-                    <Text style={[styles.correcaoContagemTexto, { color: status.cor }]}>
+                    <Text
+                      style={[
+                        styles.correcaoContagemTexto,
+                        { color: status.cor },
+                      ]}
+                    >
                       {item.status === "processando"
                         ? `${item.corrigidos} corrigidas até agora — a IA continua conforme chegam mais folhas escaneadas`
                         : item.status === "pendente"
-                        ? `${item.corrigidos} corrigidas pela IA — esperando sua revisão`
-                        : `${item.corrigidos} corrigidas e revisadas por você`}
+                          ? `${item.corrigidos} corrigidas pela IA — esperando sua revisão`
+                          : `${item.corrigidos} corrigidas e revisadas por você`}
                     </Text>
                   </View>
 
                   <View style={styles.correcaoRodapeLinha}>
-                    <Text style={styles.correcaoData}>
-                      {item.quando}
-                    </Text>
+                    <Text style={styles.correcaoData}>{item.quando}</Text>
 
                     {item.status === "concluida" && (
                       <TouchableOpacity
@@ -306,21 +359,37 @@ export default function Correcoes() {
 
             {correcoesFiltradas.length === 0 && (
               <View style={styles.vazioBox}>
-                <Ionicons name="document-text-outline" size={28} color={COR.tintaFraca} />
-                <Text style={styles.vazioTexto}>Nenhuma correção encontrada.</Text>
+                <Ionicons
+                  name="document-text-outline"
+                  size={28}
+                  color={COR.tintaFraca}
+                />
+                <Text style={styles.vazioTexto}>
+                  Nenhuma correção encontrada.
+                </Text>
               </View>
             )}
           </View>
 
-          <View style={[styles.resumoBox, ehDesktop && styles.resumoBoxDesktop]}>
-            <Text style={[styles.resumoTitulo, ehDesktop && styles.resumoTituloDesktop]}>
+          <View
+            style={[styles.resumoBox, ehDesktop && styles.resumoBoxDesktop]}
+          >
+            <Text
+              style={[
+                styles.resumoTitulo,
+                ehDesktop && styles.resumoTituloDesktop,
+              ]}
+            >
               Resumo das correções
             </Text>
             <View style={styles.resumoGrade}>
               {RESUMO.map((item) => (
                 <View
                   key={item.rotulo}
-                  style={[styles.resumoItem, ehDesktop && styles.resumoItemDesktop]}
+                  style={[
+                    styles.resumoItem,
+                    ehDesktop && styles.resumoItemDesktop,
+                  ]}
                 >
                   <View
                     style={[
@@ -328,13 +397,27 @@ export default function Correcoes() {
                       ehDesktop && styles.resumoIconeCirculoDesktop,
                     ]}
                   >
-                    <Ionicons name={item.icone} size={ehDesktop ? 20 : 16} color={item.cor} />
+                    <Ionicons
+                      name={item.icone}
+                      size={ehDesktop ? 20 : 16}
+                      color={item.cor}
+                    />
                   </View>
                   <View>
-                    <Text style={[styles.resumoValor, ehDesktop && styles.resumoValorDesktop]}>
+                    <Text
+                      style={[
+                        styles.resumoValor,
+                        ehDesktop && styles.resumoValorDesktop,
+                      ]}
+                    >
                       {item.valor}
                     </Text>
-                    <Text style={[styles.resumoRotulo, ehDesktop && styles.resumoRotuloDesktop]}>
+                    <Text
+                      style={[
+                        styles.resumoRotulo,
+                        ehDesktop && styles.resumoRotuloDesktop,
+                      ]}
+                    >
                       {item.rotulo}
                     </Text>
                   </View>
@@ -365,10 +448,27 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
-  tituloPagina: { fontFamily: FONTE.bold, fontSize: 18, fontWeight: "700", color: COR.tintaForte, marginBottom: 14, width: "100%" },
+  tituloPaginaDesktop: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  tituloPagina: {
+    fontFamily: FONTE.bold,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    marginBottom: 14,
+    width: "100%",
+  },
 
-  buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 14 },
+  buscaLinha: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginBottom: 14,
+  },
   buscaBox: {
     flex: 1,
     flexDirection: "row",
@@ -381,7 +481,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { flex: 1, fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaForte, padding: 0 },
+  buscaInput: {
+    flex: 1,
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaForte,
+    padding: 0,
+  },
 
   botaoScannerDesktop: {
     flexDirection: "row",
@@ -392,9 +498,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  botaoScannerDesktopTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 13, fontWeight: "700" },
+  botaoScannerDesktopTexto: {
+    color: COR.branco,
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
-  filtrosLinha: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 16, flexWrap: "wrap" },
+  filtrosLinha: {
+    flexDirection: "row",
+    gap: 8,
+    width: "100%",
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
   filtroPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -402,7 +519,12 @@ const styles = StyleSheet.create({
     backgroundColor: COR.linhaSuave,
   },
   filtroPillAtivo: { backgroundColor: COR.marinho },
-  filtroTexto: { fontFamily: FONTE.semi, fontSize: 12.5, fontWeight: "600", color: COR.tintaMedia },
+  filtroTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: COR.tintaMedia,
+  },
   filtroTextoAtivo: { color: COR.branco },
 
   lista: { width: "100%", gap: 10, marginBottom: 20 },
@@ -424,8 +546,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   correcaoTextos: { flex: 1, minWidth: 0 },
-  correcaoTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaForte },
-  correcaoTurma: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
+  correcaoTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  correcaoTurma: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
 
   statusBadge: {
     flexDirection: "row",
@@ -436,7 +568,11 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.controle,
     flexShrink: 0,
   },
-  statusBadgeTexto: { fontFamily: FONTE.bold, fontSize: 10.5, fontWeight: "700" },
+  statusBadgeTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
 
   correcaoContagemLinha: {
     flexDirection: "row",
@@ -444,7 +580,12 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 6,
   },
-  correcaoContagemTexto: { flex: 1, fontFamily: FONTE.semi, fontSize: 10.5, fontWeight: "600" },
+  correcaoContagemTexto: {
+    flex: 1,
+    fontFamily: FONTE.semi,
+    fontSize: 10.5,
+    fontWeight: "600",
+  },
 
   correcaoRodapeLinha: {
     flexDirection: "row",
@@ -452,17 +593,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  correcaoData: { fontFamily: FONTE.regular, fontSize: 10, color: COR.tintaFraca },
+  correcaoData: {
+    fontFamily: FONTE.regular,
+    fontSize: 10,
+    color: COR.tintaFraca,
+  },
   botaoVer: {
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  botaoVerTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 11.5, fontWeight: "700" },
+  botaoVerTexto: {
+    color: COR.branco,
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
 
-  vazioBox: { alignItems: "center", gap: 8, paddingVertical: 40, width: "100%" },
-  vazioTexto: { fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaFraca },
+  vazioBox: {
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 40,
+    width: "100%",
+  },
+  vazioTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaFraca,
+  },
 
   resumoBox: {
     width: "100%",
@@ -474,15 +633,26 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resumoBoxDesktop: { padding: 28 },
-  resumoTitulo: { fontFamily: FONTE.bold, fontSize: 14, fontWeight: "700", color: COR.tintaForte, marginBottom: 14 },
-  resumoTituloDesktop: { fontFamily: FONTE.regular, fontSize: 17, marginBottom: 22 },
+  resumoTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    marginBottom: 14,
+  },
+  resumoTituloDesktop: { fontSize: 17, marginBottom: 22 },
   resumoGrade: {
     flexDirection: "row",
     flexWrap: "wrap",
     rowGap: 16,
     columnGap: 12,
   },
-  resumoItem: { flexDirection: "row", alignItems: "center", gap: 8, width: "46%" },
+  resumoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "46%",
+  },
   resumoItemDesktop: { width: "23%", gap: 12 },
   resumoIconeCirculo: { alignItems: "center", justifyContent: "center" },
   resumoIconeCirculoDesktop: {
@@ -491,8 +661,17 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: COR.fundo,
   },
-  resumoValor: { fontFamily: FONTE.bold, fontSize: 15, fontWeight: "700", color: COR.tintaForte },
-  resumoValorDesktop: { fontFamily: FONTE.regular, fontSize: 22 },
-  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 10.5, color: COR.tintaFraca },
-  resumoRotuloDesktop: { fontFamily: FONTE.regular, fontSize: 12.5, marginTop: 2 },
+  resumoValor: {
+    fontFamily: FONTE.bold,
+    fontSize: 15,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  resumoValorDesktop: { fontSize: 22 },
+  resumoRotulo: {
+    fontFamily: FONTE.regular,
+    fontSize: 10.5,
+    color: COR.tintaFraca,
+  },
+  resumoRotuloDesktop: { fontSize: 12.5, marginTop: 2 },
 });

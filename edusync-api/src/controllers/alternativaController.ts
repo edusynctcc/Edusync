@@ -1,14 +1,21 @@
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
+import { Request, Response } from "express";
 
 const prisma = new PrismaClient();
 
-async function questaoPertenceAoProfessor(id_questao: number, id_professor: number) {
+async function questaoPertenceAoProfessor(
+  id_questao: number,
+  id_professor: number,
+) {
   const questao = await prisma.questao.findUnique({
     where: { id_questao },
     include: { atividade: true },
   });
-  return !!questao && !!questao.atividade && questao.atividade.id_professor === id_professor;
+  return (
+    !!questao &&
+    !!questao.atividade &&
+    questao.atividade.id_professor === id_professor
+  );
 }
 
 export async function criarAlternativa(req: Request, res: Response) {
@@ -16,12 +23,17 @@ export async function criarAlternativa(req: Request, res: Response) {
   const id_professor = req.professor!.id;
 
   if (!letra || !texto || !id_questao) {
-    return res.status(400).json({ erro: 'Letra, texto e id_questao são obrigatórios' });
+    return res
+      .status(400)
+      .json({ erro: "Letra, texto e id_questao são obrigatórios" });
   }
 
-  const podeAcessar = await questaoPertenceAoProfessor(id_questao, id_professor);
+  const podeAcessar = await questaoPertenceAoProfessor(
+    id_questao,
+    id_professor,
+  );
   if (!podeAcessar) {
-    return res.status(404).json({ erro: 'Questão não encontrada' });
+    return res.status(404).json({ erro: "Questão não encontrada" });
   }
 
   const alternativa = await prisma.alternativa.create({
@@ -31,23 +43,27 @@ export async function criarAlternativa(req: Request, res: Response) {
   return res.status(201).json(alternativa);
 }
 
-// Lista as alternativas de uma questão específica (via query ?id_questao=)
 export async function listarAlternativas(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_questao = Number(req.query.id_questao);
 
   if (!id_questao) {
-    return res.status(400).json({ erro: 'Informe o id_questao na query (?id_questao=)' });
+    return res
+      .status(400)
+      .json({ erro: "Informe o id_questao na query (?id_questao=)" });
   }
 
-  const podeAcessar = await questaoPertenceAoProfessor(id_questao, id_professor);
+  const podeAcessar = await questaoPertenceAoProfessor(
+    id_questao,
+    id_professor,
+  );
   if (!podeAcessar) {
-    return res.status(404).json({ erro: 'Questão não encontrada' });
+    return res.status(404).json({ erro: "Questão não encontrada" });
   }
 
   const alternativas = await prisma.alternativa.findMany({
     where: { id_questao },
-    orderBy: { letra: 'asc' },
+    orderBy: { letra: "asc" },
   });
 
   return res.json(alternativas);
@@ -68,7 +84,7 @@ export async function buscarAlternativa(req: Request, res: Response) {
     !alternativa.questao.atividade ||
     alternativa.questao.atividade.id_professor !== id_professor
   ) {
-    return res.status(404).json({ erro: 'Alternativa não encontrada' });
+    return res.status(404).json({ erro: "Alternativa não encontrada" });
   }
 
   return res.json(alternativa);
@@ -90,7 +106,7 @@ export async function atualizarAlternativa(req: Request, res: Response) {
     !alternativaExiste.questao.atividade ||
     alternativaExiste.questao.atividade.id_professor !== id_professor
   ) {
-    return res.status(404).json({ erro: 'Alternativa não encontrada' });
+    return res.status(404).json({ erro: "Alternativa não encontrada" });
   }
 
   const alternativa = await prisma.alternativa.update({
@@ -116,7 +132,7 @@ export async function excluirAlternativa(req: Request, res: Response) {
     !alternativaExiste.questao.atividade ||
     alternativaExiste.questao.atividade.id_professor !== id_professor
   ) {
-    return res.status(404).json({ erro: 'Alternativa não encontrada' });
+    return res.status(404).json({ erro: "Alternativa não encontrada" });
   }
 
   await prisma.alternativa.delete({ where: { id_alternativa } });

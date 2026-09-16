@@ -1,9 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import BotaoFlutuante from "../../components/BotaoFlutuante";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE } from "../../components/estilo";
 import {
   Modal,
   ScrollView,
@@ -14,12 +11,18 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { listarTurmas, criarTurma, atualizarTurma, excluirTurma as excluirTurmaApi } from "../../constants/api";
+import BotaoFlutuante from "../../components/BotaoFlutuante";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE } from "../../components/estilo";
+import {
+  atualizarTurma,
+  criarTurma,
+  excluirTurma as excluirTurmaApi,
+  listarTurmas,
+} from "../../constants/api";
 
 const CORES_TURMA = ["#2E6FB0", "#8B5EA6", "#DDA015", "#2F7D5C", "#B4443A"];
 
-// "9º Ano A" -> "9A".  Se o nome não tiver número, cai nas iniciais das
-// duas primeiras palavras.
 function iniciais(nome) {
   const texto = String(nome).trim();
   const numero = (texto.match(/\d+/) || [""])[0];
@@ -27,7 +30,12 @@ function iniciais(nome) {
   if (numero && letra) return numero + letra;
 
   const palavras = texto.split(/\s+/).filter(Boolean);
-  return palavras.slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "?";
+  return (
+    palavras
+      .slice(0, 2)
+      .map((p) => p[0].toUpperCase())
+      .join("") || "?"
+  );
 }
 
 function turmaVazia() {
@@ -73,7 +81,7 @@ export default function Turmas() {
   }, []);
 
   const turmasFiltradas = turmas.filter((t) =>
-    `${t.nome} ${t.escola}`.toLowerCase().includes(busca.toLowerCase())
+    `${t.nome} ${t.escola}`.toLowerCase().includes(busca.toLowerCase()),
   );
 
   function abrirCriar() {
@@ -95,14 +103,28 @@ export default function Turmas() {
 
     try {
       if (editando) {
-        const atualizada = await atualizarTurma(turmaEmEdicao.id, turmaEmEdicao.nome, turmaEmEdicao.escola);
+        const atualizada = await atualizarTurma(
+          turmaEmEdicao.id,
+          turmaEmEdicao.nome,
+          turmaEmEdicao.escola,
+        );
         setTurmas((atuais) =>
-          atuais.map((t) => (t.id === turmaEmEdicao.id ? { ...t, ...atualizada, id: t.id, cor: t.cor } : t))
+          atuais.map((t) =>
+            t.id === turmaEmEdicao.id
+              ? { ...t, ...atualizada, id: t.id, cor: t.cor }
+              : t,
+          ),
         );
       } else {
         const nova = await criarTurma(turmaEmEdicao.nome, turmaEmEdicao.escola);
         setTurmas((atuais) => [
-          { ...nova, id: nova.id_turma, alunos: 0, atividades: 0, cor: CORES_TURMA[atuais.length % CORES_TURMA.length] },
+          {
+            ...nova,
+            id: nova.id_turma,
+            alunos: 0,
+            atividades: 0,
+            cor: CORES_TURMA[atuais.length % CORES_TURMA.length],
+          },
           ...atuais,
         ]);
       }
@@ -137,7 +159,10 @@ export default function Turmas() {
         <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.voltarLinha}
+              >
                 <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Turmas</Text>
               </TouchableOpacity>
@@ -158,21 +183,36 @@ export default function Turmas() {
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={COR.tintaFraca}
+                  />
                 </TouchableOpacity>
               )}
             </View>
 
             {ehDesktop && (
-              <TouchableOpacity style={styles.botaoNovaTurmaDesktop} onPress={abrirCriar}>
+              <TouchableOpacity
+                style={styles.botaoNovaTurmaDesktop}
+                onPress={abrirCriar}
+              >
                 <Ionicons name="add" size={18} color={COR.branco} />
-                <Text style={styles.botaoNovaTurmaDesktopTexto}>Nova turma</Text>
+                <Text style={styles.botaoNovaTurmaDesktopTexto}>
+                  Nova turma
+                </Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {erro ? <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text> : null}
-          {carregando ? <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>Carregando...</Text> : null}
+          {erro ? (
+            <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text>
+          ) : null}
+          {carregando ? (
+            <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>
+              Carregando...
+            </Text>
+          ) : null}
 
           <View style={styles.lista}>
             {turmasFiltradas.map((turma) => (
@@ -182,8 +222,12 @@ export default function Turmas() {
                 activeOpacity={0.85}
                 onPress={() => abrirEditar(turma)}
               >
-                <View style={[styles.turmaSigla, { backgroundColor: turma.cor }]}>
-                  <Text style={styles.turmaSiglaTexto}>{iniciais(turma.nome)}</Text>
+                <View
+                  style={[styles.turmaSigla, { backgroundColor: turma.cor }]}
+                >
+                  <Text style={styles.turmaSiglaTexto}>
+                    {iniciais(turma.nome)}
+                  </Text>
                 </View>
 
                 <View style={styles.turmaTextos}>
@@ -194,19 +238,30 @@ export default function Turmas() {
                     {turma.escola}
                   </Text>
                   <Text style={styles.turmaMeta} numberOfLines={1}>
-                    <Text style={styles.turmaMetaForte}>{turma.alunos}</Text> alunos ·{" "}
-                    <Text style={styles.turmaMetaForte}>{turma.atividades}</Text>{" "}
+                    <Text style={styles.turmaMetaForte}>{turma.alunos}</Text>{" "}
+                    alunos ·{" "}
+                    <Text style={styles.turmaMetaForte}>
+                      {turma.atividades}
+                    </Text>{" "}
                     {turma.atividades === 1 ? "atividade" : "atividades"}
                   </Text>
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color={COR.tintaFraca} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={COR.tintaFraca}
+                />
               </TouchableOpacity>
             ))}
 
             {turmasFiltradas.length === 0 && (
               <View style={styles.vazioBox}>
-                <Ionicons name="people-outline" size={28} color={COR.tintaFraca} />
+                <Ionicons
+                  name="people-outline"
+                  size={28}
+                  color={COR.tintaFraca}
+                />
                 <Text style={styles.vazioTexto}>Nenhuma turma encontrada.</Text>
               </View>
             )}
@@ -215,12 +270,24 @@ export default function Turmas() {
       </ScrollView>
 
       {!ehDesktop && (
-        <BotaoFlutuante onPress={abrirCriar} style={{ bottom: 74, right: 14 }} />
+        <BotaoFlutuante
+          onPress={abrirCriar}
+          style={{ bottom: 74, right: 14 }}
+        />
       )}
 
-      <Modal visible={modalAberto} transparent animationType="slide" onRequestClose={fecharModal}>
-        <View style={[styles.modalFundo, !ehDesktop && styles.modalFundoMobile]}>
-          <View style={[styles.modalCard, !ehDesktop && styles.modalCardMobile]}>
+      <Modal
+        visible={modalAberto}
+        transparent
+        animationType="slide"
+        onRequestClose={fecharModal}
+      >
+        <View
+          style={[styles.modalFundo, !ehDesktop && styles.modalFundoMobile]}
+        >
+          <View
+            style={[styles.modalCard, !ehDesktop && styles.modalCardMobile]}
+          >
             <View style={styles.modalCabecalho}>
               <Text style={styles.modalTitulo}>
                 {editando ? "Editar turma" : "Criar turma"}
@@ -235,7 +302,9 @@ export default function Turmas() {
             </Text>
             <TextInput
               value={turmaEmEdicao.nome}
-              onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, nome: v }))}
+              onChangeText={(v) =>
+                setTurmaEmEdicao((atual) => ({ ...atual, nome: v }))
+              }
               placeholder="Ex: 9º Ano A"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
@@ -244,7 +313,9 @@ export default function Turmas() {
             <Text style={styles.rotulo}>Escola</Text>
             <TextInput
               value={turmaEmEdicao.escola}
-              onChangeText={(v) => setTurmaEmEdicao((atual) => ({ ...atual, escola: v }))}
+              onChangeText={(v) =>
+                setTurmaEmEdicao((atual) => ({ ...atual, escola: v }))
+              }
               placeholder="Ex: E.E. Marechal Rondon"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
@@ -252,14 +323,23 @@ export default function Turmas() {
 
             <View style={styles.modalAcoes}>
               {editando && (
-                <TouchableOpacity style={styles.botaoExcluir} onPress={excluirTurma}>
+                <TouchableOpacity
+                  style={styles.botaoExcluir}
+                  onPress={excluirTurma}
+                >
                   <Ionicons name="trash-outline" size={16} color={COR.perigo} />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.botaoCancelar} onPress={fecharModal}>
+              <TouchableOpacity
+                style={styles.botaoCancelar}
+                onPress={fecharModal}
+              >
                 <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.botaoSalvar} onPress={salvarTurma}>
+              <TouchableOpacity
+                style={styles.botaoSalvar}
+                onPress={salvarTurma}
+              >
                 <Text style={styles.botaoSalvarTexto}>
                   {editando ? "Salvar alterações" : "Criar turma"}
                 </Text>
@@ -289,7 +369,12 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
+  tituloPaginaDesktop: {
+    fontFamily: FONTE.bold,
+    fontSize: 20,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
   tituloPagina: {
     fontFamily: FONTE.bold,
     fontSize: 18,
@@ -299,7 +384,12 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 16 },
+  buscaLinha: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginBottom: 16,
+  },
   buscaBox: {
     flex: 1,
     flexDirection: "row",
@@ -312,7 +402,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  buscaInput: { fontFamily: FONTE.regular, flex: 1, fontSize: 13, color: COR.tintaForte, padding: 0 },
+  buscaInput: {
+    fontFamily: FONTE.regular,
+    flex: 1,
+    fontSize: 13,
+    color: COR.tintaForte,
+    padding: 0,
+  },
 
   botaoNovaTurmaDesktop: {
     flexDirection: "row",
@@ -323,7 +419,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  botaoNovaTurmaDesktopTexto: { fontFamily: FONTE.bold, color: COR.branco, fontSize: 13, fontWeight: "700" },
+  botaoNovaTurmaDesktopTexto: {
+    fontFamily: FONTE.bold,
+    color: COR.branco,
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   lista: { width: "100%", gap: 10 },
   turmaCard: {
@@ -346,15 +447,43 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  turmaSiglaTexto: { fontFamily: FONTE.bold, fontSize: 15, fontWeight: "700", color: COR.branco },
+  turmaSiglaTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 15,
+    fontWeight: "700",
+    color: COR.branco,
+  },
   turmaTextos: { flex: 1, minWidth: 0 },
-  turmaNome: { fontFamily: FONTE.bold, fontSize: 14, fontWeight: "700", color: COR.tintaForte },
-  turmaDetalhe: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 2 },
-  turmaMeta: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca, marginTop: 5 },
-  turmaMetaForte: { fontFamily: FONTE.semi, fontWeight: "600", color: COR.tintaMedia },
+  turmaNome: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  turmaDetalhe: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
+  turmaMeta: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    marginTop: 5,
+  },
+  turmaMetaForte: {
+    fontFamily: FONTE.semi,
+    fontWeight: "600",
+    color: COR.tintaMedia,
+  },
 
   vazioBox: { alignItems: "center", gap: 8, paddingVertical: 40 },
-  vazioTexto: { fontFamily: FONTE.regular, fontSize: 13, color: COR.tintaFraca },
+  vazioTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaFraca,
+  },
 
   modalFundo: {
     flex: 1,
@@ -387,7 +516,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 6,
   },
-  modalTitulo: { fontFamily: FONTE.bold, fontSize: 17, fontWeight: "700", color: COR.tintaForte },
+  modalTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 17,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
 
   rotulo: {
     fontFamily: FONTE.semi,
@@ -410,7 +544,12 @@ const styles = StyleSheet.create({
     backgroundColor: COR.branco,
   },
 
-  modalAcoes: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 },
+  modalAcoes: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 22,
+  },
   botaoExcluir: {
     width: 40,
     height: 40,
@@ -428,7 +567,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COR.linha,
   },
-  botaoCancelarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.tintaMedia },
+  botaoCancelarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.tintaMedia,
+  },
   botaoSalvar: {
     flex: 1,
     alignItems: "center",
@@ -436,5 +580,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: COR.marinho,
   },
-  botaoSalvarTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
+  botaoSalvarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.branco,
+  },
 });
