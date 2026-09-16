@@ -108,6 +108,13 @@ export default function Atividades() {
     });
   }
 
+  function combinaComFiltro(item, filtro) {
+    if (filtro === "Todas") return true;
+    if (filtro === "Em aberto") return item.status !== "concluida";
+    if (filtro === "Concluídas") return item.status === "concluida";
+    return true;
+  }
+
   async function confirmarExclusao() {
     try {
       await excluirAtividadeApi(atividadeParaExcluir.id);

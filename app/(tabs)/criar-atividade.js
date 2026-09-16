@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Modal,
   Platform,
@@ -16,18 +17,12 @@ import {
 import { listarTurmas, criarAtividade, atualizarAtividade } from "../../constants/api";
 
 const TIPOS = [
-  { valor: "multipla_escolha", rotulo: "Múltipla escolha" },
+  { valor: "multipla_escolha", rotulo: "Alternativa" },
   { valor: "dissertativa", rotulo: "Dissertativa" },
   { valor: "calculo", rotulo: "Cálculo" },
 ];
 
 const LETRAS = ["A", "B", "C", "D", "E"];
-
-const TURMAS = [
-  { id_turma: 1, nome: "9º Ano A", escola: "E.E. Marechal Rondon" },
-  { id_turma: 2, nome: "1ª Série B", escola: "E.E. Marechal Rondon" },
-  { id_turma: 3, nome: "7º Ano C", escola: "Colégio Santa Clara" },
-];
 
 let proximoId = 1;
 
@@ -47,12 +42,6 @@ function novaQuestao() {
     palavrasChave: "",
     respostaEsperada: "",
   };
-}
-
-function respostaCorretaDe(questao) {
-  if (questao.tipo === "multipla_escolha") return questao.letraCorreta;
-  if (questao.tipo === "dissertativa") return questao.palavrasChave.trim();
-  return questao.respostaEsperada.trim();
 }
 
 function contarPalavrasChave(texto) {
@@ -116,6 +105,46 @@ export default function CriarAtividade() {
     setQuestoes((atuais) => [...atuais, novaQuestao()]);
   }
 
+  function removerQuestao(id) {
+    setQuestoes((atuais) => atuais.filter((q) => q.id !== id));
+  }
+
+  function atualizarAlternativa(idQuestao, letra, texto) {
+    setQuestoes((atuais) =>
+      atuais.map((q) =>
+        q.id === idQuestao
+          ? {
+              ...q,
+              alternativas: q.alternativas.map((a) =>
+                a.letra === letra ? { ...a, texto } : a
+              ),
+            }
+          : q
+      )
+    );
+  }
+
+  function adicionarAlternativa(idQuestao) {
+    setQuestoes((atuais) =>
+      atuais.map((q) => {
+        if (q.id !== idQuestao) return q;
+        const proximaLetra = LETRAS[q.alternativas.length];
+        if (!proximaLetra) return q;
+        return { ...q, alternativas: [...q.alternativas, { letra: proximaLetra, texto: "" }] };
+      })
+    );
+  }
+
+  function removerAlternativa(idQuestao, letra) {
+    setQuestoes((atuais) =>
+      atuais.map((q) =>
+        q.id === idQuestao
+          ? { ...q, alternativas: q.alternativas.filter((a) => a.letra !== letra) }
+          : q
+      )
+    );
+  }
+
   async function publicarAtividade() {
     if (!titulo.trim() || !disciplina.trim() || !turmaSelecionada) {
       setErro("Preencha título, disciplina e turma antes de continuar.");
@@ -173,7 +202,6 @@ export default function CriarAtividade() {
             style={[styles.secaoCard, ehDesktop && styles.secaoCardDesktop]}
           >
             <View style={styles.secaoCabecalho}>
-              <View style={styles.checkboxDecorativo} />
               <Text style={styles.secaoTitulo}>Informações gerais</Text>
             </View>
 
@@ -188,11 +216,13 @@ export default function CriarAtividade() {
               style={styles.campoTexto}
             />
 
-            <Text style={styles.rotulo}>Descrição</Text>
+            <Text style={styles.rotulo}>
+              Disciplina <Text style={styles.obrigatorio}>*</Text>
+            </Text>
             <TextInput
-              value={descricao}
-              onChangeText={setDescricao}
-              placeholder="Ex: Avaliação bimestral sobre processos das plantas"
+              value={disciplina}
+              onChangeText={setDisciplina}
+              placeholder="Ex: Ciências"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
             />
@@ -201,8 +231,8 @@ export default function CriarAtividade() {
             <TextInput
               value={descricao}
               onChangeText={setDescricao}
-              placeholder="Detalhes ou observações sobre a atividade..."
-              placeholderTextColor="#94A3B8"
+              placeholder="Ex: Avaliação bimestral sobre processos das plantas"
+              placeholderTextColor={COR.tintaFraca}
               style={[styles.campoTexto, styles.campoTextoArea]}
               multiline
             />
@@ -320,7 +350,6 @@ export default function CriarAtividade() {
                   );
                 })}
               </View>
-
 
               {questao.tipo === "multipla_escolha" && (
                 <>
@@ -577,13 +606,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     marginBottom: 14,
-  },
-  checkboxDecorativo: {
-    width: 18,
-    height: 18,
-    borderRadius: RAIO.etiqueta,
-    borderWidth: 1.5,
-    borderColor: COR.marcador,
   },
   secaoTitulo: {
     fontFamily: FONTE.bold,
