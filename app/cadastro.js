@@ -27,6 +27,35 @@ const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
 
+const AZUL = "#2F6FED";
+
+// Tira o contorno padrão do navegador nos campos. Em celular é null.
+const SEM_CONTORNO_WEB = Platform.OS === "web" ? { outlineStyle: "none" } : null;
+
+// ---------------------------------------------------------------------------
+// Mesma injeção que existe no login: esconde o olho de "mostrar senha" que o
+// Chrome e o Edge desenham sozinhos dentro de todo input de senha (era ele o
+// segundo olhinho) e a borda preta de foco do navegador.
+//
+// O id evita repetir quando as duas telas carregam na mesma sessão.
+// ---------------------------------------------------------------------------
+if (
+  Platform.OS === "web" &&
+  typeof document !== "undefined" &&
+  !document.getElementById("edusync-ajustes-web")
+) {
+  const folha = document.createElement("style");
+  folha.id = "edusync-ajustes-web";
+  folha.textContent = `
+    input::-ms-reveal,
+    input::-ms-clear { display: none; }
+    input:focus,
+    input:focus-visible,
+    textarea:focus { outline: none; box-shadow: none; }
+  `;
+  document.head.appendChild(folha);
+}
+
 const RECURSOS = [
   {
     icone: "camera-outline",
@@ -47,6 +76,39 @@ const RECURSOS = [
       "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
+
+// Campo com estado de foco próprio: a borda e o ícone ficam azuis enquanto a
+// pessoa está digitando ali. É o que substitui a borda preta do navegador.
+function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
+  const [focado, setFocado] = useState(false);
+
+  return (
+    <View style={[styles.campoLinha, focado && styles.campoLinhaFocado]}>
+      <Ionicons
+        name={icone}
+        size={18}
+        color={focado ? AZUL : "#8A93A6"}
+        style={styles.campoIcone}
+      />
+      <TextInput
+        {...props}
+        style={[styles.campoTexto, SEM_CONTORNO_WEB]}
+        placeholderTextColor="#9AA3B2"
+        onFocus={() => setFocado(true)}
+        onBlur={() => setFocado(false)}
+      />
+      {olho && (
+        <TouchableOpacity onPress={aoAlternarOlho} hitSlop={8}>
+          <Ionicons
+            name={olhoAberto ? "eye-outline" : "eye-off-outline"}
+            size={18}
+            color={focado ? AZUL : "#8A93A6"}
+          />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
 
 function lerErroDoCadastro(e) {
   const status = e?.status ?? e?.response?.status ?? e?.codigo;
@@ -204,88 +266,45 @@ export default function Cadastro() {
       </Text>
 
       <Text style={styles.rotulo}>Nome</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="person-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Digite seu nome"
-          placeholderTextColor="#9AA3B2"
-          value={nome}
-          onChangeText={setNome}
-        />
-      </View>
+      <Campo
+        icone="person-outline"
+        placeholder="Digite seu nome"
+        value={nome}
+        onChangeText={setNome}
+      />
 
       <Text style={styles.rotulo}>E-mail</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="mail-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Digite seu email"
-          placeholderTextColor="#9AA3B2"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-        />
-      </View>
+      <Campo
+        icone="mail-outline"
+        placeholder="Digite seu email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+      />
 
       <Text style={styles.rotulo}>Senha</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Mínimo de 6 caracteres"
-          placeholderTextColor="#9AA3B2"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry={!mostrarSenha}
-        />
-        <TouchableOpacity
-          onPress={() => setMostrarSenha((v) => !v)}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
-            size={18}
-            color="#8A93A6"
-          />
-        </TouchableOpacity>
-      </View>
+      <Campo
+        icone="lock-closed-outline"
+        placeholder="Mínimo de 6 caracteres"
+        value={senha}
+        onChangeText={setSenha}
+        secureTextEntry={!mostrarSenha}
+        olho
+        olhoAberto={mostrarSenha}
+        aoAlternarOlho={() => setMostrarSenha((v) => !v)}
+      />
 
       <Text style={styles.rotulo}>Confirmar senha</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Digite a senha novamente"
-          placeholderTextColor="#9AA3B2"
-          value={confirmarSenha}
-          onChangeText={setConfirmarSenha}
-          secureTextEntry={!mostrarSenha}
-          onSubmitEditing={handleCadastro}
-        />
-      </View>
+      <Campo
+        icone="lock-closed-outline"
+        placeholder="Digite a senha novamente"
+        value={confirmarSenha}
+        onChangeText={setConfirmarSenha}
+        secureTextEntry={!mostrarSenha}
+        onSubmitEditing={handleCadastro}
+      />
 
       {caixaDeErro}
 
@@ -343,7 +362,7 @@ export default function Cadastro() {
             {RECURSOS.map((r) => (
               <View style={styles.promoItem} key={r.titulo}>
                 <View style={styles.promoIconeBox}>
-                  <Ionicons name={r.icone} size={18} color="#2F6FED" />
+                  <Ionicons name={r.icone} size={18} color={AZUL} />
                 </View>
                 <View style={styles.promoItemTexto}>
                   <Text style={styles.promoItemTitulo}>{r.titulo}</Text>
@@ -454,7 +473,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 18,
   },
-  promoLink: { color: "#2F6FED", fontWeight: "600" },
+  promoLink: { color: AZUL, fontWeight: "600" },
   promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
   promoItem: {
     flexDirection: "row",
@@ -497,7 +516,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -509,7 +528,7 @@ const styles = StyleSheet.create({
     color: COR.tintaMedia,
   },
   promoCtaBotao: {
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -534,20 +553,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
   },
-  logo: { width: 100, height: 66, marginBottom: 4 },
+  // Maior que antes (era 100x66), mas um pouco menor que a do login: esta tela
+  // tem quatro campos e precisa sobrar altura.
+  logo: { width: 150, height: 99, marginBottom: 6 },
   titulo: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: "700",
     color: COR.tintaForte,
-    marginTop: 4,
+    marginTop: 2,
   },
   subtitulo: {
     fontFamily: FONTE.regular,
     fontSize: 13,
     color: COR.tintaMedia,
     marginBottom: 14,
-    marginTop: 2,
+    marginTop: 3,
     textAlign: "center",
   },
   rotulo: {
@@ -569,6 +590,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     backgroundColor: COR.fundo,
+  },
+  // Borda e fundo mudam no foco. Sem mexer na espessura, senão o campo
+  // "pula" um pixel toda vez que você clica nele.
+  campoLinhaFocado: {
+    borderColor: AZUL,
+    backgroundColor: COR.branco,
   },
   campoIcone: { marginRight: 8 },
   campoTexto: {
@@ -602,7 +629,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   erroLink: {
-    color: "#2F6FED",
+    color: AZUL,
     fontFamily: FONTE.bold,
     fontWeight: "700",
     fontSize: 12.5,
@@ -613,13 +640,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     width: "100%",
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 14,
-    shadowColor: "#2F6FED",
+    shadowColor: AZUL,
     shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },

@@ -319,6 +319,7 @@ const ICONES_POR_ROTA: Record<string, any> = {
   correcoes: "checkmark-done-outline",
   scanner: "camera-outline",
   editar: "pencil-outline",
+  revisar: "create-outline",
   perfil: "person-outline",
   atividades: "document-text-outline",
   turmas: "people-outline",
@@ -329,16 +330,20 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   correcoes: "Correções",
   scanner: "Scanner",
   editar: "Editar",
+  revisar: "Revisar",
   perfil: "Perfil",
   atividades: "Atividades",
   turmas: "Turmas",
 };
 
+// Telas que existem mas não viram botão na barra de baixo. Chega-se nelas por
+// dentro do fluxo: o scanner leva para "processando", que leva para "revisar".
 const ROTAS_OCULTAS_DA_BARRA: string[] = [
   "criar-atividade",
   "perfil",
   "processando",
   "editar",
+  "revisar",
 ];
 
 const ORDEM_BARRA_MOBILE: string[] = [
@@ -374,6 +379,7 @@ export default function TabsLayout() {
           <Tabs.Screen name="perfil" />
           <Tabs.Screen name="criar-atividade" />
           <Tabs.Screen name="processando" />
+          <Tabs.Screen name="revisar" />
         </Tabs>
       </View>
     </View>

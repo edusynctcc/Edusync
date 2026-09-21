@@ -1,6 +1,48 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-export const API_URL = "http://localhost:3333";
+// ---------------------------------------------------------------------------
+// Onde está a API.
+//
+// No navegador, "localhost" é a própria máquina e funciona.
+//
+// No celular NÃO funciona: lá "localhost" é o telefone, não o seu computador.
+// Só que o Expo já sabe o IP da máquina que está servindo o app — é por ele
+// que o celular baixou o bundle. Reaproveitamos esse IP e trocamos a porta
+// 8081 (Expo) pela 3333 (API).
+//
+// Fazendo assim ninguém precisa editar este arquivo quando o IP do Wi-Fi
+// mudar, que é o tipo de coisa que quebra o app na hora da apresentação.
+// ---------------------------------------------------------------------------
+function descobrirEnderecoDaApi() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
+  }
+
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname || "localhost";
+      const protocolo = window.location.protocol || "http:";
+      return `${protocolo}//${host}:3333`;
+    }
+    return "http://localhost:3333";
+  }
+
+  const host =
+    Constants.expoConfig?.hostUri ||
+    Constants.expoGoConfig?.debuggerHost ||
+    Constants.manifest?.debuggerHost ||
+    "";
+
+  const ip = host.split(":")[0];
+
+  // Sem IP (build de produção, por exemplo) cai no localhost e o erro que
+  // aparece é de conexão, que ao menos diz a verdade.
+  return ip ? `http://${ip}:3333` : "http://localhost:3333";
+}
+
+export const API_URL = descobrirEnderecoDaApi();
 
 export const ENDPOINTS = {
   register: `${API_URL}/auth/register`,
@@ -11,6 +53,7 @@ export const ENDPOINTS = {
   alunos: `${API_URL}/alunos`,
   questoes: `${API_URL}/questoes`,
   alternativas: `${API_URL}/alternativas`,
+  correcoes: `${API_URL}/correcoes`,
 };
 
 async function apiFetch(
@@ -230,6 +273,117 @@ export function atualizarAlternativa(id, letra, texto) {
 export function excluirAlternativa(id) {
   return apiFetch(`${ENDPOINTS.alternativas}/${id}`, {
     method: "DELETE",
+    autenticado: true,
+  });
+}
+
+// ===========================================================================
+// CORREÇÃO DE FOLHA
+//
+// O upload não passa pelo apiFetch de propósito. O apiFetch força
+// Content-Type: application/json e faz JSON.stringify no corpo — para enviar
+// arquivo isso não serve. O FormData precisa montar o próprio Content-Type,
+// com o boundary do multipart. Se definirmos o header na mão, o servidor não
+// consegue separar as partes e o arquivo chega vazio, sem erro nenhum — que é
+// o pior tipo de bug, o que parece que funcionou.
+// ===========================================================================
+export async function enviarCorrecao({ arquivo, id_atividade }) {
+  const token = await AsyncStorage.getItem("token");
+  const formulario = new FormData();
+
+  // Web e celular esperam formatos diferentes aqui. No navegador vai o objeto
+  // File de verdade; no celular, a descrição { uri, name, type }.
+  if (Platform.OS === "web") {
+    if (!arquivo?.objetoWeb) {
+      throw new Error(
+        "O arquivo se perdeu. Escolha a folha de novo no Scanner.",
+      );
+    }
+    formulario.append("imagem", arquivo.objetoWeb, arquivo.nome);
+  } else {
+    formulario.append("imagem", {
+      uri: arquivo.uri,
+      name: arquivo.nome,
+      type: arquivo.mime,
+    });
+  }
+
+  formulario.append("id_atividade", String(id_atividade));
+
+  const resposta = await fetch(ENDPOINTS.correcoes, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formulario,
+  });
+
+  const dados = await resposta.json().catch(() => ({}));
+
+  if (!resposta.ok) {
+    throw new Error(dados.erro || "Não consegui enviar a folha para correção.");
+  }
+
+  return dados;
+}
+
+// Segundo tempo: o professor confirmou de quem é a folha. Aqui vai só o código
+// da leitura e o id do aluno — a nota já está guardada no servidor, calculada
+// por ele. Nenhuma nota trafega a partir do celular.
+export function confirmarCorrecao({ id_leitura, id_aluno }) {
+  return apiFetch(`${ENDPOINTS.correcoes}/confirmar`, {
+    method: "POST",
+    body: { id_leitura, id_aluno },
+    autenticado: true,
+  });
+}
+
+// ===========================================================================
+// REVISÃO — depois que a correção já está no banco
+// ===========================================================================
+
+export function buscarCorrecao(id_correcao) {
+  return apiFetch(`${ENDPOINTS.correcoes}/${id_correcao}`, {
+    autenticado: true,
+  });
+}
+
+// O professor discordou da IA. Manda só a nota nova; o servidor confere se ela
+// cabe no peso da questão e recalcula o total sozinho.
+export function ajustarResposta(id_correcao, id_resposta, nota) {
+  return apiFetch(
+    `${ENDPOINTS.correcoes}/${id_correcao}/respostas/${id_resposta}`,
+    {
+      method: "PUT",
+      body: { nota },
+      autenticado: true,
+    },
+  );
+}
+
+export function concluirCorrecao(id_correcao, { observacao, reabrir } = {}) {
+  return apiFetch(`${ENDPOINTS.correcoes}/${id_correcao}/concluir`, {
+    method: "PUT",
+    body: { observacao, reabrir },
+    autenticado: true,
+  });
+}
+
+// Lista as correções já gravadas. Sem parâmetro vem tudo; com limite vem só as
+// mais recentes, que é o que o Scanner mostra embaixo dos botões.
+export function listarCorrecoes({ limite, id_atividade } = {}) {
+  const partes = [];
+  if (limite) partes.push(`limite=${limite}`);
+  if (id_atividade) partes.push(`id_atividade=${id_atividade}`);
+
+  const consulta = partes.length ? `?${partes.join("&")}` : "";
+
+  return apiFetch(`${ENDPOINTS.correcoes}${consulta}`, { autenticado: true });
+}
+
+// Fecha (ou reabre) todas as correções de uma atividade de uma vez.
+export function concluirAtividade(id_atividade, { reabrir } = {}) {
+  return apiFetch(`${ENDPOINTS.correcoes}/atividade/${id_atividade}/concluir`, {
+    method: "PUT",
+    body: { reabrir },
     autenticado: true,
   });
 }

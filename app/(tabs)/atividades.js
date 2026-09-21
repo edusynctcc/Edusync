@@ -19,15 +19,91 @@ import { excluirAtividade as excluirAtividadeApi, listarAtividades } from "../..
 
 const FILTROS = ["Todas", "Em aberto", "Concluídas"];
 
-// Ícones e cores só existem no front — o back não manda isso, então
-// escolhemos ciclicamente com base no índice da atividade na lista.
-const ICONES = [
-  { icone: "function-variant", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { icone: "format-list-bulleted", biblioteca: "mci", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-  { icone: "shape-outline", biblioteca: "mci", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
-  { icone: "school-outline", biblioteca: "ion", corFundo: COR.avisoFundo, corIcone: COR.marcador },
-  { icone: "chart-line", biblioteca: "mci", corFundo: COR.okFundo, corIcone: COR.ok },
+// ---------------------------------------------------------------------------
+// O banco não guarda ícone. Em vez de sortear pela posição na lista, deduzimos
+// da disciplina que o professor já preenche — assim a mesma atividade tem
+// sempre o mesmo ícone, mesmo quando a ordem da lista muda.
+//
+// As cores aqui são de IDENTIDADE da matéria, não de status: verde quer dizer
+// "Ciências", não "concluído".
+// ---------------------------------------------------------------------------
+const VISUAL_PADRAO = {
+  icone: "file-document-outline",
+  biblioteca: "mci",
+  corFundo: "#EEF2F4",
+  corIcone: "#55646F",
+};
+
+const POR_DISCIPLINA = [
+  {
+    termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"],
+    icone: "function-variant",
+    corFundo: "#E7EFF7",
+    corIcone: "#2E6FB0",
+  },
+  {
+    termos: ["historia"],
+    icone: "book-open-page-variant",
+    corFundo: "#FBF1E0",
+    corIcone: "#8A4A12",
+  },
+  {
+    termos: ["geografia"],
+    icone: "earth",
+    corFundo: "#F3EDE6",
+    corIcone: "#A85A3C",
+  },
+  {
+    termos: ["ciencias", "biologia", "quimica", "fisica"],
+    icone: "flask-outline",
+    corFundo: "#E6F2EC",
+    corIcone: "#2F7D5C",
+  },
+  {
+    termos: ["portugues", "literatura", "redacao", "gramatica"],
+    icone: "format-quote-close",
+    corFundo: "#EFEAF7",
+    corIcone: "#6B4E9B",
+  },
+  {
+    termos: ["ingles", "espanhol", "frances", "idioma"],
+    icone: "translate",
+    corFundo: "#E9EEF0",
+    corIcone: "#55646F",
+  },
+  {
+    termos: ["arte", "artes", "musica", "educacao fisica"],
+    icone: "palette-outline",
+    corFundo: "#FBEAE8",
+    corIcone: "#B4443A",
+  },
 ];
+
+function semAcento(texto) {
+  return String(texto ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function visualDaDisciplina(disciplina) {
+  const nome = semAcento(disciplina);
+  if (!nome) return VISUAL_PADRAO;
+
+  const achou = POR_DISCIPLINA.find((grupo) =>
+    grupo.termos.some((termo) => nome.includes(termo))
+  );
+
+  if (!achou) return VISUAL_PADRAO;
+
+  return {
+    icone: achou.icone,
+    biblioteca: "mci",
+    corFundo: achou.corFundo,
+    corIcone: achou.corIcone,
+  };
+}
 
 function formatarData(isoString) {
   if (!isoString) return { data: "", quando: "" };
@@ -63,36 +139,36 @@ export default function Atividades() {
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
 
-    useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
-    async function carregar() {
-      setCarregando(true);
-      setErro("");
-      try {
-        const dados = await listarAtividades();
-        const comVisual = dados.map((a, i) => {
-          const visual = ICONES[i % ICONES.length];
-          const { data, quando } = formatarData(a.criado_em);
-          return {
-            ...a,
-            id: a.id_atividade,
-            titulo: a.nome,
-            descricao: a.descricao || "",
-            idTurma: a.id_turma,
-            data,
-            quando,
-            ...visual,
-          };
-        });
-        setAtividades(comVisual);
-      } catch (e) {
-        setErro(e.message);
-      } finally {
-        setCarregando(false);
+      async function carregar() {
+        setCarregando(true);
+        setErro("");
+        try {
+          const dados = await listarAtividades();
+          const comVisual = dados.map((a) => {
+            const visual = visualDaDisciplina(a.disciplina);
+            const { data, quando } = formatarData(a.criado_em);
+            return {
+              ...a,
+              id: a.id_atividade,
+              titulo: a.nome,
+              descricao: a.descricao || "",
+              idTurma: a.id_turma,
+              data,
+              quando,
+              ...visual,
+            };
+          });
+          setAtividades(comVisual);
+        } catch (e) {
+          setErro(e.message);
+        } finally {
+          setCarregando(false);
+        }
       }
-    }
-    carregar();
-   }, [])
+      carregar();
+    }, [])
   );
 
   function irParaEdicao(item) {
@@ -108,6 +184,8 @@ export default function Atividades() {
     });
   }
 
+  // ATENÇÃO: a tabela atividade não tem coluna "status". Enquanto ela não
+  // existir, "Em aberto" mostra tudo e "Concluídas" não mostra nada.
   function combinaComFiltro(item, filtro) {
     if (filtro === "Todas") return true;
     if (filtro === "Em aberto") return item.status !== "concluida";
@@ -308,9 +386,10 @@ export default function Atividades() {
             ))}
 
             {!carregando && atividadesFiltradas.length === 0 && (
-              <Text style={{ color: COR.tintaFraca, textAlign: "center", marginTop: 20 }}>
-                Nenhuma atividade encontrada.
-              </Text>
+              <View style={styles.vazioBox}>
+                <Ionicons name="document-text-outline" size={28} color={COR.tintaFraca} />
+                <Text style={styles.vazioTexto}>Nenhuma atividade encontrada.</Text>
+              </View>
             )}
           </View>
         </View>

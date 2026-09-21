@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Print from "expo-print";
 import { useEffect, useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Modal,
@@ -14,10 +14,19 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { listarTurmas, criarAtividade, atualizarAtividade } from "../../constants/api";
+import {
+  atualizarAtividade,
+  criarAlternativa,
+  criarAtividade,
+  criarQuestao,
+  excluirQuestao,
+  listarAlternativas,
+  listarQuestoes,
+  listarTurmas,
+} from "../../constants/api";
 
 const TIPOS = [
-  { valor: "multipla_escolha", rotulo: "Alternativa" },
+  { valor: "alternativa", rotulo: "Alternativa" },
   { valor: "dissertativa", rotulo: "Dissertativa" },
   { valor: "calculo", rotulo: "Cálculo" },
 ];
@@ -31,7 +40,7 @@ function novaQuestao() {
     id: proximoId++,
     enunciado: "",
     peso: "1",
-    tipo: "multipla_escolha",
+    tipo: "alternativa",
     alternativas: [
       { letra: "A", texto: "" },
       { letra: "B", texto: "" },
@@ -56,6 +65,124 @@ function comoNumero(texto) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function escaparHtml(texto) {
+  return String(texto ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// ---------------------------------------------------------------------------
+// Monta a folha de prova em branco, para imprimir e entregar aos alunos.
+//
+// REGRA QUE NÃO PODE SER QUEBRADA: este documento NUNCA leva o gabarito.
+// Nada de letraCorreta, palavrasChave ou respostaEsperada sai daqui — é a
+// folha do aluno. O gabarito fica só no banco, para a correção comparar.
+//
+// O cabeçalho com "Nome do aluno" em linha larga é de propósito: é por ele que
+// o scanner identifica de quem é a folha depois.
+// ---------------------------------------------------------------------------
+function montarHtmlDaProva({ titulo, disciplina, turma, descricao, questoes }) {
+  const pesoTotal = questoes.reduce((soma, q) => soma + comoNumero(q.peso), 0);
+
+  const blocos = questoes
+    .map((questao, indice) => {
+      const peso = comoNumero(questao.peso);
+      const rotuloPeso = peso.toFixed(1).replace(".", ",");
+
+      let corpo = "";
+
+      if (questao.tipo === "alternativa") {
+        corpo = `<ul class="alternativas">${questao.alternativas
+          .map(
+            (a) =>
+              `<li><span class="marcar"></span><b>${escaparHtml(a.letra)})</b> ${escaparHtml(a.texto)}</li>`
+          )
+          .join("")}</ul>`;
+      } else if (questao.tipo === "calculo") {
+        corpo =
+          '<div class="espaco-calculo"></div>' +
+          '<p class="resultado">Resultado: <span class="linha-curta"></span></p>';
+      } else {
+        corpo = '<div class="linhas">' + '<div class="linha"></div>'.repeat(4) + "</div>";
+      }
+
+      return `
+        <section class="questao">
+          <div class="questao-topo">
+            <span class="numero">${indice + 1}.</span>
+            <span class="enunciado">${escaparHtml(questao.enunciado)}</span>
+            <span class="peso">${rotuloPeso} pt</span>
+          </div>
+          ${corpo}
+        </section>`;
+    })
+    .join("");
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>${escaparHtml(titulo)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #17242E; margin: 30px 34px; }
+  header { border-bottom: 2px solid #0B1E3D; padding-bottom: 10px; }
+  h1 { font-size: 18px; margin: 0 0 3px; color: #0B1E3D; }
+  .materia { font-size: 12px; color: #55646F; margin: 0; }
+  .descricao { font-size: 11.5px; color: #55646F; margin: 10px 0 0; line-height: 1.5; }
+
+  .identificacao { display: flex; gap: 18px; margin: 16px 0 6px; font-size: 12px; }
+  .campo { flex: 1; }
+  .campo.data { flex: 0 0 150px; }
+  .campo span { color: #55646F; }
+  .campo .preencher { display: block; border-bottom: 1px solid #17242E; height: 22px; margin-top: 2px; }
+
+  .aviso { font-size: 10.5px; color: #8795A0; margin: 2px 0 16px; }
+
+  .questao { margin-bottom: 20px; page-break-inside: avoid; }
+  .questao-topo { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+  .numero { font-weight: 700; font-size: 13px; }
+  .enunciado { flex: 1; font-size: 13px; line-height: 1.45; }
+  .peso { font-size: 10.5px; color: #8795A0; white-space: nowrap; }
+
+  .alternativas { list-style: none; padding: 0 0 0 22px; margin: 0; }
+  .alternativas li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+  .marcar { display: inline-block; width: 13px; height: 13px; border: 1.4px solid #17242E; border-radius: 50%; flex: 0 0 13px; }
+
+  .linhas { padding-left: 22px; }
+  .linha { border-bottom: 1px solid #C4CAD0; height: 26px; }
+
+  .espaco-calculo { margin-left: 22px; height: 90px; border: 1px dashed #C4CAD0; border-radius: 6px; }
+  .resultado { margin: 10px 0 0 22px; font-size: 12.5px; }
+  .linha-curta { display: inline-block; width: 160px; border-bottom: 1px solid #17242E; }
+
+  footer { margin-top: 26px; border-top: 1px solid #E9EEF0; padding-top: 8px; font-size: 10px; color: #8795A0; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>${escaparHtml(titulo)}</h1>
+    <p class="materia">${escaparHtml(disciplina)}${turma ? " · " + escaparHtml(turma) : ""}</p>
+    ${descricao.trim() ? `<p class="descricao">${escaparHtml(descricao)}</p>` : ""}
+  </header>
+
+  <div class="identificacao">
+    <div class="campo"><span>Nome do aluno</span><span class="preencher"></span></div>
+    <div class="campo data"><span>Data</span><span class="preencher"></span></div>
+  </div>
+  <p class="aviso">Escreva seu nome completo com letra legível — é por ele que a prova é identificada.</p>
+
+  ${blocos}
+
+  <footer>
+    <span>${questoes.length} ${questoes.length === 1 ? "questão" : "questões"} · total ${pesoTotal.toFixed(1).replace(".", ",")} pontos</span>
+    <span>EduSync</span>
+  </footer>
+</body>
+</html>`;
+}
+
 export default function CriarAtividade() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
@@ -77,6 +204,8 @@ export default function CriarAtividade() {
   const [modalTurmaAberto, setModalTurmaAberto] = useState(false);
 
   const [salvando, setSalvando] = useState(false);
+  const [carregandoQuestoes, setCarregandoQuestoes] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [erro, setErro] = useState("");
 
   useEffect(() => {
@@ -94,6 +223,66 @@ export default function CriarAtividade() {
     }
     carregarTurmas();
   }, []);
+
+  // -------------------------------------------------------------------------
+  // Editando: traz as questões que já estão no banco para dentro do formulário.
+  //
+  // Sem isto, a tela abriria com uma questão em branco e o "salvar" apagaria o
+  // gabarito inteiro sem a professora perceber.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (!emEdicao || !id) return;
+
+    async function carregarQuestoes() {
+      setCarregandoQuestoes(true);
+      try {
+        const doBanco = await listarQuestoes(id);
+        if (doBanco.length === 0) return;
+
+        const convertidas = await Promise.all(
+          doBanco
+            .slice()
+            .sort((a, b) => a.numero - b.numero)
+            .map(async (q) => {
+              const base = novaQuestao();
+              const tipo = q.tipo || "dissertativa";
+
+              if (tipo !== "alternativa") {
+                return {
+                  ...base,
+                  enunciado: q.pergunta || "",
+                  peso: String(q.peso ?? 1).replace(".", ","),
+                  tipo,
+                  palavrasChave: tipo === "dissertativa" ? q.resposta_correta || "" : "",
+                  respostaEsperada: tipo === "calculo" ? q.resposta_correta || "" : "",
+                };
+              }
+
+              const alternativas = await listarAlternativas(q.id_questao).catch(() => []);
+
+              return {
+                ...base,
+                enunciado: q.pergunta || "",
+                peso: String(q.peso ?? 1).replace(".", ","),
+                tipo,
+                letraCorreta: q.resposta_correta || "",
+                alternativas: alternativas.length
+                  ? alternativas.map((a) => ({ letra: a.letra, texto: a.texto || "" }))
+                  : base.alternativas,
+              };
+            })
+        );
+
+        setQuestoes(convertidas);
+      } catch (e) {
+        setErro("Não consegui carregar as questões: " + e.message);
+      } finally {
+        setCarregandoQuestoes(false);
+      }
+    }
+
+    carregarQuestoes();
+  }, [emEdicao, id]);
 
   function atualizarQuestao(idQuestao, campo, valor) {
     setQuestoes((atuais) =>
@@ -145,24 +334,190 @@ export default function CriarAtividade() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // O gabarito de cada tipo mora num campo diferente da tela, mas no banco é
+  // sempre a coluna resposta_correta. É aqui que essa tradução acontece.
+  //
+  // Na dissertativa as palavras-chave vão separadas por ponto-e-vírgula porque
+  // é exatamente assim que o notaService separa depois, para contar quantos
+  // conceitos o aluno expressou.
+  // ---------------------------------------------------------------------------
+  function gabaritoDaQuestao(questao) {
+    if (questao.tipo === "alternativa") return questao.letraCorreta.trim();
+    if (questao.tipo === "calculo") return questao.respostaEsperada.trim();
+    return questao.palavrasChave.trim();
+  }
+
+  // Confere antes de mandar. Gabarito vazio não dá erro no banco — ele salva
+  // e só aparece na hora da correção, com a nota saindo zero sem explicação.
+  function primeiroProblema() {
+    if (!titulo.trim()) return "Dê um título para a atividade.";
+    if (!disciplina.trim()) return "Escolha a disciplina.";
+    if (!turmaSelecionada) return "Escolha a turma.";
+    if (questoes.length === 0) return "Adicione pelo menos uma questão.";
+
+    for (let i = 0; i < questoes.length; i++) {
+      const q = questoes[i];
+      const n = i + 1;
+
+      if (!q.enunciado.trim()) return `Escreva o enunciado da questão ${n}.`;
+      if (comoNumero(q.peso) <= 0) return `O peso da questão ${n} precisa ser maior que zero.`;
+
+      if (q.tipo === "alternativa") {
+        if (!q.letraCorreta) return `Marque a alternativa correta da questão ${n}.`;
+        const vazias = q.alternativas.filter((a) => !a.texto.trim());
+        if (vazias.length) return `Preencha o texto de todas as alternativas da questão ${n}.`;
+      }
+
+      if (q.tipo === "dissertativa" && contarPalavrasChave(q.palavrasChave) === 0) {
+        return `Escreva as palavras-chave do gabarito da questão ${n}.`;
+      }
+
+      if (q.tipo === "calculo" && !q.respostaEsperada.trim()) {
+        return `Escreva o resultado esperado da questão ${n}.`;
+      }
+    }
+
+    return "";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Grava as questões da atividade.
+  //
+  // Editando, apaga as antigas antes: comparar uma a uma para descobrir o que
+  // mudou daria muito mais código e mais chance de erro do que refazer.
+  //
+  // O banco não deixa apagar uma questão que já tem resposta de aluno — e isso
+  // é proposital. Se a atividade já foi corrigida, mudar o gabarito por baixo
+  // invalidaria notas já dadas. Quando isso acontece, a mensagem explica.
+  // ---------------------------------------------------------------------------
+  async function gravarQuestoes(id_atividade) {
+    if (emEdicao) {
+      const antigas = await listarQuestoes(id_atividade);
+      for (const q of antigas) {
+        await excluirQuestao(q.id_questao);
+      }
+    }
+
+    for (let i = 0; i < questoes.length; i++) {
+      const questao = questoes[i];
+
+      const criada = await criarQuestao(
+        i + 1,
+        questao.enunciado.trim(),
+        questao.tipo,
+        gabaritoDaQuestao(questao),
+        comoNumero(questao.peso),
+        id_atividade
+      );
+
+      if (questao.tipo !== "alternativa") continue;
+
+      const id_questao = criada?.id_questao ?? criada?.id;
+      if (!id_questao) continue;
+
+      for (const alternativa of questao.alternativas) {
+        await criarAlternativa(alternativa.letra, alternativa.texto.trim(), id_questao);
+      }
+    }
+  }
+
+  // Exporta a folha em branco para imprimir. Não precisa ter publicado ainda:
+  // sai do que está escrito na tela agora.
+  async function salvarProvaEmPdf() {
+    if (gerandoPdf) return;
+
+    if (!titulo.trim() || questoes.every((q) => !q.enunciado.trim())) {
+      setErro("Escreva o título e pelo menos uma questão antes de gerar a prova.");
+      return;
+    }
+
+    setGerandoPdf(true);
+    setErro("");
+
+    const html = montarHtmlDaProva({
+      titulo,
+      disciplina,
+      turma: turmaSelecionada?.nome || "",
+      descricao,
+      questoes,
+    });
+
+    try {
+      if (Platform.OS === "web") {
+        // O expo-print no navegador manda a própria página para a impressora
+        // em vez do HTML. Por isso abrimos uma janela e imprimimos de lá.
+        const janela = window.open("", "_blank");
+
+        if (!janela) {
+          setErro(
+            "O navegador bloqueou a janela da prova. Libere os pop-ups para este site e tente de novo."
+          );
+          return;
+        }
+
+        janela.document.write(html);
+        janela.document.close();
+        janela.focus();
+        setTimeout(() => janela.print(), 250);
+      } else {
+        await Print.printAsync({ html });
+      }
+    } catch (e) {
+      if (e?.message && !/cancel|dismiss/i.test(e.message)) {
+        setErro("Não consegui gerar a prova: " + e.message);
+      }
+    } finally {
+      setGerandoPdf(false);
+    }
+  }
+
   async function publicarAtividade() {
-    if (!titulo.trim() || !disciplina.trim() || !turmaSelecionada) {
-      setErro("Preencha título, disciplina e turma antes de continuar.");
+    const problema = primeiroProblema();
+    if (problema) {
+      setErro(problema);
       return;
     }
 
     setSalvando(true);
     setErro("");
+
     try {
+      let id_atividade = id;
+
       if (emEdicao) {
         await atualizarAtividade(id, titulo, disciplina, descricao, turmaSelecionada.id_turma);
       } else {
-        await criarAtividade(titulo, disciplina, descricao, turmaSelecionada.id_turma);
+        const criada = await criarAtividade(
+          titulo,
+          disciplina,
+          descricao,
+          turmaSelecionada.id_turma
+        );
+        id_atividade = criada?.id_atividade ?? criada?.id;
+
+        if (!id_atividade) {
+          throw new Error(
+            "A atividade foi criada, mas o servidor não devolveu o id — as questões não foram salvas."
+          );
+        }
       }
-      // Questões ainda não são conectadas à API — isso entra no próximo passo.
+
+      await gravarQuestoes(id_atividade);
+
       router.replace("/atividades");
     } catch (e) {
-      setErro(e.message);
+      const texto = String(e.message || "");
+
+      // Erro de chave estrangeira ao apagar questão já respondida.
+      if (/foreign key|constraint|referenc/i.test(texto)) {
+        setErro(
+          "Esta atividade já tem folhas corrigidas, então as questões não podem ser trocadas. " +
+            "Crie uma atividade nova ou apague as correções antes."
+        );
+      } else {
+        setErro(texto || "Não consegui salvar.");
+      }
     } finally {
       setSalvando(false);
     }
@@ -270,12 +625,6 @@ export default function CriarAtividade() {
             </View>
           </View>
 
-          {/* Questões da atividade — ainda não conectadas à API */}
-          <Text style={styles.secaoTituloGrande}>Questões da atividade</Text>
-          <Text style={styles.secaoSubtitulo}>
-            A IA usará essas informações para corrigir as imagens.
-          </Text>
-
           {questoes.map((questao, indice) => (
             <View
               key={questao.id}
@@ -351,7 +700,7 @@ export default function CriarAtividade() {
                 })}
               </View>
 
-              {questao.tipo === "multipla_escolha" && (
+              {questao.tipo === "alternativa" && (
                 <>
                   <Text style={styles.rotulo}>
                     Alternativas <Text style={styles.obrigatorio}>*</Text>{" "}
@@ -491,19 +840,23 @@ export default function CriarAtividade() {
           </TouchableOpacity>
 
           <View style={[styles.acoesFinais, ehDesktop && styles.acoesFinaisDesktop]}>
-            {!emEdicao && (
-              <TouchableOpacity
-                style={[styles.botaoRascunho, ehDesktop && styles.botaoRascunhoDesktop]}
-              >
-                <Text style={styles.botaoRascunhoTexto} numberOfLines={1}>
-                  Salvar rascunho
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.botaoProva, ehDesktop && styles.botaoProvaDesktop]}
+              onPress={salvarProvaEmPdf}
+              disabled={gerandoPdf}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="print-outline" size={16} color={COR.marcador} />
+              <Text style={styles.botaoProvaTexto} numberOfLines={1}>
+                {gerandoPdf ? "Gerando..." : "Salvar prova em PDF"}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.botaoPublicar, ehDesktop && styles.botaoPublicarDesktop]}
               onPress={publicarAtividade}
               disabled={salvando}
+              activeOpacity={0.85}
             >
               <Text style={styles.botaoPublicarTexto} numberOfLines={1}>
                 {salvando ? "Salvando..." : emEdicao ? "Salvar alterações" : "Publicar atividade"}
@@ -560,9 +913,6 @@ export default function CriarAtividade() {
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F4F6FA" },
 
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 60, alignItems: "center" },
   conteudoInternoDesktop: {
@@ -572,6 +922,12 @@ const styles = StyleSheet.create({
   },
   miolo: { width: "92%", maxWidth: 760 },
 
+  cabecalhoDesktopLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
   voltarLinha: {
     flexDirection: "row",
     alignItems: "center",
@@ -666,11 +1022,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     backgroundColor: COR.branco,
-  },
-  campoSelectTexto: {
-    fontFamily: FONTE.regular,
-    fontSize: 13,
-    color: COR.tintaForte,
   },
   campoSelectPlaceholder: { fontSize: 13, color: "#94A3B8" },
   campoSelectValor: { fontSize: 13, color: "#0B1E3D", fontWeight: "600" },
@@ -785,42 +1136,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  totalCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    backgroundColor: COR.branco,
-    borderRadius: RAIO.superficie,
-    borderWidth: 1,
-    borderColor: COR.linhaSuave,
-    padding: 16,
-    marginBottom: 18,
-  },
-  totalRotulo: {
-    fontFamily: FONTE.regular,
-    fontSize: 12.5,
-    color: COR.tintaFraca,
-  },
-  totalValor: {
-    fontFamily: FONTE.bold,
-    fontSize: 20,
-    fontWeight: "700",
-    color: COR.tintaForte,
-  },
-  totalSelo: {
-    backgroundColor: COR.avisoFundo,
-    borderRadius: RAIO.etiqueta,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  totalSeloTexto: {
-    fontFamily: FONTE.semi,
-    fontSize: 12,
-    fontWeight: "600",
-    color: COR.avisoTexto,
-  },
-
   acoesFinais: { flexDirection: "row", gap: 12, width: "100%" },
   acoesFinaisDesktop: {
     justifyContent: "flex-end",
@@ -828,6 +1143,20 @@ const styles = StyleSheet.create({
     borderTopColor: COR.linha,
     paddingTop: 22,
   },
+  botaoProva: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderWidth: 1.5,
+    borderColor: COR.marcador,
+    borderRadius: RAIO.controle,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+  },
+  botaoProvaDesktop: { paddingHorizontal: 20 },
+  botaoProvaTexto: { fontFamily: FONTE.bold, fontSize: 13, fontWeight: "700", color: COR.marcador },
+
   botaoPublicar: {
     flex: 1,
     alignItems: "center",

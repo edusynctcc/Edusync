@@ -27,6 +27,41 @@ const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
 
+const AZUL = "#2F6FED";
+
+// Tira o contorno padrão do navegador nos campos. Em celular é null.
+const SEM_CONTORNO_WEB = Platform.OS === "web" ? { outlineStyle: "none" } : null;
+
+// ---------------------------------------------------------------------------
+// Dois ajustes que só existem no navegador e não dá para fazer pelo React
+// Native, porque são partes internas do campo desenhadas pelo próprio Chrome
+// e Edge:
+//
+//   1. o olho de "mostrar senha" que eles colocam sozinhos dentro de todo
+//      input de senha — era ele o segundo olhinho, ao lado do nosso
+//   2. a borda preta que aparece ao clicar no campo, que é o contorno de foco
+//      padrão do navegador
+//
+// O id evita injetar duas vezes quando o login e o cadastro carregam na mesma
+// sessão.
+// ---------------------------------------------------------------------------
+if (
+  Platform.OS === "web" &&
+  typeof document !== "undefined" &&
+  !document.getElementById("edusync-ajustes-web")
+) {
+  const folha = document.createElement("style");
+  folha.id = "edusync-ajustes-web";
+  folha.textContent = `
+    input::-ms-reveal,
+    input::-ms-clear { display: none; }
+    input:focus,
+    input:focus-visible,
+    textarea:focus { outline: none; box-shadow: none; }
+  `;
+  document.head.appendChild(folha);
+}
+
 const RECURSOS = [
   {
     icone: "camera-outline",
@@ -47,6 +82,39 @@ const RECURSOS = [
       "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
+
+// Campo com estado de foco próprio: a borda e o ícone ficam azuis enquanto a
+// pessoa está digitando ali. É o que substitui a borda preta do navegador.
+function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
+  const [focado, setFocado] = useState(false);
+
+  return (
+    <View style={[styles.campoLinha, focado && styles.campoLinhaFocado]}>
+      <Ionicons
+        name={icone}
+        size={18}
+        color={focado ? AZUL : "#8A93A6"}
+        style={styles.campoIcone}
+      />
+      <TextInput
+        {...props}
+        style={[styles.campoTexto, SEM_CONTORNO_WEB]}
+        placeholderTextColor="#9AA3B2"
+        onFocus={() => setFocado(true)}
+        onBlur={() => setFocado(false)}
+      />
+      {olho && (
+        <TouchableOpacity onPress={aoAlternarOlho} hitSlop={8}>
+          <Ionicons
+            name={olhoAberto ? "eye-outline" : "eye-off-outline"}
+            size={18}
+            color={focado ? AZUL : "#8A93A6"}
+          />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
 
 function lerErroDoLogin(e) {
   const status = e?.status ?? e?.response?.status ?? e?.codigo;
@@ -179,53 +247,28 @@ export default function Login() {
       <Text style={styles.subtitulo}>Entre com sua conta de professor</Text>
 
       <Text style={styles.rotulo}>E-mail</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="mail-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Digite seu email"
-          placeholderTextColor="#9AA3B2"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-        />
-      </View>
+      <Campo
+        icone="mail-outline"
+        placeholder="Digite seu email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+      />
 
       <Text style={styles.rotulo}>Senha</Text>
-      <View style={styles.campoLinha}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={18}
-          color="#8A93A6"
-          style={styles.campoIcone}
-        />
-        <TextInput
-          style={styles.campoTexto}
-          placeholder="Digite sua senha"
-          placeholderTextColor="#9AA3B2"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry={!mostrarSenha}
-          onSubmitEditing={handleLogin}
-        />
-        <TouchableOpacity
-          onPress={() => setMostrarSenha((v) => !v)}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={mostrarSenha ? "eye-outline" : "eye-off-outline"}
-            size={18}
-            color="#8A93A6"
-          />
-        </TouchableOpacity>
-      </View>
+      <Campo
+        icone="lock-closed-outline"
+        placeholder="Digite sua senha"
+        value={senha}
+        onChangeText={setSenha}
+        secureTextEntry={!mostrarSenha}
+        onSubmitEditing={handleLogin}
+        olho
+        olhoAberto={mostrarSenha}
+        aoAlternarOlho={() => setMostrarSenha((v) => !v)}
+      />
 
       <View style={styles.linhaOpcoes}>
         <Text style={styles.linkPequeno}>Lembrar senha</Text>
@@ -288,7 +331,7 @@ export default function Login() {
             {RECURSOS.map((r) => (
               <View style={styles.promoItem} key={r.titulo}>
                 <View style={styles.promoIconeBox}>
-                  <Ionicons name={r.icone} size={18} color="#2F6FED" />
+                  <Ionicons name={r.icone} size={18} color={AZUL} />
                 </View>
                 <View style={styles.promoItemTexto}>
                   <Text style={styles.promoItemTitulo}>{r.titulo}</Text>
@@ -399,7 +442,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 18,
   },
-  promoLink: { color: "#2F6FED", fontWeight: "600" },
+  promoLink: { color: AZUL, fontWeight: "600" },
   promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
   promoItem: {
     flexDirection: "row",
@@ -442,7 +485,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -454,7 +497,7 @@ const styles = StyleSheet.create({
     color: COR.tintaMedia,
   },
   promoCtaBotao: {
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -479,20 +522,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
   },
-  logo: { width: 120, height: 80, marginBottom: 8 },
+  // Maior que antes (era 120x80). A proporção 3:2 é a mesma, então o "DESDE
+  // 2026" cresce junto e para de sair borrado.
+  logo: { width: 176, height: 117, marginBottom: 10 },
   titulo: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: "700",
     color: COR.tintaForte,
-    marginTop: 4,
+    marginTop: 2,
   },
   subtitulo: {
     fontFamily: FONTE.regular,
     fontSize: 13,
     color: COR.tintaMedia,
     marginBottom: 22,
-    marginTop: 2,
+    marginTop: 3,
   },
   rotulo: {
     alignSelf: "flex-start",
@@ -513,6 +558,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     backgroundColor: COR.fundo,
+  },
+  // Borda e fundo mudam no foco. Sem mexer na espessura, senão o campo
+  // "pula" um pixel toda vez que você clica nele.
+  campoLinhaFocado: {
+    borderColor: AZUL,
+    backgroundColor: COR.branco,
   },
   campoIcone: { marginRight: 8 },
   campoTexto: {
@@ -537,7 +588,7 @@ const styles = StyleSheet.create({
   linkPequenoDestaque: {
     fontFamily: FONTE.semi,
     fontSize: 12,
-    color: "#2F6FED",
+    color: AZUL,
     fontWeight: "600",
   },
 
@@ -565,7 +616,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   erroLink: {
-    color: "#2F6FED",
+    color: AZUL,
     fontFamily: FONTE.bold,
     fontWeight: "700",
     fontSize: 12.5,
@@ -576,13 +627,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     width: "100%",
-    backgroundColor: "#2F6FED",
+    backgroundColor: AZUL,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 20,
-    shadowColor: "#2F6FED",
+    shadowColor: AZUL,
     shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },

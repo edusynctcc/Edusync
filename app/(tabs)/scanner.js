@@ -1,8 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,90 +17,101 @@ import {
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
+import {
+  listarAtividades,
+  listarCorrecoes,
+  listarTurmas,
+} from "../../constants/api";
+import { guardarArquivo } from "../../constants/arquivoSelecionado";
 
-const ATIVIDADES_CADASTRADAS = [
-  {
-    id: "1",
-    titulo: "Prova de Álgebra",
-    turma: "9º Ano A · Turma B",
-    icone: "function-variant",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "2",
-    titulo: "Lista de Exercícios",
-    turma: "8º Ano B",
-    icone: "format-list-bulleted",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "3",
-    titulo: "Trabalho de Geometria",
-    turma: "9º Ano A",
-    icone: "shape-outline",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.avisoTexto,
-  },
-  {
-    id: "4",
-    titulo: "Prova Bimestral",
-    turma: "7º Ano B",
-    icone: "school-outline",
-    corFundo: COR.avisoFundo,
-    corIcone: COR.marcador,
-  },
-  {
-    id: "5",
-    titulo: "Exercícios de Frações",
-    turma: "6º Ano A",
-    icone: "fraction-one-half",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
-  },
-];
-
-const ACOES_SCANNER = {
-  foto: { titulo: "Tirar Foto", icone: "camera-outline" },
-  imagem: { titulo: "Enviar Imagem", icone: "image-outline" },
-  pdf: { titulo: "Enviar PDF", icone: "document-outline" },
+// ---------------------------------------------------------------------------
+// Mesma regra da tela de Atividades: o banco não guarda ícone, então ele sai
+// da disciplina. Assim a mesma atividade aparece igual nas duas telas.
+// ---------------------------------------------------------------------------
+const VISUAL_PADRAO = {
+  icone: "file-document-outline",
+  corFundo: "#EEF2F4",
+  corIcone: "#55646F",
 };
 
-const UPLOADS_RECENTES = [
+const POR_DISCIPLINA = [
   {
-    id: "1",
-    nome: "Prova_Algebra_Turma8A.pdf",
-    detalhe: "12 páginas · Hoje, 09:42",
-    icone: "document-text-outline",
-    corFundo: COR.perigoFundo,
-    corIcone: COR.perigo,
+    termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"],
+    icone: "function-variant",
+    corFundo: "#E7EFF7",
+    corIcone: "#2E6FB0",
   },
   {
-    id: "2",
-    nome: "Lista_Exercicios_09.jpg",
-    detalhe: "1 página · Ontem, 16:10",
-    icone: "image-outline",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
+    termos: ["historia"],
+    icone: "book-open-page-variant",
+    corFundo: "#FBF1E0",
+    corIcone: "#8A4A12",
   },
   {
-    id: "3",
-    nome: "Trabalho_Geometria.pdf",
-    detalhe: "6 páginas · Há 2 dias",
-    icone: "document-text-outline",
-    corFundo: COR.perigoFundo,
-    corIcone: COR.perigo,
+    termos: ["geografia"],
+    icone: "earth",
+    corFundo: "#F3EDE6",
+    corIcone: "#A85A3C",
   },
   {
-    id: "4",
-    nome: "Redacao_Turma7B.jpg",
-    detalhe: "1 página · Há 3 dias",
-    icone: "image-outline",
-    corFundo: COR.emAndamentoFundo,
-    corIcone: COR.marcador,
+    termos: ["ciencias", "biologia", "quimica", "fisica"],
+    icone: "flask-outline",
+    corFundo: "#E6F2EC",
+    corIcone: "#2F7D5C",
+  },
+  {
+    termos: ["portugues", "literatura", "redacao", "gramatica"],
+    icone: "format-quote-close",
+    corFundo: "#EFEAF7",
+    corIcone: "#6B4E9B",
+  },
+  {
+    termos: ["ingles", "espanhol", "frances", "idioma"],
+    icone: "translate",
+    corFundo: "#E9EEF0",
+    corIcone: "#55646F",
+  },
+  {
+    termos: ["arte", "artes", "musica", "educacao fisica"],
+    icone: "palette-outline",
+    corFundo: "#FBEAE8",
+    corIcone: "#B4443A",
   },
 ];
+
+function semAcento(texto) {
+  return String(texto ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function visualDaDisciplina(disciplina) {
+  const nome = semAcento(disciplina);
+  if (!nome) return VISUAL_PADRAO;
+
+  const achou = POR_DISCIPLINA.find((grupo) =>
+    grupo.termos.some((termo) => nome.includes(termo)),
+  );
+
+  return achou
+    ? { icone: achou.icone, corFundo: achou.corFundo, corIcone: achou.corIcone }
+    : VISUAL_PADRAO;
+}
+
+// Título do botão que abriu o modal, só para o subtítulo dele fazer sentido.
+function formatarNota(valor) {
+  return Number(valor ?? 0)
+    .toFixed(1)
+    .replace(".", ",");
+}
+
+const TITULO_DA_ACAO = {
+  foto: "Tirar Foto",
+  imagem: "Enviar Imagem",
+  pdf: "Enviar PDF",
+};
 
 export default function Scanner() {
   const { width } = useWindowDimensions();
@@ -108,23 +122,155 @@ export default function Scanner() {
   const [acaoSelecionada, setAcaoSelecionada] = useState(null);
   const [busca, setBusca] = useState("");
 
+  const [atividades, setAtividades] = useState([]);
+  const [recentes, setRecentes] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // Recarrega toda vez que a tela ganha foco: assim uma atividade criada
+  // agora já aparece aqui, sem precisar fechar o app.
+  useFocusEffect(
+    useCallback(() => {
+      async function carregar() {
+        setCarregando(true);
+        setErro("");
+        try {
+          // A atividade guarda id_turma, não o nome da turma. Buscamos as duas
+          // listas e juntamos aqui, em vez de mexer no back-end.
+          // As últimas correções vêm junto. Se essa parte falhar, o Scanner
+          // continua funcionando — histórico é informação, não é o trabalho.
+          const [listaAtividades, listaTurmas, ultimas] = await Promise.all([
+            listarAtividades(),
+            listarTurmas(),
+            listarCorrecoes({ limite: 5 }).catch(() => []),
+          ]);
+
+          setRecentes(ultimas);
+
+          const nomeDaTurma = new Map(
+            listaTurmas.map((t) => [t.id_turma, t.nome]),
+          );
+
+          setAtividades(
+            listaAtividades.map((a) => ({
+              id: a.id_atividade,
+              id_turma: a.id_turma,
+              titulo: a.nome,
+              turma: nomeDaTurma.get(a.id_turma) ?? "Sem turma",
+              ...visualDaDisciplina(a.disciplina),
+            })),
+          );
+        } catch (e) {
+          setErro(e.message);
+        } finally {
+          setCarregando(false);
+        }
+      }
+      carregar();
+    }, []),
+  );
+
   function abrirEscolhaDeAtividade(acao) {
     setBusca("");
     setAcaoSelecionada(acao);
   }
 
-  function escolherAtividade(atividade) {
+  // -------------------------------------------------------------------------
+  // Escolheu a atividade -> abre a câmera, a galeria ou os arquivos, conforme
+  // o botão que trouxe a professora até aqui.
+  //
+  // A captura acontece AQUI, não na tela seguinte, porque assim cancelar
+  // deixa ela no Scanner em vez de numa tela de conferência vazia.
+  // -------------------------------------------------------------------------
+  async function escolherAtividade(atividade) {
+    const acao = acaoSelecionada;
     setAcaoSelecionada(null);
-    router.push({
-      pathname: "/processando",
-      params: {
-        atividadeTitulo: atividade.titulo,
-        atividadeTurma: atividade.turma,
-      },
-    });
+    setErro("");
+
+    try {
+      const arquivo = await capturarArquivo(acao);
+
+      // Desistiu ou deu algum aviso: não navega.
+      if (!arquivo) return;
+
+      // O arquivo vai pela memória, não pela URL. Só os dados curtos da
+      // atividade viajam como params.
+      guardarArquivo(arquivo);
+
+      router.push({
+        pathname: "/processando",
+        params: {
+          id_atividade: atividade.id,
+          id_turma: atividade.id_turma,
+          atividadeTitulo: atividade.titulo,
+          atividadeTurma: atividade.turma,
+        },
+      });
+    } catch (e) {
+      setErro(e.message || "Não consegui abrir o seletor de arquivos.");
+    }
   }
 
-  const atividadesFiltradas = ATIVIDADES_CADASTRADAS.filter((atividade) =>
+  // Devolve { uri, tipo, nome, mime } ou null quando a professora desiste.
+  async function capturarArquivo(acao) {
+    if (acao === "pdf") {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: "application/pdf",
+        copyToCacheDirectory: true,
+      });
+
+      if (resultado.canceled) return null;
+
+      const doc = resultado.assets?.[0];
+      if (!doc?.uri) {
+        setErro("Não consegui ler esse arquivo. Tente outro.");
+        return null;
+      }
+
+      return {
+        uri: doc.uri,
+        tipo: "pdf",
+        nome: doc.name || "folha.pdf",
+        mime: doc.mimeType || "application/pdf",
+        // Só existe no navegador. É o arquivo de verdade, que o FormData
+        // precisa na hora de enviar — e que também serve pra pré-visualizar.
+        objetoWeb: doc.file ?? null,
+      };
+    }
+
+    // No navegador não existe câmera nativa: cai no seletor de arquivo.
+    const usarCamera = acao === "foto" && Platform.OS !== "web";
+
+    if (usarCamera) {
+      const permissao = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissao.granted) {
+        setErro("Preciso da permissão da câmera para fotografar a folha.");
+        return null;
+      }
+    }
+
+    const resultado = usarCamera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+
+    if (resultado.canceled) return null;
+
+    const foto = resultado.assets?.[0];
+    if (!foto?.uri) {
+      setErro("Não consegui ler essa imagem. Tente outra.");
+      return null;
+    }
+
+    return {
+      uri: foto.uri,
+      tipo: "imagem",
+      nome: foto.fileName || "folha.jpg",
+      mime: foto.mimeType || "image/jpeg",
+      objetoWeb: foto.file ?? null,
+    };
+  }
+
+  const atividadesFiltradas = atividades.filter((atividade) =>
     atividade.titulo.toLowerCase().includes(busca.toLowerCase()),
   );
 
@@ -234,78 +380,90 @@ export default function Scanner() {
             </View>
           </View>
 
-          <View
-            style={[styles.secaoCard, ehDesktop && styles.secaoCardDesktop]}
-          >
-            <Text
-              style={[
-                styles.secaoTitulo,
-                ehDesktop && styles.secaoTituloDesktop,
-              ]}
-            >
-              Uploads recentes
-            </Text>
+          {erro ? <Text style={styles.erroTexto}>{erro}</Text> : null}
 
-            <View style={styles.listaUploads}>
-              {UPLOADS_RECENTES.map((upload) => (
-                <View key={upload.id} style={styles.uploadItem}>
+          {recentes.length > 0 && (
+            <View style={styles.historico}>
+              <Text style={styles.historicoTitulo}>
+                Últimas folhas corrigidas
+              </Text>
+
+              {recentes.map((c) => (
+                <TouchableOpacity
+                  key={c.id_correcao}
+                  style={styles.historicoLinha}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/revisar",
+                      params: { id_correcao: c.id_correcao },
+                    })
+                  }
+                >
                   <View
                     style={[
-                      styles.uploadIconeCirculo,
-                      { backgroundColor: upload.corFundo },
+                      styles.historicoSelo,
+                      c.status === "concluida" && styles.historicoSeloOk,
                     ]}
                   >
                     <Ionicons
-                      name={upload.icone}
-                      size={18}
-                      color={upload.corIcone}
+                      name={
+                        c.status === "concluida"
+                          ? "checkmark-done"
+                          : "time-outline"
+                      }
+                      size={14}
+                      color={c.status === "concluida" ? COR.ok : COR.marcador}
                     />
                   </View>
-                  <View style={styles.uploadTextos}>
-                    <Text style={styles.uploadNome} numberOfLines={1}>
-                      {upload.nome}
+
+                  <View style={styles.historicoTextos}>
+                    <Text style={styles.historicoAluno} numberOfLines={1}>
+                      {c.aluno?.nome || "Aluno"}
                     </Text>
-                    <Text style={styles.uploadDetalhe}>{upload.detalhe}</Text>
+                    <Text style={styles.historicoAtividade} numberOfLines={1}>
+                      {c.atividade?.nome}
+                      {c.atividade?.turma ? ` · ${c.atividade.turma}` : ""}
+                    </Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.uploadSeta}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={COR.tintaFraca}
-                    />
-                  </TouchableOpacity>
-                </View>
+
+                  <Text style={styles.historicoNota}>
+                    {formatarNota(c.nota)}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={15}
+                    color={COR.chevron}
+                  />
+                </TouchableOpacity>
               ))}
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
 
       <Modal
         visible={!!acaoSelecionada}
         transparent
-        animationType="slide"
+        animationType={ehDesktop ? "fade" : "slide"}
         onRequestClose={() => setAcaoSelecionada(null)}
       >
         <Pressable
-          style={styles.modalFundo}
+          style={[styles.modalFundo, ehDesktop && styles.modalFundoDesktop]}
           onPress={() => setAcaoSelecionada(null)}
         >
           <Pressable
             style={[styles.modalFolha, ehDesktop && styles.modalFolhaDesktop]}
             onPress={() => {}}
           >
-            <View style={styles.modalAlca} />
+            {!ehDesktop && <View style={styles.modalAlca} />}
 
             <View style={styles.modalCabecalho}>
               <View style={styles.modalCabecalhoTextos}>
                 <Text style={styles.modalTitulo}>Selecionar atividade</Text>
                 <Text style={styles.modalSubtitulo}>
                   {acaoSelecionada
-                    ? `${ACOES_SCANNER[acaoSelecionada].titulo} para qual atividade?`
+                    ? `${TITULO_DA_ACAO[acaoSelecionada]} para qual atividade?`
                     : ""}
                 </Text>
               </View>
@@ -318,7 +476,11 @@ export default function Scanner() {
               </TouchableOpacity>
             </View>
 
-            {ATIVIDADES_CADASTRADAS.length === 0 ? (
+            {carregando ? (
+              <Text style={styles.modalVazioTexto}>
+                Carregando atividades...
+              </Text>
+            ) : atividades.length === 0 ? (
               <View style={styles.modalPreRequisito}>
                 <Ionicons
                   name="alert-circle-outline"
@@ -599,59 +761,26 @@ const styles = StyleSheet.create({
     color: COR.branco,
   },
 
-  secaoCard: {
-    width: "100%",
-    backgroundColor: COR.branco,
-    borderRadius: RAIO.superficie,
-    borderWidth: 1,
-    borderColor: COR.linhaSuave,
-    padding: 18,
-    marginBottom: 16,
-  },
-  secaoCardDesktop: { padding: 24, marginBottom: 22 },
-  secaoTitulo: {
-    fontFamily: FONTE.bold,
-    fontSize: 14,
-    fontWeight: "700",
-    color: COR.tintaForte,
-    marginBottom: 14,
-  },
-  secaoTituloDesktop: { fontSize: 16 },
-
-  listaUploads: { gap: 4 },
-  uploadItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
-  },
-  uploadIconeCirculo: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  uploadTextos: { flex: 1, minWidth: 0 },
-  uploadNome: {
-    fontFamily: FONTE.semi,
-    fontSize: 13,
-    fontWeight: "600",
-    color: COR.tintaForte,
-  },
-  uploadDetalhe: {
+  erroTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 11,
-    color: COR.tintaFraca,
-    marginTop: 2,
+    fontSize: 12.5,
+    color: COR.perigo,
+    width: "100%",
+    textAlign: "center",
   },
-  uploadSeta: { flexShrink: 0, padding: 2 },
 
+  // No celular a folha sobe pela borda de baixo, perto do polegar. No
+  // computador ninguém alcança o rodapé com o mouse mais rápido que o centro
+  // da tela — e uma caixa colada embaixo parece que escorregou.
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.45)",
     justifyContent: "flex-end",
+  },
+  modalFundoDesktop: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
   },
   modalFolha: {
     backgroundColor: COR.branco,
@@ -667,8 +796,57 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 440,
     borderRadius: 22,
-    marginBottom: 40,
+    paddingTop: 22,
+    paddingBottom: 20,
+    maxHeight: "80%",
   },
+  historico: {
+    width: "100%",
+    backgroundColor: COR.branco,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COR.linhaSuave,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+    marginTop: 16,
+  },
+  historicoTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.tintaForte,
+    marginBottom: 6,
+  },
+  historicoLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: COR.linhaSuave,
+  },
+  historicoSelo: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COR.emAndamentoFundo,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  historicoSeloOk: { backgroundColor: COR.okFundo },
+  historicoTextos: { flex: 1, gap: 1 },
+  historicoAluno: {
+    fontFamily: FONTE.semi,
+    fontSize: 13,
+    color: COR.tintaForte,
+  },
+  historicoAtividade: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+  },
+  historicoNota: { fontFamily: FONTE.bold, fontSize: 14, color: COR.marinho },
+
   modalAlca: {
     width: 40,
     height: 4,
