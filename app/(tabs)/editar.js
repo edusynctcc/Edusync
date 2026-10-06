@@ -1,14 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
-import {
-  ajustarResposta,
-  buscarCorrecao,
-  concluirAtividade,
-  listarCorrecoes,
-} from "../../constants/api";
 import {
   ActivityIndicator,
   ScrollView,
@@ -18,6 +10,14 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
+import {
+  ajustarResposta,
+  buscarCorrecao,
+  concluirAtividade,
+  listarCorrecoes,
+} from "../../constants/api";
 
 const ABAS = [
   { chave: "resumo", rotulo: "Resumo", icone: "stats-chart" },
@@ -32,13 +32,48 @@ const VISUAL_PADRAO = {
 };
 
 const POR_DISCIPLINA = [
-  { termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"], icone: "function-variant", corFundo: "#E7EFF7", corIcone: "#2E6FB0" },
-  { termos: ["historia"], icone: "book-open-page-variant", corFundo: "#FBF1E0", corIcone: "#8A4A12" },
-  { termos: ["geografia"], icone: "earth", corFundo: "#F3EDE6", corIcone: "#A85A3C" },
-  { termos: ["ciencias", "biologia", "quimica", "fisica"], icone: "flask-outline", corFundo: "#E6F2EC", corIcone: "#2F7D5C" },
-  { termos: ["portugues", "literatura", "redacao", "gramatica"], icone: "format-quote-close", corFundo: "#EFEAF7", corIcone: "#6B4E9B" },
-  { termos: ["ingles", "espanhol", "frances", "idioma"], icone: "translate", corFundo: "#E9EEF0", corIcone: "#55646F" },
-  { termos: ["arte", "artes", "musica", "educacao fisica"], icone: "palette-outline", corFundo: "#FBEAE8", corIcone: "#B4443A" },
+  {
+    termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"],
+    icone: "function-variant",
+    corFundo: "#E7EFF7",
+    corIcone: "#2E6FB0",
+  },
+  {
+    termos: ["historia"],
+    icone: "book-open-page-variant",
+    corFundo: "#FBF1E0",
+    corIcone: "#8A4A12",
+  },
+  {
+    termos: ["geografia"],
+    icone: "earth",
+    corFundo: "#F3EDE6",
+    corIcone: "#A85A3C",
+  },
+  {
+    termos: ["ciencias", "biologia", "quimica", "fisica"],
+    icone: "flask-outline",
+    corFundo: "#E6F2EC",
+    corIcone: "#2F7D5C",
+  },
+  {
+    termos: ["portugues", "literatura", "redacao", "gramatica"],
+    icone: "format-quote-close",
+    corFundo: "#EFEAF7",
+    corIcone: "#6B4E9B",
+  },
+  {
+    termos: ["ingles", "espanhol", "frances", "idioma"],
+    icone: "translate",
+    corFundo: "#E9EEF0",
+    corIcone: "#55646F",
+  },
+  {
+    termos: ["arte", "artes", "musica", "educacao fisica"],
+    icone: "palette-outline",
+    corFundo: "#FBEAE8",
+    corIcone: "#B4443A",
+  },
 ];
 
 function semAcento(texto) {
@@ -52,18 +87,24 @@ function semAcento(texto) {
 function visualDaDisciplina(disciplina) {
   const nome = semAcento(disciplina);
   if (!nome) return VISUAL_PADRAO;
-  const achou = POR_DISCIPLINA.find((g) => g.termos.some((t) => nome.includes(t)));
+  const achou = POR_DISCIPLINA.find((g) =>
+    g.termos.some((t) => nome.includes(t)),
+  );
   return achou
     ? { icone: achou.icone, corFundo: achou.corFundo, corIcone: achou.corIcone }
     : VISUAL_PADRAO;
 }
 
 function formatarNota(valor) {
-  return Number(valor ?? 0).toFixed(1).replace(".", ",");
+  return Number(valor ?? 0)
+    .toFixed(1)
+    .replace(".", ",");
 }
 
 function formatarPeso(valor) {
-  return Number(valor ?? 0).toFixed(2).replace(".", ",");
+  return Number(valor ?? 0)
+    .toFixed(2)
+    .replace(".", ",");
 }
 
 // Verde a partir de 7, amarelo de 5 a 7, vermelho abaixo. É a régua que a
@@ -180,7 +221,7 @@ export default function Editar() {
       return () => {
         ativo = false;
       };
-    }, [id_atividade])
+    }, [id_atividade]),
   );
 
   const atividade = correcoes[0]?.atividade ?? null;
@@ -192,7 +233,8 @@ export default function Editar() {
   const tudoConcluido = correcoes.length > 0 && revisadas === correcoes.length;
 
   const alunos = [...correcoes].sort(
-    (a, b) => (a.aluno?.numero_chamada ?? 999) - (b.aluno?.numero_chamada ?? 999)
+    (a, b) =>
+      (a.aluno?.numero_chamada ?? 999) - (b.aluno?.numero_chamada ?? 999),
   );
 
   async function abrirAluno(c) {
@@ -227,7 +269,7 @@ export default function Editar() {
       const retorno = await ajustarResposta(
         detalhe.id_correcao,
         resposta.id_resposta,
-        novaNota
+        novaNota,
       );
 
       setDetalhe((atual) => ({
@@ -236,7 +278,7 @@ export default function Editar() {
         respostas: atual.respostas.map((r) =>
           r.id_resposta === resposta.id_resposta
             ? { ...r, nota: retorno.nota, ajustado_manualmente: true }
-            : r
+            : r,
         ),
       }));
 
@@ -245,8 +287,8 @@ export default function Editar() {
         atual.map((c) =>
           c.id_correcao === detalhe.id_correcao
             ? { ...c, nota: retorno.nota_total }
-            : c
-        )
+            : c,
+        ),
       );
     } catch (e) {
       setErro(e.message);
@@ -289,7 +331,11 @@ export default function Editar() {
       <View style={styles.tela}>
         {!ehDesktop && <CabecalhoMobile />}
         <View style={styles.centro}>
-          <Ionicons name="document-text-outline" size={36} color={COR.tintaFraca} />
+          <Ionicons
+            name="document-text-outline"
+            size={36}
+            color={COR.tintaFraca}
+          />
           <Text style={styles.textoApoio}>
             {erro || "Esta atividade ainda não tem nenhuma folha corrigida."}
           </Text>
@@ -341,7 +387,9 @@ export default function Editar() {
                     {c.aluno?.nome || "Aluno"}
                   </Text>
                   <Text style={styles.alunoStatus}>
-                    {c.status === "concluida" ? "revisada" : "aguardando revisão"}
+                    {c.status === "concluida"
+                      ? "revisada"
+                      : "aguardando revisão"}
                   </Text>
                 </View>
 
@@ -353,7 +401,11 @@ export default function Editar() {
                 >
                   {formatarNota(c.nota)}
                 </Text>
-                <Ionicons name="chevron-forward" size={15} color={COR.chevron} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={15}
+                  color={COR.chevron}
+                />
               </TouchableOpacity>
             );
           })}
@@ -389,7 +441,9 @@ export default function Editar() {
       <View style={styles.cartao}>
         <View style={styles.detalheTopo}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.detalheNome}>{detalhe.aluno?.nome || "Aluno"}</Text>
+            <Text style={styles.detalheNome}>
+              {detalhe.aluno?.nome || "Aluno"}
+            </Text>
             <Text style={styles.cartaoSubtitulo}>{atividade.turma}</Text>
           </View>
           <Text
@@ -400,7 +454,8 @@ export default function Editar() {
           >
             {formatarNota(detalhe.nota)}
             <Text style={styles.detalheNotaPeso}>
-              {" "}/ {formatarNota(detalhe.peso_total)}
+              {" "}
+              / {formatarNota(detalhe.peso_total)}
             </Text>
           </Text>
         </View>
@@ -428,7 +483,10 @@ export default function Editar() {
                 <Text style={styles.questaoNumero}>Questão {r.numero}</Text>
                 <Text style={styles.questaoNota}>
                   {formatarPeso(r.nota)}
-                  <Text style={styles.questaoPeso}> / {formatarPeso(r.peso)}</Text>
+                  <Text style={styles.questaoPeso}>
+                    {" "}
+                    / {formatarPeso(r.peso)}
+                  </Text>
                 </Text>
               </View>
 
@@ -458,7 +516,8 @@ export default function Editar() {
                       style={[
                         styles.botaoFracao,
                         ativa && styles.botaoFracaoAtivo,
-                        (travada || salvandoId === r.id_resposta) && styles.desativado,
+                        (travada || salvandoId === r.id_resposta) &&
+                          styles.desativado,
                       ]}
                       activeOpacity={0.8}
                       disabled={travada || !!salvandoId}
@@ -520,7 +579,10 @@ export default function Editar() {
           <View style={styles.cartao}>
             <View style={styles.atividadeLinha}>
               <View
-                style={[styles.atividadeIcone, { backgroundColor: visual.corFundo }]}
+                style={[
+                  styles.atividadeIcone,
+                  { backgroundColor: visual.corFundo },
+                ]}
               >
                 <MaterialCommunityIcons
                   name={visual.icone}
@@ -537,7 +599,11 @@ export default function Editar() {
               <View
                 style={[
                   styles.badge,
-                  { backgroundColor: tudoConcluido ? COR.okFundo : COR.avisoFundo },
+                  {
+                    backgroundColor: tudoConcluido
+                      ? COR.okFundo
+                      : COR.avisoFundo,
+                  },
                 ]}
               >
                 <Ionicons
@@ -557,7 +623,10 @@ export default function Editar() {
             </View>
 
             <TouchableOpacity
-              style={[styles.botaoConcluir, tudoConcluido && styles.botaoReabrir]}
+              style={[
+                styles.botaoConcluir,
+                tudoConcluido && styles.botaoReabrir,
+              ]}
               activeOpacity={0.85}
               disabled={fechando}
               onPress={() => fecharAtividade(tudoConcluido)}
@@ -576,8 +645,8 @@ export default function Editar() {
                 {fechando
                   ? "Salvando..."
                   : tudoConcluido
-                  ? "Reabrir para editar"
-                  : "Concluir correção"}
+                    ? "Reabrir para editar"
+                    : "Concluir correção"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -599,7 +668,9 @@ export default function Editar() {
                     size={15}
                     color={ativa ? COR.marcador : COR.tintaFraca}
                   />
-                  <Text style={[styles.abaTexto, ativa && styles.abaTextoAtiva]}>
+                  <Text
+                    style={[styles.abaTexto, ativa && styles.abaTextoAtiva]}
+                  >
                     {aba.rotulo}
                   </Text>
                 </TouchableOpacity>
@@ -611,7 +682,12 @@ export default function Editar() {
             <>
               <View style={styles.tilesLinha}>
                 <View style={styles.tile}>
-                  <View style={[styles.tileIcone, { backgroundColor: COR.emAndamentoFundo }]}>
+                  <View
+                    style={[
+                      styles.tileIcone,
+                      { backgroundColor: COR.emAndamentoFundo },
+                    ]}
+                  >
                     <Ionicons name="people" size={17} color={COR.marcador} />
                   </View>
                   <Text style={styles.tileValor}>{correcoes.length}</Text>
@@ -619,15 +695,21 @@ export default function Editar() {
                 </View>
 
                 <View style={styles.tile}>
-                  <View style={[styles.tileIcone, { backgroundColor: COR.okFundo }]}>
+                  <View
+                    style={[styles.tileIcone, { backgroundColor: COR.okFundo }]}
+                  >
                     <Ionicons name="trending-up" size={17} color={COR.ok} />
                   </View>
-                  <Text style={[styles.tileValor, { color: corDaNota(media, pesoTotal) }]}>
+                  <Text
+                    style={[
+                      styles.tileValor,
+                      { color: corDaNota(media, pesoTotal) },
+                    ]}
+                  >
                     {formatarNota(media)}
                   </Text>
                   <Text style={styles.tileRotulo}>média da turma</Text>
                 </View>
-
               </View>
 
               {listaDeAlunos(false)}
@@ -651,7 +733,13 @@ export default function Editar() {
 
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.fundo },
-  centro: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 30 },
+  centro: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 30,
+  },
   textoApoio: {
     fontFamily: FONTE.regular,
     fontSize: 13,
@@ -661,10 +749,20 @@ const styles = StyleSheet.create({
   },
 
   conteudo: { flex: 1 },
-  conteudoInterno: { padding: 16, paddingBottom: 50, alignItems: "center", gap: 12 },
-  miolo: { width: "94%", maxWidth: 1100, gap: 12 },
+  conteudoInterno: {
+    padding: 16,
+    paddingBottom: 50,
+    alignItems: "center",
+    gap: 12,
+  },
+  miolo: { width: "92%", maxWidth: 1100, gap: 12 },
 
-  voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
+  voltarLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
   tituloPagina: {
     fontFamily: FONTE.bold,
     fontSize: 18,
@@ -681,9 +779,18 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  cartaoVazio: { alignItems: "center", justifyContent: "center", gap: 10, minHeight: 200 },
+  cartaoVazio: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    minHeight: 200,
+  },
   cartaoTitulo: { fontFamily: FONTE.bold, fontSize: 14, color: COR.tintaForte },
-  cartaoSubtitulo: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaFraca },
+  cartaoSubtitulo: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+  },
 
   atividadeLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
   atividadeIcone: {
@@ -693,7 +800,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  atividadeNome: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
+  atividadeNome: {
+    fontFamily: FONTE.bold,
+    fontSize: 16,
+    color: COR.tintaForte,
+  },
 
   badge: {
     flexDirection: "row",
@@ -719,7 +830,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COR.marcador,
   },
-  botaoConcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, color: COR.branco },
+  botaoConcluirTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    color: COR.branco,
+  },
 
   botaoEscuro: {
     flexDirection: "row",
@@ -730,7 +845,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  botaoEscuroTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 12.5 },
+  botaoEscuroTexto: {
+    color: COR.branco,
+    fontFamily: FONTE.bold,
+    fontSize: 12.5,
+  },
 
   erroFaixa: {
     width: "100%",
@@ -815,17 +934,30 @@ const styles = StyleSheet.create({
   chamadaTexto: { fontFamily: FONTE.bold, fontSize: 11, color: COR.tintaMedia },
   alunoTextos: { flex: 1, gap: 1 },
   alunoNome: { fontFamily: FONTE.semi, fontSize: 13, color: COR.tintaForte },
-  alunoStatus: { fontFamily: FONTE.regular, fontSize: 10.5, color: COR.tintaFraca },
+  alunoStatus: {
+    fontFamily: FONTE.regular,
+    fontSize: 10.5,
+    color: COR.tintaFraca,
+  },
   alunoNota: { fontFamily: FONTE.bold, fontSize: 15 },
 
-  duasColunas: { flexDirection: "row", gap: 12, width: "100%", alignItems: "flex-start" },
+  duasColunas: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    alignItems: "flex-start",
+  },
   colunaLista: { flex: 1 },
   colunaDetalhe: { flex: 1.3 },
 
   detalheTopo: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   detalheNome: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
   detalheNota: { fontFamily: FONTE.bold, fontSize: 22 },
-  detalheNotaPeso: { fontFamily: FONTE.regular, fontSize: 12, color: COR.tintaFraca },
+  detalheNotaPeso: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaFraca,
+  },
 
   avisoTrancado: {
     flexDirection: "row",
@@ -836,8 +968,18 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 11,
   },
-  avisoTrancadoTexto: { flex: 1, fontFamily: FONTE.semi, fontSize: 11.5, color: COR.avisoTexto },
-  dicaAjuste: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaMedia, lineHeight: 16 },
+  avisoTrancadoTexto: {
+    flex: 1,
+    fontFamily: FONTE.semi,
+    fontSize: 11.5,
+    color: COR.avisoTexto,
+  },
+  dicaAjuste: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaMedia,
+    lineHeight: 16,
+  },
 
   blocoQuestao: {
     gap: 8,
@@ -845,11 +987,28 @@ const styles = StyleSheet.create({
     borderTopColor: COR.linhaSuave,
     paddingTop: 12,
   },
-  questaoTopo: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  questaoNumero: { fontFamily: FONTE.bold, fontSize: 12.5, color: COR.tintaForte },
+  questaoTopo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  questaoNumero: {
+    fontFamily: FONTE.bold,
+    fontSize: 12.5,
+    color: COR.tintaForte,
+  },
   questaoNota: { fontFamily: FONTE.bold, fontSize: 13, color: COR.tintaForte },
-  questaoPeso: { fontFamily: FONTE.regular, fontSize: 10.5, color: COR.tintaFraca },
-  questaoPergunta: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaMedia, lineHeight: 16 },
+  questaoPeso: {
+    fontFamily: FONTE.regular,
+    fontSize: 10.5,
+    color: COR.tintaFraca,
+  },
+  questaoPergunta: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaMedia,
+    lineHeight: 16,
+  },
 
   leitura: {
     backgroundColor: COR.fundo,
@@ -866,8 +1025,17 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
-  leituraTexto: { fontFamily: FONTE.regular, fontSize: 12, color: COR.tintaForte, lineHeight: 17 },
-  comentario: { fontFamily: FONTE.regular, fontSize: 11, color: COR.tintaFraca },
+  leituraTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaForte,
+    lineHeight: 17,
+  },
+  comentario: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+  },
 
   fracoesLinha: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   botaoFracao: {
@@ -881,9 +1049,22 @@ const styles = StyleSheet.create({
     backgroundColor: COR.branco,
   },
   botaoFracaoAtivo: { borderColor: COR.marinho, backgroundColor: COR.marinho },
-  botaoFracaoTexto: { fontFamily: FONTE.bold, fontSize: 11.5, color: COR.tintaForte },
-  botaoFracaoRotulo: { fontFamily: FONTE.regular, fontSize: 9, color: COR.tintaFraca, marginTop: 1 },
+  botaoFracaoTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 11.5,
+    color: COR.tintaForte,
+  },
+  botaoFracaoRotulo: {
+    fontFamily: FONTE.regular,
+    fontSize: 9,
+    color: COR.tintaFraca,
+    marginTop: 1,
+  },
   botaoFracaoTextoAtivo: { color: COR.branco },
   desativado: { opacity: 0.5 },
-  marcaAjustada: { fontFamily: FONTE.semi, fontSize: 9.5, color: COR.avisoTexto },
+  marcaAjustada: {
+    fontFamily: FONTE.semi,
+    fontSize: 9.5,
+    color: COR.avisoTexto,
+  },
 });

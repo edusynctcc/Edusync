@@ -13,7 +13,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-export const LARGURA_LATERAL = 236;
+// Largura da barra lateral. Quem importa esta constante (as telas que
+// calculam a largura disponível) se ajusta sozinho ao novo valor.
+export const LARGURA_LATERAL = 272;
 
 const SISTEMA: any = Platform.select({
   ios: "System",
@@ -61,7 +63,7 @@ const SEM_CONTORNO_WEB: any =
   Platform.OS === "web" ? { outlineStyle: "none" } : null;
 
 const ITENS_LATERAL = [
-  { rota: "/home", rotulo: "Home", icone: "grid-outline", iconeAtivo: "grid" },
+  { rota: "/home", rotulo: "Home", icone: "home-outline", iconeAtivo: "home" },
   {
     rota: "/turmas",
     rotulo: "Turmas",
@@ -143,7 +145,7 @@ function LateralDesktop() {
       />
 
       <View style={styles.buscaCaixa}>
-        <Ionicons name="search" size={15} color={COR.marinhoClaro} />
+        <Ionicons name="search" size={16} color={COR.marinhoClaro} />
         <TextInput
           value={buscaTexto}
           onChangeText={setBuscaTexto}
@@ -202,7 +204,7 @@ function LateralDesktop() {
               >
                 <Ionicons
                   name={(ativo ? item.iconeAtivo : item.icone) as any}
-                  size={18}
+                  size={20}
                   color={ativo ? COR.marinho : COR.marinhoClaro}
                 />
                 <Text
@@ -229,7 +231,7 @@ function LateralDesktop() {
           hovered && styles.itemLateralHover,
         ]}
       >
-        <Ionicons name="log-out-outline" size={17} color={COR.perigo} />
+        <Ionicons name="log-out-outline" size={18} color={COR.perigo} />
         <Text style={styles.sairTexto}>Sair</Text>
       </Pressable>
     </View>
@@ -322,7 +324,9 @@ const ICONES_POR_ROTA: Record<string, any> = {
   revisar: "create-outline",
   perfil: "person-outline",
   atividades: "document-text-outline",
+  atividade: "document-text-outline",
   turmas: "people-outline",
+  turma: "people-outline",
 };
 
 const ROTULOS_POR_ROTA: Record<string, string> = {
@@ -333,7 +337,9 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   revisar: "Revisar",
   perfil: "Perfil",
   atividades: "Atividades",
+  atividade: "Atividade",
   turmas: "Turmas",
+  turma: "Turma",
 };
 
 // Telas que existem mas não viram botão na barra de baixo. Chega-se nelas por
@@ -344,6 +350,11 @@ const ROTAS_OCULTAS_DA_BARRA: string[] = [
   "processando",
   "editar",
   "revisar",
+  // Detalhe de uma turma. Chega-se nela tocando num card da lista de Turmas,
+  // então não precisa de botão próprio na barra de baixo.
+  "turma",
+  // Idem para o detalhe de uma atividade, que abre pelo "Ver atividade".
+  "atividade",
 ];
 
 const ORDEM_BARRA_MOBILE: string[] = [
@@ -364,6 +375,19 @@ export default function TabsLayout() {
       {ehDesktop && <LateralDesktop />}
 
       <View style={[styles.area, ehDesktop && styles.areaDesktop]}>
+        {/*
+          As telas "turma" e "atividade" NÃO aparecem como <Tabs.Screen> aqui,
+          de propósito.
+
+          O Expo Router já transforma todo arquivo desta pasta em rota
+          sozinho. O <Tabs.Screen> serve para configurar uma rota, não para
+          criá-la — e declarar uma que o roteador ainda não registrou é o tipo
+          de coisa que derruba o build inteiro, com tela branca e sem
+          explicação.
+
+          Elas continuam escondidas da barra de baixo porque os nomes estão em
+          ROTAS_OCULTAS_DA_BARRA, que é o que a BarraMobile realmente lê.
+        */}
         <Tabs
           tabBar={(props: any) =>
             ehDesktop ? null : <BarraMobile {...props} />
@@ -406,23 +430,26 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     backgroundColor: COR.marinho,
     borderRadius: 20,
-    paddingTop: 22,
-    paddingBottom: 14,
-    paddingHorizontal: 14,
+    paddingTop: 24,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
     zIndex: 20,
   },
-  logoLateral: { width: 134, height: 36, marginLeft: 6, marginBottom: 18 },
+  // A logo cresceu junto com a barra. O resizeMode="contain" do <Image>
+  // preserva a proporção, então mexer só nestes dois números não distorce
+  // nada — a imagem se encaixa no espaço.
+  logoLateral: { width: 176, height: 48, marginLeft: 4, marginBottom: 22 },
 
   buscaCaixa: {
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    height: 36,
-    paddingHorizontal: 11,
-    borderRadius: 9,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.08)",
-    marginBottom: 18,
+    marginBottom: 20,
     zIndex: 30,
   },
   buscaInput: {
@@ -430,11 +457,11 @@ const styles = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: COR.branco,
-    fontSize: 12.5,
+    fontSize: 13.5,
   },
   buscaResultados: {
     position: "absolute",
-    top: 42,
+    top: 46,
     left: 0,
     right: 0,
     backgroundColor: COR.branco,
@@ -461,11 +488,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  lateralItens: { gap: 3 },
+  lateralItens: { gap: 4 },
   itemEnvolucro: { position: "relative", justifyContent: "center" },
   marcaAtivo: {
     position: "absolute",
-    left: -14,
+    // tem de ser o negativo do paddingHorizontal da lateral, senão a marca
+    // desencosta da borda
+    left: -16,
     top: 10,
     bottom: 10,
     width: 3,
@@ -476,16 +505,16 @@ const styles = StyleSheet.create({
   itemLateral: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 11,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    gap: 13,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+    borderRadius: 11,
   },
   itemLateralHover: { backgroundColor: "rgba(255,255,255,0.07)" },
   itemLateralAtivo: { backgroundColor: COR.branco },
   itemLateralTexto: {
     fontFamily: FONTE.media,
-    fontSize: 13,
+    fontSize: 14.5,
     color: COR.marinhoClaro,
     fontWeight: "500",
   },
@@ -495,15 +524,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 9,
-    paddingVertical: 11,
+    gap: 10,
+    paddingVertical: 13,
     borderRadius: 10,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.09)",
   },
   sairTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 13.5,
     color: COR.perigo,
     fontWeight: "600",
   },

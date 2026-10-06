@@ -21,7 +21,7 @@ model aluno {
   id_aluno       Int        @id @default(autoincrement())
   id_turma       Int
   nome           String     @db.VarChar(100)
-  matricula      String     @unique(map: "matricula") @db.VarChar(20)
+  matricula      String     @unique(map: "matricula") @db.VarChar(50)
   numero_chamada Int
   turma          turma      @relation(fields: [id_turma], references: [id_turma], onDelete: NoAction, onUpdate: NoAction, map: "aluno_ibfk_1")
   correcao       correcao[]
@@ -83,6 +83,7 @@ model questao {
   tipo             String        @db.VarChar(20)
   resposta_correta String?       @db.VarChar(255)
   peso             Decimal?      @default(1.00) @db.Decimal(4, 2)
+  imagem           String?       @db.VarChar(255)
   alternativa      alternativa[]
   atividade        atividade?    @relation(fields: [id_atividade], references: [id_atividade], onDelete: NoAction, onUpdate: NoAction, map: "questao_ibfk_1")
   resposta         resposta[]
@@ -95,7 +96,7 @@ model resposta {
   id_correcao          Int?
   id_questao           Int?
   resposta             String?   @db.Text
-  nota                 Decimal?  @db.Decimal(3, 2)
+  nota                 Decimal?  @db.Decimal(5, 2)
   comentario           String?   @db.Text
   ajustado_manualmente Boolean?  @default(false)
   correcao             correcao? @relation(fields: [id_correcao], references: [id_correcao], onDelete: NoAction, onUpdate: NoAction, map: "resposta_ibfk_1")

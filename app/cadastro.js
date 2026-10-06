@@ -19,18 +19,42 @@ import { registrar } from "../constants/api";
 
 const LARGURA_DESKTOP = 900;
 
-const IMAGEM_FUNDO = null;
-const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
+// ---------------------------------------------------------------------------
+// A imagem de fundo aparece em tudo: navegador e celular.
+//
+// Eu tinha deixado só no navegador com medo de que, na tela estreita, ela
+// ficasse escondida atrás do formulário. Era medo à toa: com o véu desligado e
+// o cartão subido, sobra justamente a faixa de baixo, que é onde a onda está —
+// foi exatamente assim que você desenhou o layout, num formato de celular.
+//
+// O nome do arquivo tem de bater LETRA POR LETRA com o que está na pasta,
+// extensão inclusive. O Windows não diferencia maiúscula de minúscula, o Metro
+// diferencia — e o sintoma de errar é tela branca, sem erro no navegador.
+// ---------------------------------------------------------------------------
+const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
+
+// O véu escuro por cima da imagem está DESLIGADO: a arte da marca aparece
+// como ela é, sem filtro.
+//
+// Ele existia para garantir que o cartão branco se destacasse. Com o desenho
+// atual não precisa — o cartão tem sombra e cai numa área calma da imagem. Se
+// algum dia a arte mudar e o cartão sumir dentro dela, ligue o véu aqui.
+const MOSTRAR_VEU = false;
+const COR_SOBREPOSICAO = "rgba(7, 22, 46, 0.45)";
 
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
 const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
 
-const AZUL = "#2F6FED";
+const AZUL = "#2E6FB0";
+
+// O amarelo da marca, o mesmo dos botões de ação do app.
+const AMARELO = "#EAB308";
 
 // Tira o contorno padrão do navegador nos campos. Em celular é null.
-const SEM_CONTORNO_WEB = Platform.OS === "web" ? { outlineStyle: "none" } : null;
+const SEM_CONTORNO_WEB =
+  Platform.OS === "web" ? { outlineStyle: "none" } : null;
 
 // ---------------------------------------------------------------------------
 // Mesma injeção que existe no login: esconde o olho de "mostrar senha" que o
@@ -336,7 +360,9 @@ export default function Cadastro() {
       <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
 
-        {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+        {IMAGEM_FUNDO && MOSTRAR_VEU && (
+          <View style={styles.sobreposicao} pointerEvents="none" />
+        )}
 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
@@ -392,7 +418,9 @@ export default function Cadastro() {
     <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+      {IMAGEM_FUNDO && MOSTRAR_VEU && (
+        <View style={styles.sobreposicao} pointerEvents="none" />
+      )}
 
       <KeyboardAvoidingView
         style={styles.areaTeclado}
@@ -419,6 +447,12 @@ const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.marinho },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
+  // O cartão fica no meio da tela. O que sobra em cima e embaixo é onde a arte
+  // do fundo aparece.
+  //
+  // Eu tinha empurrado ele para cima com um paddingBottom para a onda aparecer
+  // inteira; ficou colado no topo. Centralizado é o certo — a onda continua
+  // visível embaixo, e o cartão para de parecer que escorregou.
   scroll: {
     flexGrow: 1,
     alignItems: "center",
@@ -465,7 +499,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginBottom: 12,
   },
-  promoTituloDestaque: { color: COR.destaque },
+  promoTituloDestaque: { color: AMARELO },
   promoTexto: {
     fontFamily: FONTE.regular,
     fontSize: 13.5,
@@ -646,11 +680,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 14,
-    shadowColor: AZUL,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
   },
   botaoDesabilitado: { opacity: 0.7 },
   textoBotao: {
@@ -673,7 +702,7 @@ const styles = StyleSheet.create({
   rodapeLink: {
     fontFamily: FONTE.bold,
     fontSize: 12.5,
-    color: COR.destaque,
+    color: AMARELO,
     fontWeight: "700",
   },
 });

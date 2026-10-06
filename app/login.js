@@ -19,18 +19,43 @@ import { login } from "../constants/api";
 
 const LARGURA_DESKTOP = 900;
 
-const IMAGEM_FUNDO = null;
-const COR_SOBREPOSICAO = "rgba(11, 30, 61, 0.72)";
+// ---------------------------------------------------------------------------
+// A imagem de fundo aparece em tudo: navegador e celular.
+//
+// Eu tinha deixado só no navegador com medo de que, na tela estreita, ela
+// ficasse escondida atrás do formulário. Era medo à toa: com o véu desligado e
+// o cartão subido, sobra justamente a faixa de baixo, que é onde a onda está —
+// foi exatamente assim que você desenhou o layout, num formato de celular.
+//
+// O nome do arquivo tem de bater LETRA POR LETRA com o que está na pasta,
+// extensão inclusive. O Windows não diferencia maiúscula de minúscula, o Metro
+// diferencia — e o sintoma de errar é tela branca, sem erro no navegador.
+// ---------------------------------------------------------------------------
+const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
+
+// O véu escuro por cima da imagem está DESLIGADO: a arte da marca aparece
+// como ela é, sem filtro.
+//
+// Ele existia para garantir que o cartão branco se destacasse. Com o desenho
+// atual não precisa — o cartão tem sombra e cai numa área calma da imagem. Se
+// algum dia a arte mudar e o cartão sumir dentro dela, ligue o véu aqui.
+const MOSTRAR_VEU = false;
+const COR_SOBREPOSICAO = "rgba(7, 22, 46, 0.45)";
 
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
 const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
 
-const AZUL = "#2F6FED";
+const AZUL = "#2E6FB0";
+
+// O mesmo amarelo dos botões de ação do app (home.js, scanner.js). Aqui ele
+// marca os números dos passos e a segunda linha do título, sobre o marinho.
+const AMARELO = "#EAB308";
 
 // Tira o contorno padrão do navegador nos campos. Em celular é null.
-const SEM_CONTORNO_WEB = Platform.OS === "web" ? { outlineStyle: "none" } : null;
+const SEM_CONTORNO_WEB =
+  Platform.OS === "web" ? { outlineStyle: "none" } : null;
 
 // ---------------------------------------------------------------------------
 // Dois ajustes que só existem no navegador e não dá para fazer pelo React
@@ -305,12 +330,12 @@ export default function Login() {
       <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
 
-        {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+        {IMAGEM_FUNDO && MOSTRAR_VEU && (
+          <View style={styles.sobreposicao} pointerEvents="none" />
+        )}
 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
-
-          <View style={styles.divisorVertical} />
 
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
@@ -347,7 +372,10 @@ export default function Login() {
               <Text style={styles.promoCtaTexto}>
                 Quer saber mais sobre o nosso projeto?
               </Text>
-              <TouchableOpacity style={styles.promoCtaBotao}>
+              <TouchableOpacity
+                style={styles.promoCtaBotao}
+                activeOpacity={0.85}
+              >
                 <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
               </TouchableOpacity>
             </View>
@@ -361,7 +389,9 @@ export default function Login() {
     <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {IMAGEM_FUNDO && <View style={styles.sobreposicao} />}
+      {IMAGEM_FUNDO && MOSTRAR_VEU && (
+        <View style={styles.sobreposicao} pointerEvents="none" />
+      )}
 
       <KeyboardAvoidingView
         style={styles.areaTeclado}
@@ -388,6 +418,12 @@ const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.marinho },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
+  // O cartão fica no meio da tela. O que sobra em cima e embaixo é onde a arte
+  // do fundo aparece.
+  //
+  // Eu tinha empurrado ele para cima com um paddingBottom para a onda aparecer
+  // inteira; ficou colado no topo. Centralizado é o certo — a onda continua
+  // visível embaixo, e o cartão para de parecer que escorregou.
   scroll: {
     flexGrow: 1,
     alignItems: "center",
@@ -398,7 +434,10 @@ const styles = StyleSheet.create({
   telaDesktop: {
     flex: 1,
     minHeight: "100%",
-    backgroundColor: COR.marinho,
+    // Um marinho mais fundo que o da coluna da direita. Se os dois fossem a
+    // mesma cor, a metade escura do cartão sumiria dentro do fundo e o cartão
+    // pareceria cortado pela metade.
+    backgroundColor: "#07162E",
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
@@ -424,36 +463,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  divisorVertical: { width: 1, backgroundColor: "#E9ECF2" },
+  // A coluna da direita é branca, como o resto do cartão.
+  //
+  // Ela chegou a ser azul-marinho. Ficava bom sozinha, mas com a arte de fundo
+  // (que também é marinho) o lado direito do cartão encostava no fundo e o
+  // cartão perdia a borda. Cartão branco inteiro, sobre a arte: cada coisa no
+  // seu lugar.
   colunaPromo: { flex: 1.15, padding: 48, justifyContent: "center" },
   promoTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
     color: COR.tintaForte,
-    lineHeight: 32,
-    marginBottom: 12,
+    lineHeight: 34,
+    marginBottom: 14,
   },
-  promoTituloDestaque: { color: COR.destaque },
+  promoTituloDestaque: { color: AMARELO },
   promoTexto: {
     fontFamily: FONTE.regular,
     fontSize: 13.5,
     color: "#5B6472",
-    lineHeight: 20,
-    marginBottom: 18,
+    lineHeight: 21,
+    marginBottom: 20,
   },
+  promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 20 },
   promoLink: { color: AZUL, fontWeight: "600" },
-  promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 18 },
+
   promoItem: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 14,
+    gap: 13,
+    marginBottom: 16,
     alignItems: "flex-start",
   },
   promoIconeBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: COR.emAndamentoFundo,
     alignItems: "center",
     justifyContent: "center",
@@ -461,25 +506,26 @@ const styles = StyleSheet.create({
   promoItemTexto: { flex: 1 },
   promoItemTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: "700",
     color: COR.tintaForte,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   promoItemDescricao: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 12.5,
     color: "#7A8393",
-    lineHeight: 17,
+    lineHeight: 18,
   },
+
   promoCta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 11,
     backgroundColor: "#EFF5FF",
     borderRadius: 12,
     padding: 12,
-    marginTop: 6,
+    marginTop: 10,
   },
   promoCtaIcone: {
     width: 28,
@@ -499,8 +545,8 @@ const styles = StyleSheet.create({
   promoCtaBotao: {
     backgroundColor: AZUL,
     borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
   },
   promoCtaBotaoTexto: {
     color: COR.branco,
@@ -633,11 +679,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 20,
-    shadowColor: AZUL,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
   },
   botaoDesabilitado: { opacity: 0.7 },
   textoBotao: {
@@ -660,7 +701,7 @@ const styles = StyleSheet.create({
   rodapeLink: {
     fontFamily: FONTE.bold,
     fontSize: 12.5,
-    color: COR.destaque,
+    color: AMARELO,
     fontWeight: "700",
   },
 });

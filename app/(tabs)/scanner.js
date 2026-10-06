@@ -25,6 +25,18 @@ import {
 import { guardarArquivo } from "../../constants/arquivoSelecionado";
 
 // ---------------------------------------------------------------------------
+// O amarelo do botão principal. É o mesmo do "Revisar" da Home (home.js).
+//
+// A regra é uma só no app: amarelo marca a ação principal de cada tela, sempre
+// sobre o bloco azul-marinho, sempre com a letra em marinho. Aqui a ação
+// principal é tirar a foto da folha.
+//
+// A letra é marinho e não branca de propósito: branco sobre este amarelo dá
+// contraste 1,9 e some no projetor; marinho dá 8,6.
+// ---------------------------------------------------------------------------
+const AMARELO = "#EAB308";
+
+// ---------------------------------------------------------------------------
 // Mesma regra da tela de Atividades: o banco não guarda ícone, então ele sai
 // da disciplina. Assim a mesma atividade aparece igual nas duas telas.
 // ---------------------------------------------------------------------------
@@ -82,7 +94,7 @@ const POR_DISCIPLINA = [
 function semAcento(texto) {
   return String(texto ?? "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
@@ -328,13 +340,25 @@ export default function Scanner() {
               )}
               <Ionicons
                 name="camera-outline"
-                size={ehDesktop ? 26 : 32}
+                size={ehDesktop ? 32 : 32}
                 color={COR.branco}
               />
             </View>
 
-            <Text style={styles.cardScannerTitulo}>Scanner de Atividades</Text>
-            <Text style={styles.cardScannerSubtitulo}>
+            <Text
+              style={[
+                styles.cardScannerTitulo,
+                ehDesktop && styles.cardScannerTituloDesktop,
+              ]}
+            >
+              Scanner de Atividades
+            </Text>
+            <Text
+              style={[
+                styles.cardScannerSubtitulo,
+                ehDesktop && styles.cardScannerSubtituloDesktop,
+              ]}
+            >
               Fotografe ou envie a folha de respostas para corrigir
               automaticamente
             </Text>
@@ -348,34 +372,75 @@ export default function Scanner() {
               ]}
             >
               <TouchableOpacity
-                style={[styles.botaoPrincipal, ehDesktop && { flex: 1 }]}
+                style={[
+                  styles.botaoPrincipal,
+                  ehDesktop && styles.botaoAcaoDesktop,
+                  ehDesktop && { flex: 1 },
+                ]}
                 activeOpacity={0.85}
                 onPress={() => abrirEscolhaDeAtividade("foto")}
               >
-                <Ionicons name="camera" size={17} color={COR.marcador} />
-                <Text style={styles.botaoPrincipalTexto}>Tirar Foto</Text>
+                <Ionicons
+                  name="camera"
+                  size={ehDesktop ? 19 : 17}
+                  color={COR.marinho}
+                />
+                <Text
+                  style={[
+                    styles.botaoPrincipalTexto,
+                    ehDesktop && styles.botaoAcaoTextoDesktop,
+                  ]}
+                >
+                  Tirar Foto
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.botaoSecundario, ehDesktop && { flex: 1 }]}
+                style={[
+                  styles.botaoSecundario,
+                  ehDesktop && styles.botaoAcaoDesktop,
+                  ehDesktop && { flex: 1 },
+                ]}
                 activeOpacity={0.85}
                 onPress={() => abrirEscolhaDeAtividade("imagem")}
               >
-                <Ionicons name="image-outline" size={17} color={COR.branco} />
-                <Text style={styles.botaoSecundarioTexto}>Enviar Imagem</Text>
+                <Ionicons
+                  name="image-outline"
+                  size={ehDesktop ? 19 : 17}
+                  color={COR.branco}
+                />
+                <Text
+                  style={[
+                    styles.botaoSecundarioTexto,
+                    ehDesktop && styles.botaoAcaoTextoDesktop,
+                  ]}
+                >
+                  Enviar Imagem
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.botaoSecundario, ehDesktop && { flex: 1 }]}
+                style={[
+                  styles.botaoSecundario,
+                  ehDesktop && styles.botaoAcaoDesktop,
+                  ehDesktop && { flex: 1 },
+                ]}
                 activeOpacity={0.85}
                 onPress={() => abrirEscolhaDeAtividade("pdf")}
               >
                 <Ionicons
                   name="document-outline"
-                  size={17}
+                  size={ehDesktop ? 19 : 17}
                   color={COR.branco}
                 />
-                <Text style={styles.botaoSecundarioTexto}>Enviar PDF</Text>
+                <Text
+                  style={[
+                    styles.botaoSecundarioTexto,
+                    ehDesktop && styles.botaoAcaoTextoDesktop,
+                  ]}
+                >
+                  Enviar PDF
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -383,15 +448,25 @@ export default function Scanner() {
           {erro ? <Text style={styles.erroTexto}>{erro}</Text> : null}
 
           {recentes.length > 0 && (
-            <View style={styles.historico}>
-              <Text style={styles.historicoTitulo}>
+            <View
+              style={[styles.historico, ehDesktop && styles.historicoDesktop]}
+            >
+              <Text
+                style={[
+                  styles.historicoTitulo,
+                  ehDesktop && styles.historicoTituloDesktop,
+                ]}
+              >
                 Últimas folhas corrigidas
               </Text>
 
               {recentes.map((c) => (
                 <TouchableOpacity
                   key={c.id_correcao}
-                  style={styles.historicoLinha}
+                  style={[
+                    styles.historicoLinha,
+                    ehDesktop && styles.historicoLinhaDesktop,
+                  ]}
                   activeOpacity={0.7}
                   onPress={() =>
                     router.push({
@@ -403,6 +478,7 @@ export default function Scanner() {
                   <View
                     style={[
                       styles.historicoSelo,
+                      ehDesktop && styles.historicoSeloDesktop,
                       c.status === "concluida" && styles.historicoSeloOk,
                     ]}
                   >
@@ -412,27 +488,44 @@ export default function Scanner() {
                           ? "checkmark-done"
                           : "time-outline"
                       }
-                      size={14}
+                      size={ehDesktop ? 16 : 14}
                       color={c.status === "concluida" ? COR.ok : COR.marcador}
                     />
                   </View>
 
                   <View style={styles.historicoTextos}>
-                    <Text style={styles.historicoAluno} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.historicoAluno,
+                        ehDesktop && styles.historicoAlunoDesktop,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {c.aluno?.nome || "Aluno"}
                     </Text>
-                    <Text style={styles.historicoAtividade} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.historicoAtividade,
+                        ehDesktop && styles.historicoAtividadeDesktop,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {c.atividade?.nome}
                       {c.atividade?.turma ? ` · ${c.atividade.turma}` : ""}
                     </Text>
                   </View>
 
-                  <Text style={styles.historicoNota}>
+                  <Text
+                    style={[
+                      styles.historicoNota,
+                      ehDesktop && styles.historicoNotaDesktop,
+                    ]}
+                  >
                     {formatarNota(c.nota)}
                   </Text>
                   <Ionicons
                     name="chevron-forward"
-                    size={15}
+                    size={ehDesktop ? 17 : 15}
                     color={COR.chevron}
                   />
                 </TouchableOpacity>
@@ -460,8 +553,20 @@ export default function Scanner() {
 
             <View style={styles.modalCabecalho}>
               <View style={styles.modalCabecalhoTextos}>
-                <Text style={styles.modalTitulo}>Selecionar atividade</Text>
-                <Text style={styles.modalSubtitulo}>
+                <Text
+                  style={[
+                    styles.modalTitulo,
+                    ehDesktop && styles.modalTituloDesktop,
+                  ]}
+                >
+                  Selecionar atividade
+                </Text>
+                <Text
+                  style={[
+                    styles.modalSubtitulo,
+                    ehDesktop && styles.modalSubtituloDesktop,
+                  ]}
+                >
                   {acaoSelecionada
                     ? `${TITULO_DA_ACAO[acaoSelecionada]} para qual atividade?`
                     : ""}
@@ -537,14 +642,22 @@ export default function Scanner() {
               </View>
             ) : (
               <>
-                <View style={styles.modalBuscaBox}>
+                <View
+                  style={[
+                    styles.modalBuscaBox,
+                    ehDesktop && styles.modalBuscaBoxDesktop,
+                  ]}
+                >
                   <Ionicons name="search" size={16} color={COR.tintaFraca} />
                   <TextInput
                     value={busca}
                     onChangeText={setBusca}
                     placeholder="Buscar atividade..."
                     placeholderTextColor={COR.tintaFraca}
-                    style={styles.modalBuscaInput}
+                    style={[
+                      styles.modalBuscaInput,
+                      ehDesktop && styles.modalBuscaInputDesktop,
+                    ]}
                   />
                 </View>
 
@@ -555,31 +668,41 @@ export default function Scanner() {
                   {atividadesFiltradas.map((atividade) => (
                     <TouchableOpacity
                       key={atividade.id}
-                      style={styles.modalAtividadeItem}
+                      style={[
+                        styles.modalAtividadeItem,
+                        ehDesktop && styles.modalAtividadeItemDesktop,
+                      ]}
                       activeOpacity={0.7}
                       onPress={() => escolherAtividade(atividade)}
                     >
                       <View
                         style={[
                           styles.modalAtividadeIcone,
+                          ehDesktop && styles.modalAtividadeIconeDesktop,
                           { backgroundColor: atividade.corFundo },
                         ]}
                       >
                         <MaterialCommunityIcons
                           name={atividade.icone}
-                          size={19}
+                          size={ehDesktop ? 22 : 19}
                           color={atividade.corIcone}
                         />
                       </View>
                       <View style={styles.modalAtividadeTextos}>
                         <Text
-                          style={styles.modalAtividadeTitulo}
+                          style={[
+                            styles.modalAtividadeTitulo,
+                            ehDesktop && styles.modalAtividadeTituloDesktop,
+                          ]}
                           numberOfLines={1}
                         >
                           {atividade.titulo}
                         </Text>
                         <Text
-                          style={styles.modalAtividadeTurma}
+                          style={[
+                            styles.modalAtividadeTurma,
+                            ehDesktop && styles.modalAtividadeTurmaDesktop,
+                          ]}
                           numberOfLines={1}
                         >
                           {atividade.turma}
@@ -600,7 +723,10 @@ export default function Scanner() {
                   )}
 
                   <TouchableOpacity
-                    style={styles.modalNovaAtividade}
+                    style={[
+                      styles.modalNovaAtividade,
+                      ehDesktop && styles.modalNovaAtividadeDesktop,
+                    ]}
                     activeOpacity={0.8}
                     onPress={() => {
                       setAcaoSelecionada(null);
@@ -612,7 +738,12 @@ export default function Scanner() {
                       size={18}
                       color={COR.marcador}
                     />
-                    <Text style={styles.modalNovaAtividadeTexto}>
+                    <Text
+                      style={[
+                        styles.modalNovaAtividadeTexto,
+                        ehDesktop && styles.modalNovaAtividadeTextoDesktop,
+                      ]}
+                    >
                       Criar nova atividade
                     </Text>
                   </TouchableOpacity>
@@ -645,7 +776,7 @@ const styles = StyleSheet.create({
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
   tituloPaginaDesktop: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
   },
@@ -658,7 +789,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  cardScannerDesktop: { padding: 30, marginBottom: 22, alignItems: "center" },
+  cardScannerDesktop: { padding: 38, marginBottom: 24, alignItems: "center" },
+
+  // -------------------------------------------------------------------------
+  // Tamanhos só do computador.
+  //
+  // Esta tela usa o mesmo JSX nas duas larguras, então os estilos de baixo
+  // entram empilhados por cima dos compartilhados:
+  // [styles.historicoAluno, ehDesktop && styles.historicoAlunoDesktop].
+  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
+  //
+  // É o mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o tamanho do
+  // web, é só este bloco.
+  // -------------------------------------------------------------------------
+  cardScannerTituloDesktop: { fontSize: 21, marginBottom: 8 },
+  cardScannerSubtituloDesktop: {
+    fontSize: 14.5,
+    lineHeight: 21,
+    maxWidth: 430,
+    marginBottom: 24,
+  },
+
+  botaoAcaoDesktop: { paddingVertical: 16 },
+  botaoAcaoTextoDesktop: { fontSize: 15 },
+
+  historicoDesktop: {
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 6,
+    marginTop: 20,
+  },
+  historicoTituloDesktop: { fontSize: 15, marginBottom: 8 },
+  historicoLinhaDesktop: { paddingVertical: 15, gap: 13 },
+  historicoSeloDesktop: { width: 34, height: 34, borderRadius: 17 },
+  historicoAlunoDesktop: { fontSize: 15 },
+  historicoAtividadeDesktop: { fontSize: 12.5 },
+  historicoNotaDesktop: { fontSize: 16.5 },
   viewfinder: {
     width: 96,
     height: 96,
@@ -670,8 +837,8 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   viewfinderDesktop: {
-    width: 56,
-    height: 56,
+    width: 68,
+    height: 68,
     borderRadius: RAIO.superficie,
     marginBottom: 12,
   },
@@ -728,12 +895,15 @@ const styles = StyleSheet.create({
   botoesLinha: { width: "100%", gap: 10, marginBottom: 18 },
   botoesLinhaMobile: { flexDirection: "column" },
   botoesLinhaDesktop: { flexDirection: "row" },
+
+  // O botão da ação principal da tela. Amarelo sobre o bloco azul-marinho,
+  // letra marinho — igual ao "Revisar" da Home.
   botaoPrincipal: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: COR.branco,
+    backgroundColor: AMARELO,
     borderRadius: RAIO.superficie,
     paddingVertical: 13,
   },
@@ -741,7 +911,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.bold,
     fontSize: 13.5,
     fontWeight: "700",
-    color: COR.marcador,
+    color: COR.marinho,
   },
   botaoSecundario: {
     flexDirection: "row",
@@ -791,15 +961,33 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     maxHeight: "78%",
   },
+  // A caixa de escolher a atividade cresceu junto com a tela. Ela estava com
+  // 440 de largura e letra de celular, o que a deixava parecendo um aviso
+  // pequeno em cima de uma tela grande.
   modalFolhaDesktop: {
     alignSelf: "center",
     width: "100%",
-    maxWidth: 440,
-    borderRadius: 22,
-    paddingTop: 22,
-    paddingBottom: 20,
-    maxHeight: "80%",
+    maxWidth: 560,
+    borderRadius: 24,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 24,
+    maxHeight: "82%",
   },
+  modalTituloDesktop: { fontSize: 19 },
+  modalSubtituloDesktop: { fontSize: 13.5, marginTop: 3 },
+  modalBuscaBoxDesktop: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 14,
+  },
+  modalBuscaInputDesktop: { fontSize: 14.5 },
+  modalAtividadeItemDesktop: { paddingVertical: 14, gap: 14 },
+  modalAtividadeIconeDesktop: { width: 44, height: 44, borderRadius: 13 },
+  modalAtividadeTituloDesktop: { fontSize: 15 },
+  modalAtividadeTurmaDesktop: { fontSize: 12.5, marginTop: 3 },
+  modalNovaAtividadeDesktop: { paddingVertical: 15, marginTop: 16 },
+  modalNovaAtividadeTextoDesktop: { fontSize: 14.5 },
   historico: {
     width: "100%",
     backgroundColor: COR.branco,

@@ -55,7 +55,7 @@ export const COR = {
   perigoFundo: "#FBEAE8",
 };
 
-export const RAIO = { etiqueta: 6, controle: 10, superficie: 16 };
+export const RAIO = { etiqueta: 5, controle: 8, superficie: 12 };
 
 export const TRANSICAO_WEB =
   Platform.OS === "web"

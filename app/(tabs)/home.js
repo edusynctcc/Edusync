@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +14,25 @@ import {
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import IconeEdusync from "../../components/IconeEdusync";
+import {
+  buscarPerfil,
+  listarAtividades,
+  listarCorrecoes,
+  listarTurmas,
+} from "../../constants/api";
+
+// ---------------------------------------------------------------------------
+// O amarelo fica em UM botão só: o "Revisar", dentro do bloco escuro.
+//
+// É a ação mais urgente da tela — tem folha de aluno esperando. Amarelo sobre
+// o azul-marinho do bloco salta à vista, e a letra continua marinho: contraste
+// 8,6, se lê de longe e no projetor.
+//
+// O "Nova atividade" voltou a ser o que era (marinho no computador, branco com
+// contorno no celular). Dois botões amarelos na mesma tela disputariam a
+// atenção, e nenhum dos dois seria o destaque.
+// ---------------------------------------------------------------------------
+const AMARELO = "#EAB308";
 
 function saudacao() {
   const hora = new Date().getHours();
@@ -21,106 +41,15 @@ function saudacao() {
   return "Boa noite";
 }
 
-const NOME_PROFESSOR = "Ana";
-const PENDENTES = [
-  { id: 1, atividade: "Prova de Álgebra", turma: "9º Ano A", folhas: 28 },
-  { id: 2, atividade: "Lista de Exercícios", turma: "1ª Série B", folhas: 31 },
-];
-
-const TURMAS = [
-  { id: "1", nome: "9º Ano A", serie: "9º ano · Ens. Fundamental", alunos: 28 },
-  { id: "2", nome: "1ª Série B", serie: "1ª série · Ensino Médio", alunos: 32 },
-  { id: "3", nome: "7º Ano C", serie: "7º ano · Ens. Fundamental", alunos: 25 },
-];
-
-const ATIVIDADES_RECENTES = [
-  { id: "1", titulo: "Prova de Álgebra", turma: "9º Ano A", quando: "Hoje" },
-  {
-    id: "2",
-    titulo: "Lista de Exercícios",
-    turma: "1ª Série B",
-    quando: "Há 4 dias",
-  },
-  {
-    id: "3",
-    titulo: "Trabalho de Geometria",
-    turma: "7º Ano C",
-    quando: "Há 8 dias",
-  },
-  {
-    id: "4",
-    titulo: "Prova Bimestral",
-    turma: "9º Ano A",
-    quando: "Há 14 dias",
-  },
-];
-
-const ATALHOS_MOBILE = [
-  {
-    chave: "turmas",
-    titulo: "Turmas",
-    valor: "3",
-    icone: "turmas",
-    rota: "/turmas",
-  },
-  {
-    chave: "atividades",
-    titulo: "Atividades",
-    valor: "6",
-    icone: "atividades",
-    rota: "/atividades",
-  },
-  {
-    chave: "scanner",
-    titulo: "Scanner",
-    valor: "12",
-    icone: "scanner",
-    rota: "/scanner",
-  },
-  {
-    chave: "correcoes",
-    titulo: "Correções",
-    selo: `${PENDENTES.length} pendentes`,
-    icone: "correcoes",
-    rota: "/correcoes",
-  },
-];
-
-const INDICE_BUSCA = [
-  { tipo: "turma", titulo: "9º Ano A", subtitulo: "E.E. Marechal Rondon" },
-  { tipo: "turma", titulo: "1ª Série B", subtitulo: "E.E. Marechal Rondon" },
-  { tipo: "turma", titulo: "7º Ano C", subtitulo: "Colégio Santa Clara" },
-  {
-    tipo: "atividade",
-    titulo: "Prova de Álgebra",
-    subtitulo: "Prova sobre equações e funções",
-  },
-  {
-    tipo: "atividade",
-    titulo: "Lista de Exercícios",
-    subtitulo: "Exercícios de sistemas lineares",
-  },
-  {
-    tipo: "atividade",
-    titulo: "Trabalho de Geometria",
-    subtitulo: "Figuras planas e espaciais",
-  },
-  {
-    tipo: "atividade",
-    titulo: "Prova Bimestral",
-    subtitulo: "Conteúdos do 1º bimestre",
-  },
-  {
-    tipo: "atividade",
-    titulo: "Exercícios de Frações",
-    subtitulo: "Operações com frações",
-  },
-  {
-    tipo: "atividade",
-    titulo: "Projeto de Estatística",
-    subtitulo: "Pesquisa e análise de dados",
-  },
-];
+// O cabeçalho fica melhor com o primeiro nome. "Bom dia, Ana Carolina Silva"
+// ocupa duas linhas e não soa como alguém falando com você.
+function primeiroNome(nome) {
+  return (
+    String(nome ?? "")
+      .trim()
+      .split(/\s+/)[0] || ""
+  );
+}
 
 const DIAS = [
   "domingo",
@@ -151,33 +80,196 @@ function dataDeHoje() {
   return `${DIAS[hoje.getDay()]}, ${hoje.getDate()} de ${MESES[hoje.getMonth()]}`;
 }
 
-export default function Home() {
-  const { width } = useWindowDimensions();
-  const ehDesktop = width >= 900;
-  const [buscaHome, setBuscaHome] = useState("");
-  const router = useRouter();
+function quandoFoi(iso) {
+  if (!iso) return "";
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return "";
 
-  const buscaNormalizada = buscaHome.trim().toLowerCase();
-  const resultadosBusca = buscaNormalizada
-    ? INDICE_BUSCA.filter((item) =>
-        item.titulo.toLowerCase().includes(buscaNormalizada),
-      )
-    : [];
+  const dias = Math.round(
+    (new Date().setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0)) /
+      86400000,
+  );
 
-  const temPendentes = PENDENTES.length > 0;
+  if (dias <= 0) return "Hoje";
+  if (dias === 1) return "Ontem";
+  if (dias < 30) return `Há ${dias} dias`;
+  return data.toLocaleDateString("pt-BR");
+}
 
-  function abrirResultado(item) {
-    setBuscaHome("");
-    if (item.tipo === "turma") {
-      router.push({ pathname: "/turmas", params: { turmaBusca: item.titulo } });
+// ---------------------------------------------------------------------------
+// Uma correção está pendente até o professor fechar a revisão dela. O que
+// interessa na Home não é a folha solta, é a atividade que ainda tem folhas
+// esperando — por isso as correções são agrupadas por atividade.
+// ---------------------------------------------------------------------------
+function pendentesPorAtividade(correcoes) {
+  const porAtividade = new Map();
+
+  for (const correcao of correcoes) {
+    if (correcao.status === "concluida") continue;
+
+    const atividade = correcao.atividade;
+    if (!atividade) continue;
+
+    const atual = porAtividade.get(atividade.id_atividade);
+
+    if (atual) {
+      atual.folhas += 1;
     } else {
-      router.push({
-        pathname: "/atividades",
-        params: { atividadeTitulo: item.titulo },
+      porAtividade.set(atividade.id_atividade, {
+        id: atividade.id_atividade,
+        atividade: atividade.nome,
+        turma: atividade.turma || "",
+        folhas: 1,
       });
     }
   }
 
+  return [...porAtividade.values()].sort((a, b) => b.folhas - a.folhas);
+}
+
+export default function Home() {
+  const { width } = useWindowDimensions();
+  const ehDesktop = width >= 900;
+  const router = useRouter();
+
+  const [buscaHome, setBuscaHome] = useState("");
+  const [professor, setProfessor] = useState(null);
+  const [turmas, setTurmas] = useState([]);
+  const [atividades, setAtividades] = useState([]);
+  const [correcoes, setCorrecoes] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  // useFocusEffect e não useEffect: a Home é tela de aba e não é desmontada ao
+  // navegar. Com useEffect([]) os números ficariam congelados no valor de
+  // quando o app abriu, e corrigir uma folha não mudaria nada aqui.
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+
+      async function carregar() {
+        setCarregando(true);
+        setErro("");
+
+        try {
+          // Em paralelo, e cada uma com a sua própria rede de segurança: se a
+          // lista de correções falhar, a Home ainda mostra turmas e
+          // atividades em vez de virar uma tela de erro inteira.
+          const [perfil, listaTurmas, listaAtividades, listaCorrecoes] =
+            await Promise.all([
+              buscarPerfil().catch(() => null),
+              listarTurmas().catch(() => []),
+              listarAtividades().catch(() => []),
+              listarCorrecoes().catch(() => []),
+            ]);
+
+          if (!ativo) return;
+
+          setProfessor(perfil);
+          setTurmas(listaTurmas || []);
+          setAtividades(listaAtividades || []);
+          setCorrecoes(listaCorrecoes || []);
+        } catch (e) {
+          if (ativo) setErro(e.message);
+        } finally {
+          if (ativo) setCarregando(false);
+        }
+      }
+
+      carregar();
+      return () => {
+        ativo = false;
+      };
+    }, []),
+  );
+
+  const nome = primeiroNome(professor?.nome) || "professor";
+
+  const pendentes = pendentesPorAtividade(correcoes);
+  const temPendentes = pendentes.length > 0;
+
+  const recentes = [...atividades]
+    .sort((a, b) => b.id_atividade - a.id_atividade)
+    .slice(0, 4);
+
+  const nomeDaTurma = useCallback(
+    (id_turma) => turmas.find((t) => t.id_turma === id_turma)?.nome || "",
+    [turmas],
+  );
+
+  const atalhos = [
+    {
+      chave: "turmas",
+      titulo: "Turmas",
+      valor: String(turmas.length),
+      icone: "turmas",
+      rota: "/turmas",
+    },
+    {
+      chave: "atividades",
+      titulo: "Atividades",
+      valor: String(atividades.length),
+      icone: "atividades",
+      rota: "/atividades",
+    },
+    {
+      chave: "scanner",
+      titulo: "Scanner",
+      icone: "scanner",
+      rota: "/scanner",
+    },
+    {
+      chave: "correcoes",
+      titulo: "Correções",
+      selo: temPendentes
+        ? `${pendentes.reduce((total, p) => total + p.folhas, 0)} a revisar`
+        : null,
+      valor: String(correcoes.length),
+      icone: "correcoes",
+      rota: "/correcoes",
+    },
+  ];
+
+  // A busca é montada com o que existe no banco, não com uma lista fixa.
+  const indiceBusca = [
+    ...turmas.map((t) => ({
+      tipo: "turma",
+      id: t.id_turma,
+      titulo: t.nome,
+      subtitulo: t.escola || `${t.alunos ?? 0} alunos`,
+    })),
+    ...atividades.map((a) => ({
+      tipo: "atividade",
+      id: a.id_atividade,
+      titulo: a.nome,
+      subtitulo: a.disciplina || nomeDaTurma(a.id_turma) || "Atividade",
+    })),
+  ];
+
+  const buscaNormalizada = buscaHome.trim().toLowerCase();
+  const resultadosBusca = buscaNormalizada
+    ? indiceBusca.filter((item) =>
+        item.titulo.toLowerCase().includes(buscaNormalizada),
+      )
+    : [];
+
+  function abrirResultado(item) {
+    setBuscaHome("");
+    router.push({
+      pathname: item.tipo === "turma" ? "/turma" : "/atividade",
+      params: { id: item.id },
+    });
+  }
+
+  function abrirAtividade(id_atividade) {
+    router.push({ pathname: "/atividade", params: { id: id_atividade } });
+  }
+
+  function abrirTurma(id_turma) {
+    router.push({ pathname: "/turma", params: { id: id_turma } });
+  }
+
+  // -------------------------------------------------------------- desktop
   if (ehDesktop) {
     return (
       <View style={styles.telaDesktop}>
@@ -190,7 +282,7 @@ export default function Home() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.dataDesktop}>{dataDeHoje()}</Text>
                 <Text style={styles.saudacaoDesktop}>
-                  {saudacao()}, {NOME_PROFESSOR}
+                  {saudacao()}, {nome}
                 </Text>
               </View>
 
@@ -199,136 +291,228 @@ export default function Home() {
                 activeOpacity={0.85}
                 onPress={() => router.push("/criar-atividade")}
               >
-                <Ionicons name="add" size={16} color={COR.branco} />
+                <Ionicons name="add" size={18} color={COR.branco} />
                 <Text style={styles.botaoNovaDesktopTexto}>Nova atividade</Text>
               </TouchableOpacity>
             </View>
 
-            {temPendentes ? (
-              <View style={styles.blocoPendentes}>
-                <Text style={styles.blocoTitulo}>
-                  {PENDENTES.length}{" "}
-                  {PENDENTES.length === 1 ? "correção" : "correções"} para
-                  revisar
+            {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
+
+            {carregando ? (
+              <View style={styles.carregandoBloco}>
+                <ActivityIndicator color={COR.marcador} />
+                <Text
+                  style={[
+                    styles.carregandoTexto,
+                    styles.carregandoTextoDesktop,
+                  ]}
+                >
+                  Carregando...
+                </Text>
+              </View>
+            ) : temPendentes ? (
+              <View
+                style={[styles.blocoPendentes, styles.blocoPendentesDesktop]}
+              >
+                <Text style={[styles.blocoTitulo, styles.blocoTituloDesktop]}>
+                  {pendentes.length}{" "}
+                  {pendentes.length === 1 ? "atividade" : "atividades"} com
+                  folhas para revisar
                 </Text>
 
-                {PENDENTES.map((item, indice) => (
+                {pendentes.map((item, indice) => (
                   <View
                     key={item.id}
                     style={[
                       styles.blocoLinha,
+                      styles.blocoLinhaDesktop,
                       indice === 0 && styles.blocoLinhaPrimeira,
+                      indice === 0 && styles.blocoLinhaPrimeiraDesktop,
                     ]}
                   >
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.blocoNome} numberOfLines={1}>
+                      <Text
+                        style={[styles.blocoNome, styles.blocoNomeDesktop]}
+                        numberOfLines={1}
+                      >
                         {item.atividade}
                       </Text>
-                      <Text style={styles.blocoMeta} numberOfLines={1}>
-                        {item.turma} · {item.folhas} folhas
+                      <Text
+                        style={[styles.blocoMeta, styles.blocoMetaDesktop]}
+                        numberOfLines={1}
+                      >
+                        {item.turma ? `${item.turma} · ` : ""}
+                        {item.folhas} {item.folhas === 1 ? "folha" : "folhas"}
                       </Text>
                     </View>
 
                     <TouchableOpacity
-                      style={styles.botaoRevisar}
+                      style={[styles.botaoRevisar, styles.botaoRevisarDesktop]}
                       activeOpacity={0.8}
-                      onPress={() => router.push("/correcoes")}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/editar",
+                          params: { id_atividade: item.id },
+                        })
+                      }
                     >
-                      <Text style={styles.botaoRevisarTexto}>Revisar</Text>
+                      <Text
+                        style={[
+                          styles.botaoRevisarTexto,
+                          styles.botaoRevisarTextoDesktop,
+                        ]}
+                      >
+                        Revisar
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
             ) : (
-              <View style={styles.blocoVazio}>
-                <Text style={styles.blocoVazioTitulo}>Nada para revisar</Text>
+              <View style={[styles.blocoVazio, styles.blocoVazioDesktop]}>
+                <Text
+                  style={[
+                    styles.blocoVazioTitulo,
+                    styles.blocoVazioTituloDesktop,
+                  ]}
+                >
+                  Nada para revisar
+                </Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => router.push("/scanner")}
                 >
-                  <Text style={styles.blocoVazioLink}>Escanear uma folha</Text>
+                  <Text
+                    style={[
+                      styles.blocoVazioLink,
+                      styles.blocoVazioLinkDesktop,
+                    ]}
+                  >
+                    Escanear uma folha
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            <View style={styles.secao}>
+            <View style={[styles.secao, styles.secaoDesktop]}>
               <View style={styles.secaoCabecalho}>
-                <Text style={styles.secaoTitulo}>Suas turmas</Text>
+                <Text style={[styles.secaoTitulo, styles.secaoTituloDesktop]}>
+                  Suas turmas
+                </Text>
                 <TouchableOpacity
                   activeOpacity={0.6}
                   onPress={() => router.push("/turmas")}
                 >
-                  <Text style={styles.verTodas}>Ver todas</Text>
+                  <Text style={[styles.verTodas, styles.verTodasDesktop]}>
+                    Ver todas
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              {TURMAS.map((turma) => (
+              {turmas.slice(0, 4).map((turma) => (
                 <TouchableOpacity
-                  key={turma.id}
-                  style={styles.linhaTurma}
+                  key={turma.id_turma}
+                  style={[styles.linhaTurma, styles.linhaTurmaDesktop]}
                   activeOpacity={0.55}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/turmas",
-                      params: { turmaBusca: turma.nome },
-                    })
-                  }
+                  onPress={() => abrirTurma(turma.id_turma)}
                 >
                   <IconeEdusync
                     nome="turmas"
-                    tamanho={17}
+                    tamanho={20}
                     cor={COR.tintaFraca}
                     style={styles.iconeTurma}
                   />
-                  <Text style={styles.turmaNome} numberOfLines={1}>
+                  <Text
+                    style={[styles.turmaNome, styles.turmaNomeDesktop]}
+                    numberOfLines={1}
+                  >
                     {turma.nome}
                   </Text>
-                  <Text style={styles.turmaSerie} numberOfLines={1}>
-                    {turma.serie}
+                  <Text
+                    style={[styles.turmaSerie, styles.turmaSerieDesktop]}
+                    numberOfLines={1}
+                  >
+                    {turma.escola || ""}
                   </Text>
-                  <Text style={styles.turmaAlunos}>{turma.alunos} alunos</Text>
+                  <Text style={[styles.turmaAlunos, styles.turmaAlunosDesktop]}>
+                    {turma.alunos ?? 0}{" "}
+                    {(turma.alunos ?? 0) === 1 ? "aluno" : "alunos"}
+                  </Text>
                 </TouchableOpacity>
               ))}
+
+              {!carregando && turmas.length === 0 && (
+                <Text style={[styles.listaVazia, styles.listaVaziaDesktop]}>
+                  Nenhuma turma cadastrada ainda.
+                </Text>
+              )}
             </View>
 
-            <View style={styles.secao}>
+            <View style={[styles.secao, styles.secaoDesktop]}>
               <View style={styles.secaoCabecalho}>
-                <Text style={styles.secaoTitulo}>Atividades recentes</Text>
+                <Text style={[styles.secaoTitulo, styles.secaoTituloDesktop]}>
+                  Atividades recentes
+                </Text>
                 <TouchableOpacity
                   activeOpacity={0.6}
                   onPress={() => router.push("/atividades")}
                 >
-                  <Text style={styles.verTodas}>Ver todas</Text>
+                  <Text style={[styles.verTodas, styles.verTodasDesktop]}>
+                    Ver todas
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              {ATIVIDADES_RECENTES.map((atividade) => (
+              {recentes.map((atividade) => (
                 <TouchableOpacity
-                  key={atividade.id}
-                  style={styles.linhaAtividade}
+                  key={atividade.id_atividade}
+                  style={[styles.linhaAtividade, styles.linhaAtividadeDesktop]}
                   activeOpacity={0.55}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/atividades",
-                      params: { atividadeTitulo: atividade.titulo },
-                    })
-                  }
+                  onPress={() => abrirAtividade(atividade.id_atividade)}
                 >
-                  <Text style={styles.atividadeQuando}>{atividade.quando}</Text>
-                  <Text style={styles.atividadeTitulo} numberOfLines={1}>
-                    {atividade.titulo}
+                  <Text
+                    style={[
+                      styles.atividadeQuando,
+                      styles.atividadeQuandoDesktop,
+                    ]}
+                  >
+                    {quandoFoi(atividade.criado_em)}
                   </Text>
-                  <Text style={styles.atividadeTurma} numberOfLines={1}>
-                    · {atividade.turma}
+                  <Text
+                    style={[
+                      styles.atividadeTitulo,
+                      styles.atividadeTituloDesktop,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {atividade.nome}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.atividadeTurma,
+                      styles.atividadeTurmaDesktop,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    · {nomeDaTurma(atividade.id_turma)}
                   </Text>
                 </TouchableOpacity>
               ))}
+
+              {!carregando && recentes.length === 0 && (
+                <Text style={[styles.listaVazia, styles.listaVaziaDesktop]}>
+                  Nenhuma atividade criada ainda.
+                </Text>
+              )}
             </View>
           </View>
         </ScrollView>
       </View>
     );
   }
+
+  // --------------------------------------------------------------- mobile
+  const primeiraPendente = pendentes[0];
 
   return (
     <View style={styles.tela}>
@@ -339,10 +523,10 @@ export default function Home() {
         contentContainerStyle={styles.conteudoMobile}
       >
         <View style={styles.saudacaoBloco}>
-          <Text style={styles.dataMobile}>{dataDeHoje()}</Text>
-          <Text style={styles.saudacaoMobile}>
-            {saudacao()}, {NOME_PROFESSOR}
+          <Text style={styles.saudacaoMobile} numberOfLines={1}>
+            {saudacao()}, {nome}
           </Text>
+          <Text style={styles.dataMobile}>{dataDeHoje()}</Text>
         </View>
 
         <View style={styles.buscaBox}>
@@ -365,12 +549,12 @@ export default function Home() {
           <View style={styles.resultadosBox}>
             {resultadosBusca.length === 0 ? (
               <Text style={styles.resultadoVazio}>
-                Nada encontrado para "{buscaHome}"
+                Nada encontrado para &quot;{buscaHome}&quot;
               </Text>
             ) : (
               resultadosBusca.map((item) => (
                 <TouchableOpacity
-                  key={`${item.tipo}-${item.titulo}`}
+                  key={`${item.tipo}-${item.id}`}
                   style={styles.resultadoItem}
                   activeOpacity={0.6}
                   onPress={() => abrirResultado(item)}
@@ -404,24 +588,48 @@ export default function Home() {
           </View>
         )}
 
-        <View style={styles.destaque}>
-          <Text style={styles.destaqueNumero}>
-            {temPendentes
-              ? `${PENDENTES.length} ${PENDENTES.length === 1 ? "correção" : "correções"}`
-              : "Nada pendente"}
-          </Text>
+        {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
-          <Text style={styles.destaqueSub}>
-            {temPendentes
-              ? `${PENDENTES[0].atividade} · ${PENDENTES[0].turma}`
-              : "Escaneie uma folha para começar."}
-          </Text>
+        <View style={styles.destaque}>
+          {carregando ? (
+            <View style={styles.carregandoLinha}>
+              <ActivityIndicator size="small" color={COR.marcador} />
+              <Text style={styles.destaqueSub}>Carregando...</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.destaqueNumero}>
+                {temPendentes
+                  ? `${pendentes.reduce((t, p) => t + p.folhas, 0)} ${
+                      pendentes.reduce((t, p) => t + p.folhas, 0) === 1
+                        ? "folha"
+                        : "folhas"
+                    }`
+                  : "Nada pendente"}
+              </Text>
+
+              <Text style={styles.destaqueSub}>
+                {temPendentes
+                  ? `${primeiraPendente.atividade}${
+                      primeiraPendente.turma
+                        ? ` · ${primeiraPendente.turma}`
+                        : ""
+                    }`
+                  : "Escaneie uma folha para começar."}
+              </Text>
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.botaoPrimario}
             activeOpacity={0.85}
             onPress={() =>
-              router.push(temPendentes ? "/correcoes" : "/scanner")
+              temPendentes
+                ? router.push({
+                    pathname: "/editar",
+                    params: { id_atividade: primeiraPendente.id },
+                  })
+                : router.push("/scanner")
             }
           >
             <Text style={styles.botaoPrimarioTexto}>
@@ -442,12 +650,12 @@ export default function Home() {
 
         <Text style={styles.secaoTituloMobile}>Acesso rápido</Text>
         <View style={styles.listaMobile}>
-          {ATALHOS_MOBILE.map((item, indice) => (
+          {atalhos.map((item, indice) => (
             <TouchableOpacity
               key={item.chave}
               style={[
                 styles.itemMobile,
-                indice === ATALHOS_MOBILE.length - 1 && styles.linhaUltima,
+                indice === atalhos.length - 1 && styles.linhaUltima,
               ]}
               activeOpacity={0.6}
               onPress={() => router.push(item.rota)}
@@ -464,9 +672,9 @@ export default function Home() {
                 <View style={styles.selo}>
                   <Text style={styles.seloTexto}>{item.selo}</Text>
                 </View>
-              ) : (
+              ) : item.valor ? (
                 <Text style={styles.itemNumero}>{item.valor}</Text>
-              )}
+              ) : null}
 
               <Ionicons name="chevron-forward" size={16} color={COR.chevron} />
             </TouchableOpacity>
@@ -477,40 +685,102 @@ export default function Home() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tamanhos só do desktop.
+//
+// Quase tudo nesta tela é compartilhado entre o celular e o computador. Com a
+// barra lateral maior, o miolo ficou pequeno perto dela — mas aumentar os
+// estilos compartilhados aumentaria o celular junto, onde o tamanho já está
+// certo.
+//
+// Então os estilos de baixo são aplicados SÓ no ramo do desktop, empilhados
+// por cima dos compartilhados: [styles.blocoNome, styles.blocoNomeDesktop].
+// O primeiro define, o segundo corrige. O celular nem passa por aqui.
+// ---------------------------------------------------------------------------
+const AUMENTO_DESKTOP = {
+  blocoPendentesDesktop: {
+    paddingHorizontal: 26,
+    paddingTop: 22,
+    paddingBottom: 8,
+    marginBottom: 34,
+  },
+  blocoTituloDesktop: { fontSize: 19.5, marginBottom: 6 },
+  blocoLinhaDesktop: { gap: 16, paddingVertical: 16 },
+  blocoLinhaPrimeiraDesktop: { paddingTop: 13 },
+  blocoNomeDesktop: { fontSize: 15.5 },
+  blocoMetaDesktop: { fontSize: 13, marginTop: 3 },
+  botaoRevisarDesktop: { paddingHorizontal: 18, paddingVertical: 10 },
+  botaoRevisarTextoDesktop: { fontSize: 13.5 },
+
+  blocoVazioDesktop: { padding: 26, marginBottom: 34 },
+  blocoVazioTituloDesktop: { fontSize: 19.5 },
+  blocoVazioLinkDesktop: { fontSize: 14.5, marginTop: 7 },
+
+  secaoDesktop: { marginBottom: 32 },
+  secaoTituloDesktop: { fontSize: 16 },
+  verTodasDesktop: { fontSize: 13.5 },
+  listaVaziaDesktop: { fontSize: 14, paddingVertical: 17 },
+  carregandoTextoDesktop: { fontSize: 14.5 },
+
+  linhaTurmaDesktop: { paddingVertical: 15 },
+  turmaNomeDesktop: { fontSize: 15, width: 140 },
+  turmaSerieDesktop: { fontSize: 14 },
+  turmaAlunosDesktop: { fontSize: 14 },
+
+  linhaAtividadeDesktop: { paddingVertical: 15 },
+  atividadeQuandoDesktop: { fontSize: 14, width: 112 },
+  atividadeTituloDesktop: { fontSize: 15 },
+  atividadeTurmaDesktop: { fontSize: 14, marginLeft: 8 },
+};
+
 const styles = StyleSheet.create({
+  ...AUMENTO_DESKTOP,
   tela: { flex: 1, backgroundColor: COR.fundo },
   telaDesktop: { flex: 1, backgroundColor: COR.branco },
 
   conteudo: { flex: 1 },
   conteudoMobile: { padding: 18, paddingBottom: 40 },
   conteudoDesktop: { padding: 34, paddingBottom: 40, alignItems: "center" },
-  miolo: { width: "100%", maxWidth: 940 },
+  miolo: { width: "92%", maxWidth: 1100 },
 
   dataDesktop: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 14,
     color: COR.tintaFraca,
-    marginBottom: 3,
+    marginBottom: 4,
   },
   saudacaoDesktop: {
-    fontFamily: FONTE.semi,
-    fontSize: 25,
-    fontWeight: "600",
+    fontFamily: FONTE.media,
+    fontSize: 29,
+    fontWeight: "500",
     color: COR.tintaForte,
     letterSpacing: -0.4,
   },
-  saudacaoBloco: { marginBottom: 18, width: "100%" },
+
+  // No celular a data foi para o outro lado: a saudação fica à esquerda e a
+  // data se encosta à direita, na mesma linha de base. Uma linha em vez de
+  // duas, e o topo da tela respira mais.
+  saudacaoBloco: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 18,
+    width: "100%",
+  },
   dataMobile: {
     fontFamily: FONTE.regular,
     fontSize: 12.5,
     color: COR.tintaFraca,
     marginBottom: 3,
+    flexShrink: 0,
   },
   saudacaoMobile: {
-    fontFamily: FONTE.semi,
+    fontFamily: FONTE.media,
     fontSize: 21,
-    fontWeight: "600",
+    fontWeight: "500",
     color: COR.tintaForte,
+    flexShrink: 1,
   },
   cabecalhoLinha: {
     flexDirection: "row",
@@ -526,15 +796,47 @@ const styles = StyleSheet.create({
     gap: 7,
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     flexShrink: 0,
   },
   botaoNovaDesktopTexto: {
     fontFamily: FONTE.semi,
     color: COR.branco,
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: "600",
+  },
+
+  erroFaixa: {
+    width: "100%",
+    fontFamily: FONTE.media,
+    fontSize: 12,
+    color: COR.perigo,
+    backgroundColor: COR.perigoFundo,
+    borderRadius: RAIO.controle,
+    padding: 12,
+    marginBottom: 16,
+    lineHeight: 17,
+  },
+  carregandoBloco: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 26,
+    marginBottom: 30,
+  },
+  carregandoLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
+  carregandoTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaFraca,
+  },
+  listaVazia: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    color: COR.tintaFraca,
+    paddingVertical: 14,
   },
 
   blocoPendentes: {
@@ -574,8 +876,9 @@ const styles = StyleSheet.create({
     color: COR.marinhoClaro,
     marginTop: 2,
   },
+  // O destaque da tela. Amarelo sobre o bloco azul-marinho, letra marinho.
   botaoRevisar: {
-    backgroundColor: COR.branco,
+    backgroundColor: AMARELO,
     borderRadius: RAIO.controle,
     paddingHorizontal: 15,
     paddingVertical: 8,

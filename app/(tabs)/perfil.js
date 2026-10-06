@@ -1,4 +1,4 @@
- import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -70,20 +70,43 @@ const PREFERENCIAS = [
   },
 ];
 
-function ItemLista({ item, ultimo }) {
+function ItemLista({ item, ultimo, ehDesktop }) {
   return (
     <TouchableOpacity
-      style={[styles.itemLista, !ultimo && styles.itemListaBorda]}
+      style={[
+        styles.itemLista,
+        ehDesktop && styles.itemListaDesktop,
+        !ultimo && styles.itemListaBorda,
+      ]}
       activeOpacity={0.7}
     >
-      <View style={styles.itemIconeCirculo}>
-        <Ionicons name={item.icone} size={17} color={COR.tintaMedia} />
+      <View
+        style={[
+          styles.itemIconeCirculo,
+          ehDesktop && styles.itemIconeCirculoDesktop,
+        ]}
+      >
+        <Ionicons
+          name={item.icone}
+          size={ehDesktop ? 20 : 17}
+          color={COR.tintaMedia}
+        />
       </View>
       <View style={styles.itemTextos}>
-        <Text style={styles.itemTitulo}>{item.titulo}</Text>
-        <Text style={styles.itemDescricao}>{item.descricao}</Text>
+        <Text style={[styles.itemTitulo, ehDesktop && styles.itemTituloDesktop]}>
+          {item.titulo}
+        </Text>
+        <Text
+          style={[styles.itemDescricao, ehDesktop && styles.itemDescricaoDesktop]}
+        >
+          {item.descricao}
+        </Text>
       </View>
-      <Ionicons name="chevron-forward" size={17} color={COR.chevron} />
+      <Ionicons
+        name="chevron-forward"
+        size={ehDesktop ? 19 : 17}
+        color={COR.chevron}
+      />
     </TouchableOpacity>
   );
 }
@@ -91,7 +114,6 @@ function ItemLista({ item, ultimo }) {
 export default function Perfil() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
-  const ehTelaLarga = width >= 1300;
   const router = useRouter();
 
   const [professor, setProfessor] = useState(null);
@@ -113,7 +135,7 @@ export default function Perfil() {
         }
       }
       carregar();
-    }, [])
+    }, []),
   );
 
   async function sair() {
@@ -125,10 +147,34 @@ export default function Perfil() {
   // correcao/resposta, que são fase futura do projeto.
   const resumoConta = professor
     ? [
-        { valor: String(professor.total_turmas), rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-        { valor: String(professor.total_atividades), rotulo: "Atividades", icone: "document-text-outline", corFundo: COR.okFundo, corIcone: COR.ok },
-        { valor: String(professor.total_alunos), rotulo: "Alunos", icone: "school-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
-        { valor: "—", rotulo: "Taxa média de correção", icone: "checkmark-circle-outline", corFundo: COR.avisoFundo, corIcone: COR.avisoTexto },
+        {
+          valor: String(professor.total_turmas),
+          rotulo: "Turmas",
+          icone: "people-outline",
+          corFundo: COR.emAndamentoFundo,
+          corIcone: COR.marcador,
+        },
+        {
+          valor: String(professor.total_atividades),
+          rotulo: "Atividades",
+          icone: "document-text-outline",
+          corFundo: COR.okFundo,
+          corIcone: COR.ok,
+        },
+        {
+          valor: String(professor.total_alunos),
+          rotulo: "Alunos",
+          icone: "school-outline",
+          corFundo: COR.emAndamentoFundo,
+          corIcone: COR.marcador,
+        },
+        {
+          valor: "—",
+          rotulo: "Taxa média de correção",
+          icone: "checkmark-circle-outline",
+          corFundo: COR.avisoFundo,
+          corIcone: COR.avisoTexto,
+        },
       ]
     : [];
 
@@ -144,12 +190,7 @@ export default function Perfil() {
           ehDesktop && styles.conteudoInternoDesktop,
         ]}
       >
-        <View
-          style={[
-            ehDesktop ? styles.miolo : { width: "100%" },
-            ehTelaLarga && { maxWidth: 900 },
-          ]}
-        >
+        <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity
@@ -162,87 +203,192 @@ export default function Perfil() {
             </View>
           )}
 
-          {erro ? <Text style={{ color: "red", marginBottom: 12 }}>{erro}</Text> : null}
+          {erro ? (
+            <Text style={{ color: "red", marginBottom: 12 }}>{erro}</Text>
+          ) : null}
           {carregando ? (
-            <Text style={{ color: COR.tintaFraca, marginBottom: 12 }}>Carregando...</Text>
+            <Text style={{ color: COR.tintaFraca, marginBottom: 12 }}>
+              Carregando...
+            </Text>
           ) : null}
 
           {professor && (
             <>
-              <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
-                <View style={styles.avatarGrande}>
-                  <Text style={styles.avatarGrandeTexto}>{iniciaisProfessor(professor.nome)}</Text>
+              <View
+                style={[
+                  styles.perfilCard,
+                  ehDesktop && styles.perfilCardDesktop,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.avatarGrande,
+                    ehDesktop && styles.avatarGrandeDesktop,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.avatarGrandeTexto,
+                      ehDesktop && styles.avatarGrandeTextoDesktop,
+                    ]}
+                  >
+                    {iniciaisProfessor(professor.nome)}
+                  </Text>
                   <View style={styles.avatarSelo}>
-                    <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
+                    <MaterialCommunityIcons
+                      name="camera"
+                      size={11}
+                      color={COR.branco}
+                    />
                   </View>
                 </View>
 
                 <View style={styles.perfilTextos}>
-                  <Text style={styles.perfilNome}>{professor.nome}</Text>
-                  <Text style={styles.perfilCargo}>Professor(a)</Text>
+                  <Text
+                    style={[
+                      styles.perfilNome,
+                      ehDesktop && styles.perfilNomeDesktop,
+                    ]}
+                  >
+                    {professor.nome}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.perfilCargo,
+                      ehDesktop && styles.perfilCargoDesktop,
+                    ]}
+                  >
+                    Professor(a)
+                  </Text>
 
                   <View style={styles.perfilContatoLinha}>
-                    <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
-                    <Text style={styles.perfilContatoTexto}>{professor.email}</Text>
+                    <Ionicons
+                      name="mail-outline"
+                      size={ehDesktop ? 15 : 13}
+                      color={COR.tintaFraca}
+                    />
+                    <Text
+                      style={[
+                        styles.perfilContatoTexto,
+                        ehDesktop && styles.perfilContatoTextoDesktop,
+                      ]}
+                    >
+                      {professor.email}
+                    </Text>
                   </View>
                   {/* Telefone e endereço ainda não existem no banco — sem campo pra mostrar aqui por enquanto. */}
                 </View>
 
-                <Ionicons name="chevron-forward" size={18} color={COR.chevron} style={styles.perfilSeta} />
-
-                <TouchableOpacity style={styles.mascoteFlutuante} activeOpacity={0.85}>
-                  <Ionicons name="help" size={16} color={COR.branco} />
-                </TouchableOpacity>
+                <Ionicons
+                  name="chevron-forward"
+                  size={ehDesktop ? 20 : 18}
+                  color={COR.chevron}
+                  style={styles.perfilSeta}
+                />
               </View>
 
-              <Text style={styles.secaoTitulo}>Resumo da conta</Text>
+              <Text
+                style={[
+                  styles.secaoTitulo,
+                  ehDesktop && styles.secaoTituloDesktop,
+                ]}
+              >
+                Resumo da conta
+              </Text>
               <View
                 style={[
                   styles.resumoCard,
-                  ehDesktop ? styles.resumoCardDesktop : styles.resumoCardMobile,
+                  ehDesktop
+                    ? styles.resumoCardDesktop
+                    : styles.resumoCardMobile,
                 ]}
               >
                 {resumoConta.map((item) => (
                   <View key={item.rotulo} style={styles.resumoItem}>
-                    <View style={[styles.resumoIconeCirculo, { backgroundColor: item.corFundo }]}>
-                      <Ionicons name={item.icone} size={17} color={item.corIcone} />
+                    <View
+                      style={[
+                        styles.resumoIconeCirculo,
+                        ehDesktop && styles.resumoIconeCirculoDesktop,
+                        { backgroundColor: item.corFundo },
+                      ]}
+                    >
+                      <Ionicons
+                        name={item.icone}
+                        size={ehDesktop ? 20 : 17}
+                        color={item.corIcone}
+                      />
                     </View>
-                    <Text style={styles.resumoValor}>{item.valor}</Text>
-                    <Text style={styles.resumoRotulo}>{item.rotulo}</Text>
+                    <Text
+                      style={[
+                        styles.resumoValor,
+                        ehDesktop && styles.resumoValorDesktop,
+                      ]}
+                    >
+                      {item.valor}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.resumoRotulo,
+                        ehDesktop && styles.resumoRotuloDesktop,
+                      ]}
+                    >
+                      {item.rotulo}
+                    </Text>
                   </View>
                 ))}
               </View>
             </>
           )}
 
-          <Text style={styles.secaoTitulo}>Conta e segurança</Text>
-          <View style={styles.listaCard}>
+          <Text
+            style={[styles.secaoTitulo, ehDesktop && styles.secaoTituloDesktop]}
+          >
+            Conta e segurança
+          </Text>
+          <View
+            style={[styles.listaCard, ehDesktop && styles.listaCardDesktop]}
+          >
             {CONTA_SEGURANCA.map((item, indice) => (
               <ItemLista
                 key={item.chave}
                 item={item}
+                ehDesktop={ehDesktop}
                 ultimo={indice === CONTA_SEGURANCA.length - 1}
               />
             ))}
           </View>
 
-          <Text style={styles.secaoTitulo}>Preferências</Text>
-          <View style={styles.listaCard}>
+          <Text
+            style={[styles.secaoTitulo, ehDesktop && styles.secaoTituloDesktop]}
+          >
+            Preferências
+          </Text>
+          <View
+            style={[styles.listaCard, ehDesktop && styles.listaCardDesktop]}
+          >
             {PREFERENCIAS.map((item, indice) => (
               <ItemLista
                 key={item.chave}
                 item={item}
+                ehDesktop={ehDesktop}
                 ultimo={indice === PREFERENCIAS.length - 1}
               />
             ))}
           </View>
 
           <TouchableOpacity
-            style={styles.botaoSair}
+            style={[styles.botaoSair, ehDesktop && styles.botaoSairDesktop]}
             activeOpacity={0.8}
             onPress={sair}
           >
-            <Text style={styles.botaoSairTexto}>Sair da conta</Text>
+            <Text
+              style={[
+                styles.botaoSairTexto,
+                ehDesktop && styles.botaoSairTextoDesktop,
+              ]}
+            >
+              Sair da conta
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -256,7 +402,7 @@ const styles = StyleSheet.create({
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
   conteudoInternoDesktop: { alignItems: "center" },
-  miolo: { width: "92%", maxWidth: 900 },
+  miolo: { width: "92%", maxWidth: 1100 },
 
   cabecalhoDesktopLinha: {
     flexDirection: "row",
@@ -269,7 +415,7 @@ const styles = StyleSheet.create({
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
   tituloPaginaDesktop: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
   },
@@ -286,7 +432,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
   },
-  perfilCardDesktop: { padding: 22 },
+  perfilCardDesktop: { padding: 24, gap: 18 },
   avatarGrande: {
     width: 56,
     height: 56,
@@ -301,6 +447,25 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.bold,
     fontSize: 18,
   },
+
+  // Este estilo não existia: o <View style={styles.avatarSelo}> do código
+  // apontava para nada, e o ícone da câmera ficava solto dentro do círculo,
+  // por cima das iniciais. Agora é o que ele sempre quis ser — um selo no
+  // canto de baixo do avatar.
+  avatarSelo: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COR.marcador,
+    borderWidth: 2,
+    borderColor: COR.branco,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   perfilTextos: { flex: 1, minWidth: 0 },
   perfilNome: {
     fontFamily: FONTE.bold,
@@ -337,6 +502,39 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  // -------------------------------------------------------------------------
+  // Tamanhos só do computador.
+  //
+  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
+  // entra empilhado por cima do compartilhado:
+  // [styles.itemTitulo, ehDesktop && styles.itemTituloDesktop].
+  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
+  //
+  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
+  // bloco.
+  // -------------------------------------------------------------------------
+  avatarGrandeDesktop: { width: 68, height: 68, borderRadius: 34 },
+  avatarGrandeTextoDesktop: { fontSize: 22 },
+  perfilNomeDesktop: { fontSize: 19 },
+  perfilCargoDesktop: { fontSize: 14, marginBottom: 10 },
+  perfilContatoTextoDesktop: { fontSize: 13.5 },
+  secaoTituloDesktop: { fontSize: 17, marginBottom: 14 },
+  resumoIconeCirculoDesktop: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    marginBottom: 10,
+  },
+  resumoValorDesktop: { fontSize: 22 },
+  resumoRotuloDesktop: { fontSize: 12.5, marginTop: 3 },
+  listaCardDesktop: { paddingHorizontal: 22 },
+  itemListaDesktop: { paddingVertical: 17, gap: 14 },
+  itemIconeCirculoDesktop: { width: 42, height: 42, borderRadius: 13 },
+  itemTituloDesktop: { fontSize: 15 },
+  itemDescricaoDesktop: { fontSize: 12.5, marginTop: 3 },
+  botaoSairDesktop: { paddingVertical: 17 },
+  botaoSairTextoDesktop: { fontSize: 15 },
+
   resumoCard: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -347,7 +545,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   resumoCardMobile: { flexDirection: "row", flexWrap: "wrap", rowGap: 16 },
-  resumoCardDesktop: { flexDirection: "row" },
+  resumoCardDesktop: { flexDirection: "row", padding: 24 },
   resumoItem: { width: "25%", alignItems: "center" },
   resumoIconeCirculo: {
     width: 34,

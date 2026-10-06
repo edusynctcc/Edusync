@@ -1,10 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Print from "expo-print";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE, RAIO } from "../../components/estilo";
-import * as Print from "expo-print";
-import { listarCorrecoes } from "../../constants/api";
 import {
   ActivityIndicator,
   Platform,
@@ -16,6 +13,9 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { COR, FONTE, RAIO } from "../../components/estilo";
+import { listarCorrecoes } from "../../constants/api";
 
 // "Em processamento" saiu da lista de propósito. No sistema de verdade a IA
 // termina de corrigir antes de gravar, então nenhuma correção fica nesse
@@ -90,7 +90,7 @@ function visualDaDisciplina(disciplina) {
   if (!nome) return VISUAL_PADRAO;
 
   const achou = POR_DISCIPLINA.find((grupo) =>
-    grupo.termos.some((termo) => nome.includes(termo))
+    grupo.termos.some((termo) => nome.includes(termo)),
   );
 
   return achou
@@ -114,7 +114,9 @@ const CONFIG_STATUS = {
 };
 
 function formatarNota(valor) {
-  return Number(valor ?? 0).toFixed(1).replace(".", ",");
+  return Number(valor ?? 0)
+    .toFixed(1)
+    .replace(".", ",");
 }
 
 // "Hoje, 10:15" diz mais que "20/09/2026 10:15" quando foi hoje. Depois de uma
@@ -163,7 +165,8 @@ function agruparPorAtividade(correcoes) {
 
   return [...mapa.values()].map((grupo) => {
     const alunos = [...grupo.alunos].sort(
-      (a, b) => (a.aluno?.numero_chamada ?? 999) - (b.aluno?.numero_chamada ?? 999)
+      (a, b) =>
+        (a.aluno?.numero_chamada ?? 999) - (b.aluno?.numero_chamada ?? 999),
     );
 
     const concluidas = alunos.filter((a) => a.status === "concluida").length;
@@ -234,7 +237,7 @@ function montarHtmlDoResumo(grupos) {
             <td>${escapar(c.aluno?.nome || "Aluno")}</td>
             <td class="nota">${formatarNota(c.nota)} / ${formatarNota(c.peso_total)}</td>
             <td class="status">${c.status === "concluida" ? "revisada" : "aguardando revisão"}</td>
-          </tr>`
+          </tr>`,
         )
         .join("");
 
@@ -300,13 +303,12 @@ function montarHtmlDoResumo(grupos) {
 export default function Correcoes() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
-  const ehTelaLarga = width >= 1300;
   const router = useRouter();
   const { atividadeTitulo } = useLocalSearchParams();
 
   const [filtroAtivo, setFiltroAtivo] = useState("Todas");
   const [busca, setBusca] = useState(
-    atividadeTitulo ? String(atividadeTitulo) : ""
+    atividadeTitulo ? String(atividadeTitulo) : "",
   );
 
   const [correcoes, setCorrecoes] = useState([]);
@@ -338,7 +340,7 @@ export default function Correcoes() {
       return () => {
         ativo = false;
       };
-    }, [])
+    }, []),
   );
 
   const grupos = agruparPorAtividade(correcoes);
@@ -346,13 +348,15 @@ export default function Correcoes() {
   const gruposFiltrados = grupos.filter(
     (g) =>
       grupoCombinaComFiltro(g, filtroAtivo) &&
-      g.atividade.nome.toLowerCase().includes(busca.toLowerCase())
+      g.atividade.nome.toLowerCase().includes(busca.toLowerCase()),
   );
 
   const totalConcluidas = grupos.filter((g) => g.status === "concluida").length;
   const totalPendentes = grupos.filter((g) => g.status === "pendente").length;
   const totalFolhas = correcoes.length;
-  const folhasRevisadas = correcoes.filter((c) => c.status === "concluida").length;
+  const folhasRevisadas = correcoes.filter(
+    (c) => c.status === "concluida",
+  ).length;
 
   const RESUMO = [
     {
@@ -404,7 +408,7 @@ export default function Correcoes() {
 
         if (!janela) {
           setErro(
-            "O navegador bloqueou a janela do relatório. Libere os pop-ups para este site e tente de novo."
+            "O navegador bloqueou a janela do relatório. Libere os pop-ups para este site e tente de novo.",
           );
           return;
         }
@@ -443,12 +447,7 @@ export default function Correcoes() {
           ehDesktop && styles.conteudoInternoDesktop,
         ]}
       >
-        <View
-          style={[
-            ehDesktop ? styles.miolo : { width: "100%" },
-            ehTelaLarga && { maxWidth: 1300 },
-          ]}
-        >
+        <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity
@@ -464,18 +463,27 @@ export default function Correcoes() {
           {!ehDesktop && <Text style={styles.tituloPagina}>Correções</Text>}
 
           <View style={styles.buscaLinha}>
-            <View style={styles.buscaBox}>
+            <View
+              style={[styles.buscaBox, ehDesktop && styles.buscaBoxDesktop]}
+            >
               <Ionicons name="search" size={16} color={COR.tintaFraca} />
               <TextInput
                 value={busca}
                 onChangeText={setBusca}
                 placeholder="Buscar por atividade..."
                 placeholderTextColor={COR.tintaFraca}
-                style={styles.buscaInput}
+                style={[
+                  styles.buscaInput,
+                  ehDesktop && styles.buscaInputDesktop,
+                ]}
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={COR.tintaFraca} />
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={COR.tintaFraca}
+                  />
                 </TouchableOpacity>
               )}
             </View>
@@ -485,7 +493,7 @@ export default function Correcoes() {
                 style={styles.botaoScannerDesktop}
                 onPress={() => router.push("/scanner")}
               >
-                <Ionicons name="camera-outline" size={17} color={COR.branco} />
+                <Ionicons name="camera-outline" size={19} color={COR.branco} />
                 <Text style={styles.botaoScannerDesktopTexto}>
                   Ir para o Scanner
                 </Text>
@@ -500,10 +508,18 @@ export default function Correcoes() {
                 <TouchableOpacity
                   key={filtro}
                   onPress={() => setFiltroAtivo(filtro)}
-                  style={[styles.filtroPill, ativo && styles.filtroPillAtivo]}
+                  style={[
+                    styles.filtroPill,
+                    ehDesktop && styles.filtroPillDesktop,
+                    ativo && styles.filtroPillAtivo,
+                  ]}
                 >
                   <Text
-                    style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+                    style={[
+                      styles.filtroTexto,
+                      ehDesktop && styles.filtroTextoDesktop,
+                      ativo && styles.filtroTextoAtivo,
+                    ]}
                   >
                     {filtro}
                   </Text>
@@ -520,7 +536,7 @@ export default function Correcoes() {
               <Text style={styles.vazioTexto}>Carregando correções...</Text>
             </View>
           ) : (
-            <View style={styles.lista}>
+            <View style={[styles.lista, ehDesktop && styles.listaDesktop]}>
               {gruposFiltrados.map((grupo) => {
                 const status = CONFIG_STATUS[grupo.status];
                 const visual = visualDaDisciplina(grupo.atividade.disciplina);
@@ -529,7 +545,11 @@ export default function Correcoes() {
                 return (
                   <View
                     key={grupo.atividade.id_atividade}
-                    style={[styles.correcaoCard, !ehDesktop && styles.correcaoCardMobile]}
+                    style={[
+                      styles.correcaoCard,
+                      ehDesktop && styles.correcaoCardDesktop,
+                      !ehDesktop && styles.correcaoCardMobile,
+                    ]}
                   >
                     {/* O topo abre a atividade inteira; o rodapé continua
                         sendo do cartão (expandir e exportar). */}
@@ -538,29 +558,49 @@ export default function Correcoes() {
                       onPress={() =>
                         router.push({
                           pathname: "/editar",
-                          params: { id_atividade: grupo.atividade.id_atividade },
+                          params: {
+                            id_atividade: grupo.atividade.id_atividade,
+                          },
                         })
                       }
                     >
-                      <View style={styles.correcaoLinhaTopo}>
+                      <View
+                        style={[
+                          styles.correcaoLinhaTopo,
+                          ehDesktop && styles.correcaoLinhaTopoDesktop,
+                        ]}
+                      >
                         <View
                           style={[
                             styles.correcaoIconeCirculo,
+                            ehDesktop && styles.correcaoIconeCirculoDesktop,
                             { backgroundColor: visual.corFundo },
                           ]}
                         >
                           <MaterialCommunityIcons
                             name={visual.icone}
-                            size={20}
+                            size={ehDesktop ? 24 : 20}
                             color={visual.corIcone}
                           />
                         </View>
 
                         <View style={styles.correcaoTextos}>
-                          <Text style={styles.correcaoTitulo} numberOfLines={1}>
+                          <Text
+                            style={[
+                              styles.correcaoTitulo,
+                              ehDesktop && styles.correcaoTituloDesktop,
+                            ]}
+                            numberOfLines={1}
+                          >
                             {grupo.atividade.nome}
                           </Text>
-                          <Text style={styles.correcaoTurma} numberOfLines={1}>
+                          <Text
+                            style={[
+                              styles.correcaoTurma,
+                              ehDesktop && styles.correcaoTurmaDesktop,
+                            ]}
+                            numberOfLines={1}
+                          >
                             {grupo.atividade.turma}
                           </Text>
                         </View>
@@ -568,12 +608,21 @@ export default function Correcoes() {
                         <View
                           style={[
                             styles.statusBadge,
+                            ehDesktop && styles.statusBadgeDesktop,
                             { backgroundColor: status.corFundo },
                           ]}
                         >
-                          <Ionicons name={status.icone} size={12} color={status.cor} />
+                          <Ionicons
+                            name={status.icone}
+                            size={ehDesktop ? 14 : 12}
+                            color={status.cor}
+                          />
                           <Text
-                            style={[styles.statusBadgeTexto, { color: status.cor }]}
+                            style={[
+                              styles.statusBadgeTexto,
+                              ehDesktop && styles.statusBadgeTextoDesktop,
+                              { color: status.cor },
+                            ]}
                           >
                             {status.rotulo}
                           </Text>
@@ -587,66 +636,87 @@ export default function Correcoes() {
                               ? "checkmark-circle-outline"
                               : "time-outline"
                           }
-                          size={13}
+                          size={ehDesktop ? 15 : 13}
                           color={status.cor}
                         />
                         <Text
-                          style={[styles.correcaoContagemTexto, { color: status.cor }]}
+                          style={[
+                            styles.correcaoContagemTexto,
+                            ehDesktop && styles.correcaoContagemTextoDesktop,
+                            { color: status.cor },
+                          ]}
                         >
                           {grupo.status === "concluida"
                             ? `${grupo.total} ${grupo.total === 1 ? "folha corrigida e revisada" : "folhas corrigidas e revisadas"} por você`
                             : `${grupo.concluidas} de ${grupo.total} revisadas — as outras esperam você`}
                         </Text>
                       </View>
-
                     </TouchableOpacity>
 
                     <View style={styles.correcaoRodapeLinha}>
-                        <Text style={styles.correcaoData}>
-                          {grupo.quando}
-                          {grupo.total > 0
-                            ? ` · média ${formatarNota(grupo.media)}`
-                            : ""}
-                        </Text>
+                      <Text
+                        style={[
+                          styles.correcaoData,
+                          ehDesktop && styles.correcaoDataDesktop,
+                        ]}
+                      >
+                        {grupo.quando}
+                        {grupo.total > 0
+                          ? ` · média ${formatarNota(grupo.media)}`
+                          : ""}
+                      </Text>
 
-                        <View style={styles.acoesCartao}>
-                          <TouchableOpacity
-                            style={styles.botaoPdf}
-                            activeOpacity={0.8}
-                            disabled={!!gerando}
-                            onPress={() => salvarPdf(grupo)}
+                      <View style={styles.acoesCartao}>
+                        <TouchableOpacity
+                          style={[
+                            styles.botaoPdf,
+                            ehDesktop && styles.botaoPdfDesktop,
+                          ]}
+                          activeOpacity={0.8}
+                          disabled={!!gerando}
+                          onPress={() => salvarPdf(grupo)}
+                        >
+                          <Ionicons
+                            name="download-outline"
+                            size={ehDesktop ? 16 : 14}
+                            color={COR.marcador}
+                          />
+                          <Text
+                            style={[
+                              styles.botaoPdfTexto,
+                              ehDesktop && styles.botaoPdfTextoDesktop,
+                            ]}
                           >
-                            <Ionicons
-                              name="download-outline"
-                              size={14}
-                              color={COR.marcador}
-                            />
-                            <Text style={styles.botaoPdfTexto}>
-                              {gerando === grupo.atividade.id_atividade
-                                ? "Gerando..."
-                                : "PDF"}
-                            </Text>
-                          </TouchableOpacity>
+                            {gerando === grupo.atividade.id_atividade
+                              ? "Gerando..."
+                              : "PDF"}
+                          </Text>
+                        </TouchableOpacity>
 
-                          <TouchableOpacity
-                            style={styles.verAlunos}
-                            activeOpacity={0.7}
-                            onPress={() => alternar(grupo.atividade.id_atividade)}
+                        <TouchableOpacity
+                          style={styles.verAlunos}
+                          activeOpacity={0.7}
+                          onPress={() => alternar(grupo.atividade.id_atividade)}
+                        >
+                          <Text
+                            style={[
+                              styles.verAlunosTexto,
+                              ehDesktop && styles.verAlunosTextoDesktop,
+                            ]}
                           >
-                            <Text style={styles.verAlunosTexto}>
-                              {aberta
-                                ? "Esconder alunos"
-                                : grupo.total === 1
+                            {aberta
+                              ? "Esconder alunos"
+                              : grupo.total === 1
                                 ? "Ver 1 aluno"
                                 : `Ver ${grupo.total} alunos`}
-                            </Text>
-                            <Ionicons
-                              name={aberta ? "chevron-up" : "chevron-down"}
-                              size={14}
-                              color={COR.marcador}
-                            />
-                          </TouchableOpacity>
-                        </View>
+                          </Text>
+                          <Ionicons
+                            name={aberta ? "chevron-up" : "chevron-down"}
+                            size={ehDesktop ? 16 : 14}
+                            color={COR.marcador}
+                          />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {aberta && (
@@ -654,7 +724,10 @@ export default function Correcoes() {
                         {grupo.alunos.map((c) => (
                           <TouchableOpacity
                             key={c.id_correcao}
-                            style={styles.linhaAluno}
+                            style={[
+                              styles.linhaAluno,
+                              ehDesktop && styles.linhaAlunoDesktop,
+                            ]}
                             activeOpacity={0.7}
                             onPress={() =>
                               router.push({
@@ -669,22 +742,40 @@ export default function Correcoes() {
                                   ? "checkmark-done"
                                   : "time-outline"
                               }
-                              size={14}
-                              color={c.status === "concluida" ? COR.ok : COR.marcador}
+                              size={ehDesktop ? 16 : 14}
+                              color={
+                                c.status === "concluida" ? COR.ok : COR.marcador
+                              }
                             />
-                            <Text style={styles.nomeAluno} numberOfLines={1}>
+                            <Text
+                              style={[
+                                styles.nomeAluno,
+                                ehDesktop && styles.nomeAlunoDesktop,
+                              ]}
+                              numberOfLines={1}
+                            >
                               {c.aluno?.nome || "Aluno"}
                             </Text>
-                            <Text style={styles.notaAluno}>
+                            <Text
+                              style={[
+                                styles.notaAluno,
+                                ehDesktop && styles.notaAlunoDesktop,
+                              ]}
+                            >
                               {formatarNota(c.nota)}
-                              <Text style={styles.notaAlunoPeso}>
+                              <Text
+                                style={[
+                                  styles.notaAlunoPeso,
+                                  ehDesktop && styles.notaAlunoPesoDesktop,
+                                ]}
+                              >
                                 {" "}
                                 / {formatarNota(c.peso_total)}
                               </Text>
                             </Text>
                             <Ionicons
                               name="chevron-forward"
-                              size={14}
+                              size={ehDesktop ? 16 : 14}
                               color={COR.chevron}
                             />
                           </TouchableOpacity>
@@ -702,7 +793,12 @@ export default function Correcoes() {
                     size={28}
                     color={COR.tintaFraca}
                   />
-                  <Text style={styles.vazioTexto}>
+                  <Text
+                    style={[
+                      styles.vazioTexto,
+                      ehDesktop && styles.vazioTextoDesktop,
+                    ]}
+                  >
                     {correcoes.length === 0
                       ? "Nenhuma folha foi corrigida ainda."
                       : "Nenhuma correção encontrada com esse filtro."}
@@ -712,7 +808,11 @@ export default function Correcoes() {
                       style={styles.botaoVazio}
                       onPress={() => router.push("/scanner")}
                     >
-                      <Ionicons name="camera-outline" size={16} color={COR.branco} />
+                      <Ionicons
+                        name="camera-outline"
+                        size={16}
+                        color={COR.branco}
+                      />
                       <Text style={styles.botaoVazioTexto}>
                         Corrigir a primeira folha
                       </Text>
@@ -723,9 +823,14 @@ export default function Correcoes() {
             </View>
           )}
 
-          <View style={[styles.resumoBox, ehDesktop && styles.resumoBoxDesktop]}>
+          <View
+            style={[styles.resumoBox, ehDesktop && styles.resumoBoxDesktop]}
+          >
             <Text
-              style={[styles.resumoTitulo, ehDesktop && styles.resumoTituloDesktop]}
+              style={[
+                styles.resumoTitulo,
+                ehDesktop && styles.resumoTituloDesktop,
+              ]}
             >
               Resumo das correções
             </Text>
@@ -733,7 +838,10 @@ export default function Correcoes() {
               {RESUMO.map((item) => (
                 <View
                   key={item.rotulo}
-                  style={[styles.resumoItem, ehDesktop && styles.resumoItemDesktop]}
+                  style={[
+                    styles.resumoItem,
+                    ehDesktop && styles.resumoItemDesktop,
+                  ]}
                 >
                   <View
                     style={[
@@ -749,7 +857,10 @@ export default function Correcoes() {
                   </View>
                   <View>
                     <Text
-                      style={[styles.resumoValor, ehDesktop && styles.resumoValorDesktop]}
+                      style={[
+                        styles.resumoValor,
+                        ehDesktop && styles.resumoValorDesktop,
+                      ]}
                     >
                       {item.valor}
                     </Text>
@@ -791,7 +902,7 @@ const styles = StyleSheet.create({
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
   tituloPaginaDesktop: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
   },
@@ -804,7 +915,12 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  buscaLinha: { flexDirection: "row", gap: 10, width: "100%", marginBottom: 14 },
+  buscaLinha: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginBottom: 14,
+  },
   buscaBox: {
     flex: 1,
     flexDirection: "row",
@@ -828,18 +944,57 @@ const styles = StyleSheet.create({
   botaoScannerDesktop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 7,
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   botaoScannerDesktopTexto: {
     color: COR.branco,
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: "700",
   },
+
+  // -------------------------------------------------------------------------
+  // Tamanhos só do computador.
+  //
+  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
+  // entra empilhado por cima do compartilhado:
+  // [styles.nomeAluno, ehDesktop && styles.nomeAlunoDesktop].
+  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
+  //
+  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
+  // bloco.
+  // -------------------------------------------------------------------------
+  buscaBoxDesktop: { paddingHorizontal: 14, paddingVertical: 13 },
+  buscaInputDesktop: { fontSize: 14.5 },
+  filtroPillDesktop: { paddingHorizontal: 19, paddingVertical: 10 },
+  filtroTextoDesktop: { fontSize: 14 },
+
+  listaDesktop: { gap: 12 },
+  correcaoCardDesktop: { padding: 18, borderRadius: 16 },
+  correcaoLinhaTopoDesktop: { gap: 16 },
+  correcaoIconeCirculoDesktop: { width: 48, height: 48, borderRadius: 16 },
+  correcaoTituloDesktop: { fontSize: 15.5 },
+  correcaoTurmaDesktop: { fontSize: 13, marginTop: 3 },
+  statusBadgeDesktop: { paddingHorizontal: 11, paddingVertical: 7, gap: 5 },
+  statusBadgeTextoDesktop: { fontSize: 12 },
+  correcaoContagemTextoDesktop: { fontSize: 12.5 },
+  correcaoDataDesktop: { fontSize: 12 },
+  botaoPdfDesktop: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  botaoPdfTextoDesktop: { fontSize: 12.5 },
+  verAlunosTextoDesktop: { fontSize: 13.5 },
+  linhaAlunoDesktop: { paddingVertical: 15, gap: 12 },
+  nomeAlunoDesktop: { fontSize: 14.5 },
+  notaAlunoDesktop: { fontSize: 15 },
+  notaAlunoPesoDesktop: { fontSize: 12 },
+  vazioTextoDesktop: { fontSize: 14.5 },
 
   acoesCartao: { flexDirection: "row", alignItems: "center", gap: 12 },
   botaoPdf: {
@@ -933,7 +1088,11 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.controle,
     flexShrink: 0,
   },
-  statusBadgeTexto: { fontFamily: FONTE.bold, fontSize: 10.5, fontWeight: "700" },
+  statusBadgeTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
 
   correcaoContagemLinha: {
     flexDirection: "row",
@@ -954,7 +1113,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  correcaoData: { fontFamily: FONTE.regular, fontSize: 10, color: COR.tintaFraca },
+  correcaoData: {
+    fontFamily: FONTE.regular,
+    fontSize: 10,
+    color: COR.tintaFraca,
+  },
   verAlunos: { flexDirection: "row", alignItems: "center", gap: 4 },
   verAlunosTexto: {
     fontFamily: FONTE.bold,
@@ -989,7 +1152,12 @@ const styles = StyleSheet.create({
     color: COR.tintaFraca,
   },
 
-  vazioBox: { alignItems: "center", gap: 10, paddingVertical: 40, width: "100%" },
+  vazioBox: {
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 40,
+    width: "100%",
+  },
   vazioTexto: {
     fontFamily: FONTE.regular,
     fontSize: 13,
@@ -1037,7 +1205,12 @@ const styles = StyleSheet.create({
     rowGap: 16,
     columnGap: 12,
   },
-  resumoItem: { flexDirection: "row", alignItems: "center", gap: 8, width: "46%" },
+  resumoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    width: "46%",
+  },
   resumoItemDesktop: { width: "23%", gap: 12 },
   resumoIconeCirculo: { alignItems: "center", justifyContent: "center" },
   resumoIconeCirculoDesktop: {
@@ -1053,6 +1226,10 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
   },
   resumoValorDesktop: { fontSize: 22 },
-  resumoRotulo: { fontFamily: FONTE.regular, fontSize: 10.5, color: COR.tintaFraca },
+  resumoRotulo: {
+    fontFamily: FONTE.regular,
+    fontSize: 10.5,
+    color: COR.tintaFraca,
+  },
   resumoRotuloDesktop: { fontSize: 12.5, marginTop: 2 },
 });

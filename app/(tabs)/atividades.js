@@ -10,14 +10,33 @@ import {
   TextInput,
   TouchableOpacity,
   useWindowDimensions,
-  View
+  View,
 } from "react-native";
-import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
-import { excluirAtividade as excluirAtividadeApi, listarAtividades } from "../../constants/api";
+import {
+  excluirAtividade as excluirAtividadeApi,
+  listarAtividades,
+} from "../../constants/api";
+import { imprimirProvaDaAtividade } from "../../constants/provaPdf";
 
-const FILTROS = ["Todas", "Em aberto", "Concluídas"];
+// ---------------------------------------------------------------------------
+// Os filtros "Todas / Em aberto / Concluídas" saíram daqui.
+//
+// Eles nunca funcionaram, e não dava para consertar sem inventar dado: a
+// tabela `atividade` não tem coluna de status. O que o banco guarda é o
+// status de cada CORREÇÃO ("pendente" por padrão), que é outra coisa — quem
+// tem estado é a folha de cada aluno, não a atividade.
+//
+// Com isso, "Em aberto" mostrava tudo e "Concluídas" não mostrava nada. Três
+// botões que o professor clica e nada acontece leem como defeito, não como
+// funcionalidade pela metade.
+//
+// Para fazer de verdade, a regra honesta seria derivar das correções:
+// "em aberto" = ainda tem aluno sem folha fechada; "concluída" = todas
+// fechadas. Isso pede uma contagem por atividade vinda da API, e fica para
+// quando valer a pena.
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // O banco não guarda ícone. Em vez de sortear pela posição na lista, deduzimos
@@ -82,7 +101,7 @@ const POR_DISCIPLINA = [
 function semAcento(texto) {
   return String(texto ?? "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
@@ -92,7 +111,7 @@ function visualDaDisciplina(disciplina) {
   if (!nome) return VISUAL_PADRAO;
 
   const achou = POR_DISCIPLINA.find((grupo) =>
-    grupo.termos.some((termo) => nome.includes(termo))
+    grupo.termos.some((termo) => nome.includes(termo)),
   );
 
   if (!achou) return VISUAL_PADRAO;
@@ -109,7 +128,8 @@ function formatarData(isoString) {
   if (!isoString) return { data: "", quando: "" };
   const data = new Date(isoString);
   const hoje = new Date();
-  const diffMs = hoje.setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0);
+  const diffMs =
+    hoje.setHours(0, 0, 0, 0) - new Date(data).setHours(0, 0, 0, 0);
   const diffDias = Math.round(diffMs / 86400000);
 
   const dataFormatada = data.toLocaleDateString("pt-BR");
@@ -125,10 +145,8 @@ function formatarData(isoString) {
 export default function Atividades() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
-  const ehTelaLarga = width >= 1300;
   const router = useRouter();
   const { atividadeTitulo } = useLocalSearchParams();
-  const [filtroAtivo, setFiltroAtivo] = useState("Todas");
   const [busca, setBusca] = useState(
     atividadeTitulo ? String(atividadeTitulo) : "",
   );
@@ -138,6 +156,26 @@ export default function Atividades() {
   const [erro, setErro] = useState("");
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
+  const [gerandoProva, setGerandoProva] = useState(false);
+
+  // Gera a folha em branco da atividade, para imprimir e entregar aos alunos.
+  // As questões vêm do banco; o gabarito não entra no documento.
+  async function salvarProvaEmPdf(atividade) {
+    if (gerandoProva) return;
+
+    setGerandoProva(true);
+    setErro("");
+
+    try {
+      const problema = await imprimirProvaDaAtividade(atividade);
+      if (problema) setErro(problema);
+      else setMenuAtivo(null);
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setGerandoProva(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -168,7 +206,7 @@ export default function Atividades() {
         }
       }
       carregar();
-    }, [])
+    }, []),
   );
 
   function irParaEdicao(item) {
@@ -184,19 +222,12 @@ export default function Atividades() {
     });
   }
 
-  // ATENÇÃO: a tabela atividade não tem coluna "status". Enquanto ela não
-  // existir, "Em aberto" mostra tudo e "Concluídas" não mostra nada.
-  function combinaComFiltro(item, filtro) {
-    if (filtro === "Todas") return true;
-    if (filtro === "Em aberto") return item.status !== "concluida";
-    if (filtro === "Concluídas") return item.status === "concluida";
-    return true;
-  }
-
   async function confirmarExclusao() {
     try {
       await excluirAtividadeApi(atividadeParaExcluir.id);
-      setAtividades((atuais) => atuais.filter((a) => a.id !== atividadeParaExcluir.id));
+      setAtividades((atuais) =>
+        atuais.filter((a) => a.id !== atividadeParaExcluir.id),
+      );
       setAtividadeParaExcluir(null);
     } catch (e) {
       setErro(e.message);
@@ -204,10 +235,14 @@ export default function Atividades() {
     }
   }
 
-  const atividadesFiltradas = atividades.filter(
-    (item) =>
-      combinaComFiltro(item, filtroAtivo) &&
-      item.titulo.toLowerCase().includes(busca.toLowerCase()),
+  // Com os filtros fora, a busca é o único jeito de encurtar a lista — então
+  // ela passou a ignorar acento. O semAcento já estava aqui para escolher o
+  // ícone da disciplina; agora serve aos dois. Sem isso, procurar "ciencias"
+  // não acha "Ciências", e o professor conclui que a atividade sumiu.
+  const procurado = semAcento(busca);
+
+  const atividadesFiltradas = atividades.filter((item) =>
+    semAcento(item.titulo).includes(procurado),
   );
 
   return (
@@ -222,12 +257,7 @@ export default function Atividades() {
           ehDesktop && styles.conteudoInternoDesktop,
         ]}
       >
-        <View
-          style={[
-            ehDesktop ? styles.miolo : { width: "100%" },
-            ehTelaLarga && { maxWidth: 1300 },
-          ]}
-        >
+        <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity
@@ -241,14 +271,19 @@ export default function Atividades() {
           )}
 
           <View style={styles.buscaLinha}>
-            <View style={styles.buscaBox}>
+            <View
+              style={[styles.buscaBox, ehDesktop && styles.buscaBoxDesktop]}
+            >
               <Ionicons name="search" size={16} color={COR.tintaFraca} />
               <TextInput
                 value={busca}
                 onChangeText={setBusca}
                 placeholder="Buscar atividade..."
                 placeholderTextColor={COR.tintaFraca}
-                style={styles.buscaInput}
+                style={[
+                  styles.buscaInput,
+                  ehDesktop && styles.buscaInputDesktop,
+                ]}
               />
               {busca.length > 0 && (
                 <TouchableOpacity onPress={() => setBusca("")} hitSlop={8}>
@@ -260,103 +295,114 @@ export default function Atividades() {
                 </TouchableOpacity>
               )}
             </View>
+
+            <TouchableOpacity
+              style={styles.botaoCriarAtividade}
+              activeOpacity={0.85}
+              onPress={() => router.push("/criar-atividade")}
+            >
+              <Ionicons name="add" size={18} color={COR.branco} />
+              <Text style={styles.botaoCriarAtividadeTexto}>
+                Criar atividade
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.filtrosLinha}>
-            {FILTROS.map((filtro) => {
-              const ativo = filtro === filtroAtivo;
-              return (
-                <TouchableOpacity
-                  key={filtro}
-                  onPress={() => setFiltroAtivo(filtro)}
-                  style={[styles.filtroPill, ativo && styles.filtroPillAtivo]}
-                >
-                  <Text
-                    style={[
-                      styles.filtroTexto,
-                      ativo && styles.filtroTextoAtivo,
-                    ]}
-                  >
-                    {filtro}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {erro ? <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text> : null}
+          {erro ? (
+            <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text>
+          ) : null}
           {carregando ? (
-            <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>Carregando...</Text>
+            <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>
+              Carregando...
+            </Text>
           ) : null}
 
-          <View style={styles.lista}>
+          <View style={[styles.lista, ehDesktop && styles.listaDesktop]}>
             {atividadesFiltradas.map((item) => (
               <View
                 key={item.id}
                 style={[
                   styles.atividadeCard,
+                  ehDesktop && styles.atividadeCardDesktop,
                   !ehDesktop && styles.atividadeCardMobile,
                 ]}
               >
-                <View style={styles.atividadeLinhaTopo}>
+                <View
+                  style={[
+                    styles.atividadeLinhaTopo,
+                    ehDesktop && styles.atividadeLinhaTopoDesktop,
+                  ]}
+                >
                   <View
                     style={[
                       styles.atividadeIconeCirculo,
+                      ehDesktop && styles.atividadeIconeCirculoDesktop,
                       { backgroundColor: item.corFundo },
                     ]}
                   >
                     {item.biblioteca === "mci" ? (
                       <MaterialCommunityIcons
                         name={item.icone}
-                        size={20}
+                        size={ehDesktop ? 24 : 20}
                         color={item.corIcone}
                       />
                     ) : (
                       <Ionicons
                         name={item.icone}
-                        size={20}
+                        size={ehDesktop ? 24 : 20}
                         color={item.corIcone}
                       />
                     )}
                   </View>
 
                   <View style={styles.atividadeTextos}>
-                    <Text style={styles.atividadeTitulo} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.atividadeTitulo,
+                        ehDesktop && styles.atividadeTituloDesktop,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {item.titulo}
                     </Text>
-                    <Text style={styles.atividadeDescricao} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.atividadeDescricao,
+                        ehDesktop && styles.atividadeDescricaoDesktop,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {item.descricao}
                     </Text>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.botaoMenu}
-                    activeOpacity={0.7}
-                    hitSlop={8}
-                    onPress={() => setMenuAtivo(item)}
-                  >
-                    <Ionicons
-                      name="ellipsis-vertical"
-                      size={16}
-                      color={COR.tintaFraca}
-                    />
-                  </TouchableOpacity>
-
                   {ehDesktop && (
                     <View style={styles.atividadeAcao}>
                       <TouchableOpacity
-                        style={styles.botaoVer}
+                        style={[styles.botaoVer, styles.botaoVerDesktop]}
                         activeOpacity={0.85}
                         onPress={() =>
                           router.push({
-                            pathname: "/correcoes",
-                            params: { atividadeTitulo: item.titulo },
+                            pathname: "/atividade",
+                            params: { id: item.id },
                           })
                         }
                       >
-                        <Text style={styles.botaoVerTexto}>Ver atividade</Text>
+                        <Text
+                          style={[
+                            styles.botaoVerTexto,
+                            styles.botaoVerTextoDesktop,
+                          ]}
+                        >
+                          Ver atividade
+                        </Text>
                       </TouchableOpacity>
-                      <Text style={styles.atividadeData}>
+                      <Text
+                        style={[
+                          styles.atividadeData,
+                          styles.atividadeDataDesktop,
+                        ]}
+                      >
                         {item.data} · {item.quando}
                       </Text>
                     </View>
@@ -373,8 +419,8 @@ export default function Atividades() {
                       activeOpacity={0.85}
                       onPress={() =>
                         router.push({
-                          pathname: "/correcoes",
-                          params: { atividadeTitulo: item.titulo },
+                          pathname: "/atividade",
+                          params: { id: item.id },
                         })
                       }
                     >
@@ -387,20 +433,24 @@ export default function Atividades() {
 
             {!carregando && atividadesFiltradas.length === 0 && (
               <View style={styles.vazioBox}>
-                <Ionicons name="document-text-outline" size={28} color={COR.tintaFraca} />
-                <Text style={styles.vazioTexto}>Nenhuma atividade encontrada.</Text>
+                <Ionicons
+                  name="document-text-outline"
+                  size={28}
+                  color={COR.tintaFraca}
+                />
+                <Text
+                  style={[
+                    styles.vazioTexto,
+                    ehDesktop && styles.vazioTextoDesktop,
+                  ]}
+                >
+                  Nenhuma atividade encontrada.
+                </Text>
               </View>
             )}
           </View>
         </View>
       </ScrollView>
-
-      <BotaoFlutuante
-        onPress={() => router.push("/criar-atividade")}
-        style={
-          ehDesktop ? { bottom: 32, right: 32 } : { bottom: 74, right: 14 }
-        }
-      />
 
       <Modal
         visible={!!menuAtivo}
@@ -409,22 +459,49 @@ export default function Atividades() {
         onRequestClose={() => setMenuAtivo(null)}
       >
         <Pressable style={styles.modalFundo} onPress={() => setMenuAtivo(null)}>
-          <Pressable style={styles.menuCartao} onPress={() => {}}>
+          <Pressable
+            style={[styles.menuCartao, ehDesktop && styles.menuCartaoDesktop]}
+            onPress={() => {}}
+          >
             <Text style={styles.menuTituloAtividade} numberOfLines={1}>
               {menuAtivo?.titulo}
             </Text>
 
             <TouchableOpacity
-              style={styles.menuOpcao}
+              style={[styles.menuOpcao, ehDesktop && styles.menuOpcaoDesktop]}
               activeOpacity={0.7}
               onPress={() => irParaEdicao(menuAtivo)}
             >
               <Ionicons name="pencil-outline" size={17} color={COR.marcador} />
-              <Text style={styles.menuOpcaoTexto}>Editar atividade</Text>
+              <Text
+                style={[
+                  styles.menuOpcaoTexto,
+                  ehDesktop && styles.menuOpcaoTextoDesktop,
+                ]}
+              >
+                Editar atividade
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.menuOpcao}
+              style={[styles.menuOpcao, ehDesktop && styles.menuOpcaoDesktop]}
+              activeOpacity={0.7}
+              disabled={gerandoProva}
+              onPress={() => salvarProvaEmPdf(menuAtivo)}
+            >
+              <Ionicons name="print-outline" size={17} color={COR.marcador} />
+              <Text
+                style={[
+                  styles.menuOpcaoTexto,
+                  ehDesktop && styles.menuOpcaoTextoDesktop,
+                ]}
+              >
+                {gerandoProva ? "Gerando prova..." : "Salvar prova em PDF"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuOpcao, ehDesktop && styles.menuOpcaoDesktop]}
               activeOpacity={0.7}
               onPress={() => {
                 setAtividadeParaExcluir(menuAtivo);
@@ -432,7 +509,13 @@ export default function Atividades() {
               }}
             >
               <Ionicons name="trash-outline" size={17} color={COR.perigo} />
-              <Text style={[styles.menuOpcaoTexto, { color: COR.perigo }]}>
+              <Text
+                style={[
+                  styles.menuOpcaoTexto,
+                  ehDesktop && styles.menuOpcaoTextoDesktop,
+                  { color: COR.perigo },
+                ]}
+              >
                 Excluir atividade
               </Text>
             </TouchableOpacity>
@@ -447,14 +530,25 @@ export default function Atividades() {
         onRequestClose={() => setAtividadeParaExcluir(null)}
       >
         <View style={styles.modalFundo}>
-          <View style={styles.modalCard}>
+          <View
+            style={[styles.modalCard, ehDesktop && styles.modalCardDesktop]}
+          >
             <View style={styles.modalIconeCirculo}>
               <Ionicons name="trash-outline" size={22} color={COR.perigo} />
             </View>
-            <Text style={styles.modalTitulo}>Excluir esta atividade?</Text>
-            <Text style={styles.modalTexto}>
-              "{atividadeParaExcluir?.titulo}" será removida e essa ação não
-              pode ser desfeita.
+            <Text
+              style={[
+                styles.modalTitulo,
+                ehDesktop && styles.modalTituloDesktop,
+              ]}
+            >
+              Excluir esta atividade?
+            </Text>
+            <Text
+              style={[styles.modalTexto, ehDesktop && styles.modalTextoDesktop]}
+            >
+              &quot;{atividadeParaExcluir?.titulo}&quot; será removida e essa
+              ação não pode ser desfeita.
             </Text>
             <View style={styles.modalAcoes}>
               <TouchableOpacity
@@ -498,7 +592,7 @@ const styles = StyleSheet.create({
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
   tituloPaginaDesktop: {
     fontFamily: FONTE.bold,
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
     color: COR.tintaForte,
   },
@@ -507,7 +601,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     width: "100%",
-    marginBottom: 14,
+    // Era 14 quando havia a fila de filtros logo abaixo. Sem ela, a busca
+    // ficaria colada na lista.
+    marginBottom: 16,
   },
   buscaBox: {
     flex: 1,
@@ -528,27 +624,60 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
     padding: 0,
   },
-
-  filtrosLinha: {
+  botaoCriarAtividade: {
     flexDirection: "row",
-    gap: 8,
-    width: "100%",
-    marginBottom: 16,
-  },
-  filtroPill: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: COR.marinho,
+    borderRadius: 8,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COR.linhaSuave,
+    paddingVertical: 10,
   },
-  filtroPillAtivo: { backgroundColor: COR.marinho },
-  filtroTexto: {
-    fontFamily: FONTE.semi,
-    fontSize: 12.5,
-    fontWeight: "600",
-    color: COR.tintaMedia,
+  botaoCriarAtividadeTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.branco,
   },
-  filtroTextoAtivo: { color: COR.branco },
+
+  // -------------------------------------------------------------------------
+  // Tamanhos só do computador.
+  //
+  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
+  // entra empilhado por cima do compartilhado:
+  // [styles.atividadeTitulo, ehDesktop && styles.atividadeTituloDesktop].
+  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
+  //
+  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
+  // bloco.
+  // -------------------------------------------------------------------------
+  buscaBoxDesktop: { paddingHorizontal: 14, paddingVertical: 13 },
+  buscaInputDesktop: { fontSize: 14.5 },
+
+  // Estes quatro números são os da tela de Turmas, medidos em cima dela para
+  // os dois cartões ficarem iguais de verdade. Mexer num deles aqui desencontra
+  // as duas telas de novo.
+  //
+  // A borda já era a mesma nas duas (1px de COR.linhaSuave, que é #E9EEF0) — o
+  // que fazia parecer diferente era o cartão de atividade ter 2px a menos de
+  // respiro interno e o quadradinho do ícone ser 4px menor.
+  listaDesktop: { gap: 12 },
+  atividadeCardDesktop: { padding: 20, borderRadius: 10 },
+  atividadeLinhaTopoDesktop: { gap: 16 },
+  atividadeIconeCirculoDesktop: { width: 52, height: 52, borderRadius: 12 },
+  atividadeTituloDesktop: { fontSize: 15.5 },
+  atividadeDescricaoDesktop: { fontSize: 13, marginTop: 3 },
+  botaoVerDesktop: { paddingHorizontal: 16, paddingVertical: 10 },
+  botaoVerTextoDesktop: { fontSize: 13.5 },
+  atividadeDataDesktop: { fontSize: 12 },
+  vazioTextoDesktop: { fontSize: 14.5 },
+
+  menuCartaoDesktop: { maxWidth: 360, padding: 10 },
+  menuOpcaoDesktop: { paddingVertical: 14, paddingHorizontal: 12 },
+  menuOpcaoTextoDesktop: { fontSize: 15.5 },
+  modalCardDesktop: { maxWidth: 400, padding: 26 },
+  modalTituloDesktop: { fontSize: 18 },
+  modalTextoDesktop: { fontSize: 14, lineHeight: 20 },
 
   lista: { width: "100%", gap: 10, marginBottom: 20 },
   vazioBox: {
@@ -564,7 +693,7 @@ const styles = StyleSheet.create({
   },
   atividadeCard: {
     backgroundColor: COR.branco,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 14,
@@ -580,7 +709,7 @@ const styles = StyleSheet.create({
   atividadeIconeCirculo: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -601,7 +730,7 @@ const styles = StyleSheet.create({
   atividadeAcao: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
   botaoVer: {
     backgroundColor: COR.marinho,
-    borderRadius: RAIO.controle,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -616,14 +745,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COR.tintaFraca,
   },
-  botaoMenu: {
-    width: 28,
-    height: 28,
-    borderRadius: RAIO.superficie,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
 
   modalFundo: {
     flex: 1,
@@ -636,7 +757,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 300,
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: 14,
     padding: 8,
   },
   menuTituloAtividade: {
@@ -667,7 +788,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     backgroundColor: COR.branco,
-    borderRadius: RAIO.superficie,
+    borderRadius: 14,
     padding: 22,
     alignItems: "center",
   },
@@ -720,5 +841,10 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.controle,
     backgroundColor: COR.perigoFundo,
   },
-  modalBotaoExcluirTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.branco },
+  modalBotaoExcluirTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COR.branco,
+  },
 });

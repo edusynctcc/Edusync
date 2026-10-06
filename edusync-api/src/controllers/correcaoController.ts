@@ -52,6 +52,23 @@ function limparVencidos() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Em modo demonstração o campo "resposta" recebia uma lista curta de palavras.
+// Com a IA de verdade ele recebe a TRANSCRIÇÃO da folha — o que o aluno
+// escreveu, inteiro. Se a coluna do banco for pequena, o Prisma lança exceção e
+// o Express devolve um 500 sem mensagem nenhuma.
+//
+// O certo é a coluna ser TEXT (está no PASSOS.md). Este corte é o cinto de
+// segurança: mesmo com a coluna pequena, a correção grava em vez de sumir.
+// ---------------------------------------------------------------------------
+const LIMITE_RESPOSTA = 1000;
+const LIMITE_COMENTARIO = 400;
+
+function cortar(texto: string, limite: number) {
+  const limpo = String(texto ?? '');
+  return limpo.length <= limite ? limpo : limpo.slice(0, limite - 1) + '…';
+}
+
 async function carregarAtividade(id_atividade: number, id_professor: number) {
   return prisma.atividade.findFirst({
     where: { id_atividade, id_professor },
@@ -206,45 +223,77 @@ export async function confirmarCorrecao(req: Request, res: Response) {
   // duplicar. status "pendente" = a IA terminou, esperando a revisão do
   // professor; vira "concluida" quando ele fecha a correção na tela.
   // -------------------------------------------------------------------------
-  const correcao = await prisma.correcao.upsert({
-    where: { id_atividade_id_aluno: { id_atividade, id_aluno } },
-    create: {
-      id_atividade,
-      id_aluno,
-      nota: resultado.nota_total,
-      status: 'pendente',
-      corrigido_em: new Date(),
-    },
-    update: {
-      nota: resultado.nota_total,
-      status: 'pendente',
-      corrigido_em: new Date(),
-    },
-  });
+  // -------------------------------------------------------------------------
+  // Daqui para baixo é gravação no banco. Sem este try, qualquer reclamação do
+  // Prisma (coluna pequena, chave estrangeira, tipo errado) vira um 500 sem
+  // corpo — a tela mostra "Erro ao conectar com o servidor" e o motivo real
+  // não chega a lugar nenhum. Foi exatamente isso que escondeu este bug.
+  // -------------------------------------------------------------------------
+  let correcao: any;
 
-  // Reescaneou: as respostas antigas saem antes de entrarem as novas, senão a
-  // questão 1 apareceria duas vezes na tela de revisão.
-  await prisma.resposta.deleteMany({ where: { id_correcao: correcao.id_correcao } });
+  try {
+    correcao = await prisma.correcao.upsert({
+      where: { id_atividade_id_aluno: { id_atividade, id_aluno } },
+      create: {
+        id_atividade,
+        id_aluno,
+        nota: resultado.nota_total,
+        status: 'pendente',
+        corrigido_em: new Date(),
+      },
+      update: {
+        nota: resultado.nota_total,
+        status: 'pendente',
+        corrigido_em: new Date(),
+      },
+    });
 
-  // Percorre as questões da atividade e busca a nota pelo NÚMERO, em vez de
-  // confiar que as duas listas estão na mesma ordem.
-  const respostas = atividade.questao.map((questao) => {
-    const calculada = resultado.questoes.find((q) => q.numero === questao.numero);
+    // Reescaneou: as respostas antigas saem antes de entrarem as novas, senão a
+    // questão 1 apareceria duas vezes na tela de revisão.
+    await prisma.resposta.deleteMany({ where: { id_correcao: correcao.id_correcao } });
 
-    return {
-      id_correcao: correcao.id_correcao,
-      id_questao: questao.id_questao,
-      resposta: calculada?.resposta_aluno ?? '',
-      nota: calculada?.nota ?? 0,
-      comentario: [calculada?.detalhe, calculada?.observacao].filter(Boolean).join(' · '),
-      // false porque foi a IA. Quando o professor mexer na nota pela tela de
-      // revisão, vira true — e esse contador é o dado da sua monografia: em
-      // quantas questões a IA acertou sem precisar de correção humana.
-      ajustado_manualmente: false,
-    };
-  });
+    // Percorre as questões da atividade e busca a nota pelo NÚMERO, em vez de
+    // confiar que as duas listas estão na mesma ordem.
+    const respostas = atividade.questao.map((questao) => {
+      const calculada = resultado.questoes.find((q) => q.numero === questao.numero);
 
-  await prisma.resposta.createMany({ data: respostas });
+      return {
+        id_correcao: correcao.id_correcao,
+        id_questao: questao.id_questao,
+        resposta: cortar(calculada?.resposta_aluno ?? '', LIMITE_RESPOSTA),
+        nota: calculada?.nota ?? 0,
+        comentario: cortar(
+          [calculada?.detalhe, calculada?.observacao].filter(Boolean).join(' · '),
+          LIMITE_COMENTARIO
+        ),
+        // false porque foi a IA. Quando o professor mexer na nota pela tela de
+        // revisão, vira true — e esse contador é o dado da sua monografia: em
+        // quantas questões a IA acertou sem precisar de correção humana.
+        ajustado_manualmente: false,
+      };
+    });
+
+    await prisma.resposta.createMany({ data: respostas });
+  } catch (e: any) {
+    console.error('[correcao] falhou ao gravar:', e.code, e.message);
+
+    // P2000 = "value too long for the column". O Prisma diz qual coluna.
+    if (e.code === 'P2000') {
+      const coluna = e.meta?.column_name || e.meta?.target || '(não informada)';
+      return res.status(400).json({
+        erro: 'Não consegui salvar esta correção.',
+        detalhe:
+          `A coluna "${coluna}" da tabela resposta é pequena demais para o que ` +
+          'a IA leu. No schema.prisma, troque o tipo dela para @db.Text e rode ' +
+          'npx prisma db push.',
+      });
+    }
+
+    return res.status(500).json({
+      erro: 'Não consegui salvar esta correção.',
+      detalhe: `${e.code ? e.code + ': ' : ''}${e.message}`.slice(0, 300),
+    });
+  }
 
   // Gravou: a leitura não serve mais para nada.
   pendentes.delete(id_leitura);
