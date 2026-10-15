@@ -136,6 +136,46 @@ export function buscarPerfil() {
   return apiFetch(ENDPOINTS.me, { autenticado: true });
 }
 
+export function atualizarPerfil(nome, email, telefone, endereco) {
+  return apiFetch(ENDPOINTS.me, {
+    method: "PUT",
+    body: { nome, email, telefone, endereco },
+    autenticado: true,
+  });
+}
+
+export function alterarSenha(senha_atual, nova_senha) {
+  return apiFetch(`${API_URL}/auth/senha`, {
+    method: "PUT",
+    body: { senha_atual, nova_senha },
+    autenticado: true,
+  });
+}
+
+export function atualizarNotificacoes(notif_correcao) {
+  return apiFetch(`${API_URL}/auth/notificacoes`, {
+    method: "PUT",
+    body: { notif_correcao },
+    autenticado: true,
+  });
+}
+
+export function atualizarFoto(foto) {
+  return apiFetch(`${API_URL}/auth/foto`, {
+    method: "PUT",
+    body: { foto },
+    autenticado: true,
+  });
+}
+
+export function atualizarPreferencias(pref_peso_padrao, pref_tipo_padrao, pref_nota_minima) {
+  return apiFetch(`${API_URL}/auth/preferencias`, {
+    method: "PUT",
+    body: { pref_peso_padrao, pref_tipo_padrao, pref_nota_minima },
+    autenticado: true,
+  });
+}
+
 export function listarTurmas() {
   return apiFetch(ENDPOINTS.turmas, { autenticado: true });
 }
