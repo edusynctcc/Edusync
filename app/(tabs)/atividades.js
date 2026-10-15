@@ -18,6 +18,10 @@ import {
   excluirAtividade as excluirAtividadeApi,
   listarAtividades,
 } from "../../constants/api";
+import {
+  semAcento,
+  visualDaDisciplina,
+} from "../../constants/disciplinas";
 import { imprimirProvaDaAtividade } from "../../constants/provaPdf";
 
 // ---------------------------------------------------------------------------
@@ -46,83 +50,9 @@ import { imprimirProvaDaAtividade } from "../../constants/provaPdf";
 // As cores aqui são de IDENTIDADE da matéria, não de status: verde quer dizer
 // "Ciências", não "concluído".
 // ---------------------------------------------------------------------------
-const VISUAL_PADRAO = {
-  icone: "file-document-outline",
-  biblioteca: "mci",
-  corFundo: "#EEF2F4",
-  corIcone: "#55646F",
-};
 
-const POR_DISCIPLINA = [
-  {
-    termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"],
-    icone: "function-variant",
-    corFundo: "#E7EFF7",
-    corIcone: "#2E6FB0",
-  },
-  {
-    termos: ["historia"],
-    icone: "book-open-page-variant",
-    corFundo: "#FBF1E0",
-    corIcone: "#8A4A12",
-  },
-  {
-    termos: ["geografia"],
-    icone: "earth",
-    corFundo: "#F3EDE6",
-    corIcone: "#A85A3C",
-  },
-  {
-    termos: ["ciencias", "biologia", "quimica", "fisica"],
-    icone: "flask-outline",
-    corFundo: "#E6F2EC",
-    corIcone: "#2F7D5C",
-  },
-  {
-    termos: ["portugues", "literatura", "redacao", "gramatica"],
-    icone: "format-quote-close",
-    corFundo: "#EFEAF7",
-    corIcone: "#6B4E9B",
-  },
-  {
-    termos: ["ingles", "espanhol", "frances", "idioma"],
-    icone: "translate",
-    corFundo: "#E9EEF0",
-    corIcone: "#55646F",
-  },
-  {
-    termos: ["arte", "artes", "musica", "educacao fisica"],
-    icone: "palette-outline",
-    corFundo: "#FBEAE8",
-    corIcone: "#B4443A",
-  },
-];
 
-function semAcento(texto) {
-  return String(texto ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
-function visualDaDisciplina(disciplina) {
-  const nome = semAcento(disciplina);
-  if (!nome) return VISUAL_PADRAO;
-
-  const achou = POR_DISCIPLINA.find((grupo) =>
-    grupo.termos.some((termo) => nome.includes(termo)),
-  );
-
-  if (!achou) return VISUAL_PADRAO;
-
-  return {
-    icone: achou.icone,
-    biblioteca: "mci",
-    corFundo: achou.corFundo,
-    corIcone: achou.corIcone,
-  };
-}
 
 function formatarData(isoString) {
   if (!isoString) return { data: "", quando: "" };
@@ -318,13 +248,24 @@ export default function Atividades() {
           ) : null}
 
           <View style={[styles.lista, ehDesktop && styles.listaDesktop]}>
+            {/* O cartão INTEIRO abre a atividade, como em Turmas. Antes era
+                um botão "Ver atividade" dentro do cartão: quem tocasse em
+                qualquer outro lugar não acontecia nada, e o alvo de toque era
+                um retângulo pequeno no meio de um cartão grande. A setinha no
+                fim é o que diz que o cartão todo é clicável. */}
             {atividadesFiltradas.map((item) => (
-              <View
+              <TouchableOpacity
                 key={item.id}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push({
+                    pathname: "/atividade",
+                    params: { id: item.id },
+                  })
+                }
                 style={[
                   styles.atividadeCard,
                   ehDesktop && styles.atividadeCardDesktop,
-                  !ehDesktop && styles.atividadeCardMobile,
                 ]}
               >
                 <View
@@ -374,61 +315,31 @@ export default function Atividades() {
                     >
                       {item.descricao}
                     </Text>
-                  </View>
-
-                  {ehDesktop && (
-                    <View style={styles.atividadeAcao}>
-                      <TouchableOpacity
-                        style={[styles.botaoVer, styles.botaoVerDesktop]}
-                        activeOpacity={0.85}
-                        onPress={() =>
-                          router.push({
-                            pathname: "/atividade",
-                            params: { id: item.id },
-                          })
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.botaoVerTexto,
-                            styles.botaoVerTextoDesktop,
-                          ]}
-                        >
-                          Ver atividade
-                        </Text>
-                      </TouchableOpacity>
-                      <Text
-                        style={[
-                          styles.atividadeData,
-                          styles.atividadeDataDesktop,
-                        ]}
-                      >
-                        {item.data} · {item.quando}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {!ehDesktop && (
-                  <View style={styles.atividadeLinhaBaixoMobile}>
-                    <Text style={styles.atividadeData}>
+                    {/* A data desceu para cá, como a linha "40 alunos · 0
+                        atividades" dos cartões de Turmas: título, embaixo o
+                        apoio, embaixo o número. Antes ela ficava encostada no
+                        botão, do lado direito. */}
+                    <Text
+                      style={[
+                        styles.atividadeData,
+                        ehDesktop && styles.atividadeDataDesktop,
+                      ]}
+                      numberOfLines={1}
+                    >
                       {item.data} · {item.quando}
                     </Text>
-                    <TouchableOpacity
-                      style={styles.botaoVer}
-                      activeOpacity={0.85}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/atividade",
-                          params: { id: item.id },
-                        })
-                      }
-                    >
-                      <Text style={styles.botaoVerTexto}>Ver atividade</Text>
-                    </TouchableOpacity>
                   </View>
-                )}
-              </View>
+
+                  {/* COR.tintaFraca e não um cinza escrito à mão: é o mesmo
+                      cinza do subtítulo, que é com o que a setinha de Turmas
+                      é desenhada (medi no print: #8795A0 nos dois). */}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={ehDesktop ? 20 : 18}
+                    color={COR.tintaFraca}
+                  />
+                </View>
+              </TouchableOpacity>
             ))}
 
             {!carregando && atividadesFiltradas.length === 0 && (
@@ -662,13 +573,13 @@ const styles = StyleSheet.create({
   // que fazia parecer diferente era o cartão de atividade ter 2px a menos de
   // respiro interno e o quadradinho do ícone ser 4px menor.
   listaDesktop: { gap: 12 },
-  atividadeCardDesktop: { padding: 20, borderRadius: 10 },
+  // Sem borderRadius: o cartão não muda de canto entre celular e computador.
+  // Só o espaçamento interno muda.
+  atividadeCardDesktop: { padding: 20 },
   atividadeLinhaTopoDesktop: { gap: 16 },
   atividadeIconeCirculoDesktop: { width: 52, height: 52, borderRadius: 12 },
   atividadeTituloDesktop: { fontSize: 15.5 },
   atividadeDescricaoDesktop: { fontSize: 13, marginTop: 3 },
-  botaoVerDesktop: { paddingHorizontal: 16, paddingVertical: 10 },
-  botaoVerTextoDesktop: { fontSize: 13.5 },
   atividadeDataDesktop: { fontSize: 12 },
   vazioTextoDesktop: { fontSize: 14.5 },
 
@@ -693,19 +604,17 @@ const styles = StyleSheet.create({
   },
   atividadeCard: {
     backgroundColor: COR.branco,
-    borderRadius: 10,
+    // RAIO.superficie, que é o raio de cartão do app, em vez do 10 escrito à
+    // mão que estava aqui. Medi no print de Turmas: 12px. Se esse número
+    // mudar um dia, muda em estilo.js e TODOS os cartões acompanham — foi
+    // justamente por estarem escritos à mão que este tinha 10 e o de
+    // Correções tinha 14 no celular e 16 no computador.
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 14,
   },
-  atividadeCardMobile: { gap: 10 },
   atividadeLinhaTopo: { flexDirection: "row", alignItems: "center", gap: 12 },
-  atividadeLinhaBaixoMobile: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 2,
-  },
   atividadeIconeCirculo: {
     width: 40,
     height: 40,
@@ -726,19 +635,6 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: COR.tintaFraca,
     marginTop: 2,
-  },
-  atividadeAcao: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
-  botaoVer: {
-    backgroundColor: COR.marinho,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  botaoVerTexto: {
-    color: COR.branco,
-    fontFamily: FONTE.bold,
-    fontSize: 11.5,
-    fontWeight: "700",
   },
   atividadeData: {
     fontFamily: FONTE.regular,

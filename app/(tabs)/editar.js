@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,8 +17,39 @@ import {
   ajustarResposta,
   buscarCorrecao,
   concluirAtividade,
+  desempenhoPorQuestao,
   listarCorrecoes,
 } from "../../constants/api";
+import {
+  baixarPlanilha,
+  // Vem do relatorio.js porque é a MESMA regra de "como se escreve uma nota"
+  // que o PDF e a planilha usam. Duas cópias e um dia a tela mostra 8,5 e o
+  // PDF mostra 8.50.
+  formatarNota,
+  imprimirRelatorio,
+  montarCsvDasNotas,
+  montarHtmlCompleto,
+  montarHtmlDasNotas,
+  montarHtmlDasQuestoes,
+} from "../../constants/relatorio";
+
+// ---------------------------------------------------------------------------
+// A barra do desempenho por questão.
+//
+// UMA MATIZ SÓ, o azul do app. A cor não carrega informação aqui — o
+// comprimento já carrega. Verde/amarelo/vermelho gastaria o único canal livre
+// repetindo o que a barra mostra e obrigaria a inventar um limiar ("abaixo de
+// 50% é ruim") que não existe.
+//
+// O trilho é um passo mais escuro que o COR.emAndamentoFundo, e isso foi
+// medido, não escolhido no olho: o tom do app dá 1,16:1 contra o cartão
+// branco e some. Numa questão com 0% o trilho VAZIO é tudo o que aparece — e
+// é justamente a linha que a professora mais precisa ver. Com 1,29:1 o
+// trilho vazio lê como um medidor vazio, e não como um pedaço de tela que
+// não carregou.
+//
+// A barra contra o cartão dá 5,23:1 e contra o trilho 4,05:1.
+const BARRA_TRILHO = "#D7E4F2";
 
 const ABAS = [
   { chave: "resumo", rotulo: "Resumo", icone: "stats-chart" },
@@ -95,12 +127,6 @@ function visualDaDisciplina(disciplina) {
     : VISUAL_PADRAO;
 }
 
-function formatarNota(valor) {
-  return Number(valor ?? 0)
-    .toFixed(1)
-    .replace(".", ",");
-}
-
 function formatarPeso(valor) {
   return Number(valor ?? 0)
     .toFixed(2)
@@ -109,6 +135,12 @@ function formatarPeso(valor) {
 
 // Verde a partir de 7, amarelo de 5 a 7, vermelho abaixo. É a régua que a
 // maioria das escolas usa para média.
+//
+// Repare que o desempenho por questão NÃO usa esta régua, e é de propósito:
+// 7,0 é um limiar que existe de verdade (é a média da escola), enquanto
+// "aproveitamento de questão" não tem limiar nenhum. Pintar de vermelho uma
+// questão em que a turma tirou 48% seria o sistema dando um veredito que não
+// é dele — ali a ordenação já diz qual é a pior, sem inventar uma linha.
 function corDaNota(nota, peso) {
   const proporcao = peso ? nota / peso : 0;
   if (proporcao >= 0.7) return COR.ok;
@@ -189,6 +221,17 @@ export default function Editar() {
   const [salvandoId, setSalvandoId] = useState(null);
   const [fechando, setFechando] = useState(false);
 
+  // O card de "o que você quer no documento" está aberto. Só o PDF o abre: o
+  // Excel baixa a planilha de notas direto (ver o comentário em exportar).
+  const [escolhendoRelatorio, setEscolhendoRelatorio] = useState(false);
+  const [exportando, setExportando] = useState(false);
+
+  // O desempenho por questão vem somado do servidor. Dava para buscar as
+  // correções uma a uma e contar aqui, mas numa turma de 30 isso seriam 30
+  // requisições para desenhar umas barras — e a regra de "o que conta como
+  // acerto" passaria a existir em dois lugares.
+  const [questoes, setQuestoes] = useState([]);
+
   async function carregarLista() {
     setErro("");
     try {
@@ -198,6 +241,18 @@ export default function Editar() {
     } catch (e) {
       setErro(e.message);
       return [];
+    }
+  }
+
+  // Falhar aqui não derruba a tela: o resumo some e o resto continua. Ele é
+  // leitura, não a razão de a professora ter aberto a página.
+  async function carregarQuestoes() {
+    try {
+      const dados = await desempenhoPorQuestao(id_atividade);
+      setQuestoes(dados.questoes || []);
+    } catch (e) {
+      console.warn("[editar] desempenho por questão:", e.message);
+      setQuestoes([]);
     }
   }
 
@@ -214,6 +269,8 @@ export default function Editar() {
 
         setCarregando(true);
         await carregarLista();
+        if (!ativo) return;
+        await carregarQuestoes();
         if (ativo) setCarregando(false);
       }
 
@@ -290,10 +347,82 @@ export default function Editar() {
             : c,
         ),
       );
+
+      // E o resumo por questão também: mudar uma nota muda quantos acertaram
+      // aquela questão. Sem isto, voltar para a aba Resumo mostraria o número
+      // de antes do ajuste — e a professora acreditaria nele.
+      carregarQuestoes();
     } catch (e) {
       setErro(e.message);
     } finally {
       setSalvandoId(null);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // EXPORTAR
+  //
+  // O PDF é o que o professor imprime, e aí faz diferença o que vai dentro:
+  // quem precisa das notas para o diário não quer o desempenho por questão no
+  // meio; quem quer saber o que a turma não aprendeu não vai imprimir a lista
+  // de notas junto; e quem quer arquivar a correção inteira quer os dois no
+  // mesmo documento. São essas as três opções do card.
+  //
+  // O EXCEL NÃO PERGUNTA NADA: baixa a planilha de notas e pronto. A planilha
+  // é para somar e lançar nota, e isso é o que a lista de alunos serve. Um
+  // card com uma opção só seria um clique a mais para nada.
+  // -------------------------------------------------------------------------
+  function montarGrupo() {
+    return {
+      atividade: { nome: atividade.nome, turma: atividade.turma },
+      alunos,
+      total: correcoes.length,
+      concluidas: revisadas,
+      media,
+    };
+  }
+
+  const temQuestoes = questoes.some(
+    (q) => q.aproveitamento !== null && q.aproveitamento !== undefined,
+  );
+
+  // conteudo: "notas", "questoes" ou "tudo".
+  async function exportarPdf(conteudo) {
+    if (exportando) return;
+
+    setEscolhendoRelatorio(false);
+    setExportando(true);
+    setErro("");
+
+    const grupo = montarGrupo();
+
+    try {
+      let html;
+      if (conteudo === "questoes") html = montarHtmlDasQuestoes(grupo, questoes);
+      else if (conteudo === "tudo") html = montarHtmlCompleto(grupo, questoes);
+      else html = montarHtmlDasNotas(grupo);
+
+      const problema = await imprimirRelatorio(html);
+      if (problema) setErro(problema);
+    } finally {
+      setExportando(false);
+    }
+  }
+
+  function exportarPlanilha() {
+    if (exportando) return;
+
+    setExportando(true);
+    setErro("");
+
+    try {
+      const problema = baixarPlanilha(
+        `${atividade.nome}-notas`,
+        montarCsvDasNotas(montarGrupo()),
+      );
+      if (problema) setErro(problema);
+    } finally {
+      setExportando(false);
     }
   }
 
@@ -352,6 +481,115 @@ export default function Editar() {
   }
 
   const visual = visualDaDisciplina(atividade.disciplina);
+
+  // -------------------------------------------------------------------------
+  // DESEMPENHO POR QUESTÃO
+  //
+  // Uma barra por questão, da pior para a melhor. Três decisões que não são
+  // de gosto:
+  //
+  // 1. TODAS AS BARRAS TÊM A MESMA COR. A cor não carrega informação aqui —
+  //    o comprimento já carrega. Pintar de verde/amarelo/vermelho gastaria o
+  //    único canal livre repetindo o que a barra mostra, e, pior, obrigaria a
+  //    inventar um limiar ("abaixo de 50% é ruim") que não existe em lugar
+  //    nenhum. A nota do aluno usa a régua colorida porque ali o 7,0 é um
+  //    limiar de verdade; aqui não há nenhum.
+  //
+  // 2. A ORDEM É A INFORMAÇÃO. A professora não abre isto para conferir a
+  //    prova — abre para saber o que revisar na próxima aula. A pior questão
+  //    tem que ser a primeira linha, não a questão 1.
+  //
+  // 3. O NÚMERO FICA FORA DA BARRA. Texto dentro de barra curta é cortado, e
+  //    uma questão com 4% de aproveitamento tem a barra mais curta de todas,
+  //    justamente a que mais interessa ler.
+  // -------------------------------------------------------------------------
+  function desempenhoDasQuestoes() {
+    if (questoes.length === 0) return null;
+
+    const respondidas = questoes.filter((q) => q.aproveitamento !== null);
+    const intocadas = questoes.filter((q) => q.aproveitamento === null);
+
+    if (respondidas.length === 0) return null;
+
+    const daPiorParaMelhor = [...respondidas].sort(
+      (a, b) => a.aproveitamento - b.aproveitamento,
+    );
+
+    return (
+      <View style={styles.cartao}>
+        <Text style={styles.cartaoTitulo}>Desempenho por questão</Text>
+        <Text style={styles.cartaoSubtitulo}>
+          Quanto da pontuação a turma conquistou em cada questão, da que foi
+          pior para a que foi melhor
+        </Text>
+
+        <View style={styles.listaQuestoes}>
+          {daPiorParaMelhor.map((q) => {
+            const porcento = Math.round(q.aproveitamento * 100);
+
+            // Um número só: quantos tiraram a nota cheia.
+            //
+            // O "erraram" saiu junto com o "em parte", e não por capricho: em
+            // dissertativa existe nota parcial, então acertos + erros NÃO
+            // somam o total. Escrever "0 acertaram · 2 erraram" numa turma de
+            // 7 deixaria 5 alunos sem aparecer, e quem lê tentaria fechar a
+            // conta. Pior ainda seria jogar os parciais num dos dois lados —
+            // qualquer escolha ali é mentira.
+            //
+            // A nota parcial não sumiu: ela continua contada na BARRA, que é
+            // aproveitamento, não contagem de acertos. Por isso uma questão
+            // pode mostrar "0 de 7 acertaram" com a barra em 50% — ninguém
+            // gabaritou, mas a turma conquistou metade dos pontos.
+            const contas = `${q.acertos} de ${q.respondidas} ${q.acertos === 1 ? "acertou" : "acertaram"}`;
+
+            return (
+              <View key={q.id_questao} style={styles.questaoResumo}>
+                <View style={styles.resumoTopo}>
+                  <Text style={styles.resumoNumero}>{q.numero}.</Text>
+                  <Text style={styles.resumoPergunta} numberOfLines={2}>
+                    {q.pergunta}
+                  </Text>
+                  <Text style={styles.resumoPorcento}>{porcento}%</Text>
+                </View>
+
+                {/* O trilho é um passo claro da MESMA cor da barra, não um
+                    cinza qualquer: é a mesma escala vista cheia e vazia. */}
+                <View style={styles.trilho}>
+                  <View
+                    style={[
+                      styles.preenchimento,
+                      { width: `${Math.max(0, Math.min(100, porcento))}%` },
+                    ]}
+                  />
+                </View>
+
+                <Text style={styles.resumoContas}>{contas}</Text>
+
+                {/* Linha própria em vez de mais um "·" na frase de cima: é
+                    informação sobre a IA, não sobre a turma, e junto ela
+                    passava de duas linhas no celular. */}
+                {q.ajustadas > 0 && (
+                  <Text style={styles.resumoAjuste}>
+                    {q.ajustadas === 1
+                      ? "1 nota ajustada por você"
+                      : `${q.ajustadas} notas ajustadas por você`}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        {intocadas.length > 0 && (
+          <Text style={styles.resumoRodape}>
+            {intocadas.length === 1
+              ? `A questão ${intocadas[0].numero} ainda não tem resposta corrigida.`
+              : `${intocadas.length} questões ainda não têm resposta corrigida.`}
+          </Text>
+        )}
+      </View>
+    );
+  }
 
   function listaDeAlunos(compacta) {
     return (
@@ -566,10 +804,19 @@ export default function Editar() {
         ]}
       >
         <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
+          {/* Volta para Correções, não para a tela anterior.
+              O router.back() devolvia para o que viesse antes no histórico —
+              e chegando pelo Scanner, isso era a tela de processamento da
+              folha, que não faz sentido reabrir depois de a correção já estar
+              salva. "Editar correção" sempre sai de Correções, então é para lá
+              que a seta volta.
+
+              replace e não push: troca esta tela em vez de empilhar, senão
+              o botão do aparelho ficaria voltando para cá. */}
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
-            onPress={() => router.back()}
+            onPress={() => router.replace("/correcoes")}
           >
             <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
             <Text style={styles.tituloPagina}>Editar correção</Text>
@@ -649,6 +896,35 @@ export default function Editar() {
                     : "Concluir correção"}
               </Text>
             </TouchableOpacity>
+
+            {/* Abaixo do concluir e não ao lado: concluir é a ação da tela,
+                exportar é o que se faz depois dela. */}
+            <View style={styles.exportarLinha}>
+              <TouchableOpacity
+                style={styles.botaoExportar}
+                activeOpacity={0.8}
+                disabled={exportando}
+                onPress={() => setEscolhendoRelatorio(true)}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={15}
+                  color={COR.marcador}
+                />
+                <Text style={styles.botaoExportarTexto}>Salvar em PDF</Text>
+              </TouchableOpacity>
+
+              {/* Direto, sem card: no Excel só sai a lista de notas. */}
+              <TouchableOpacity
+                style={styles.botaoExportar}
+                activeOpacity={0.8}
+                disabled={exportando}
+                onPress={exportarPlanilha}
+              >
+                <Ionicons name="grid-outline" size={15} color={COR.marcador} />
+                <Text style={styles.botaoExportarTexto}>Salvar em Excel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
@@ -712,6 +988,11 @@ export default function Editar() {
                 </View>
               </View>
 
+              {/* Antes da lista de alunos de propósito: a lista é o registro,
+                  isto é o que a professora precisa decidir — o que revisar na
+                  próxima aula. */}
+              {desempenhoDasQuestoes()}
+
               {listaDeAlunos(false)}
             </>
           ) : ehDesktop ? (
@@ -727,6 +1008,130 @@ export default function Editar() {
           )}
         </View>
       </ScrollView>
+
+      {/* ------------------------------- o card de escolha (só para o PDF) */}
+      <Modal
+        visible={escolhendoRelatorio}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEscolhendoRelatorio(false)}
+      >
+        <View style={styles.modalFundo}>
+          <View
+            style={[
+              styles.modalCard,
+              ehDesktop && styles.modalCardDesktop,
+            ]}
+          >
+            <Text style={styles.modalTitulo}>Salvar em PDF</Text>
+            <Text style={styles.modalSub}>O que você quer no documento?</Text>
+
+            <TouchableOpacity
+              style={styles.opcao}
+              activeOpacity={0.8}
+              onPress={() => exportarPdf("notas")}
+            >
+              <View style={styles.opcaoIcone}>
+                <Ionicons name="people-outline" size={19} color={COR.marcador} />
+              </View>
+              <View style={styles.opcaoTextos}>
+                <Text style={styles.opcaoTitulo}>Notas dos alunos</Text>
+                <Text style={styles.opcaoDescricao}>
+                  A lista com a nota de cada aluno, para o diário ou para a
+                  secretaria.
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COR.chevron}
+              />
+            </TouchableOpacity>
+
+            {/* Sem nenhuma folha corrigida não há desempenho que mostrar.
+                Desabilitado e com o motivo à vista, em vez de sumir: um botão
+                que some faz a pessoa procurar o que ela viu antes. */}
+            <TouchableOpacity
+              style={[styles.opcao, !temQuestoes && styles.opcaoDesativada]}
+              activeOpacity={0.8}
+              disabled={!temQuestoes}
+              onPress={() => exportarPdf("questoes")}
+            >
+              <View style={styles.opcaoIcone}>
+                <Ionicons
+                  name="stats-chart-outline"
+                  size={19}
+                  color={COR.marcador}
+                />
+              </View>
+              <View style={styles.opcaoTextos}>
+                {/* "Desempenho por questão" e não "Relatório de questões":
+                    é como o cartão do Resumo e o título do PDF já chamam a
+                    mesma coisa. Dois nomes para a mesma tela fazem o
+                    professor achar que são duas coisas diferentes. */}
+                <Text style={styles.opcaoTitulo}>
+                  Desempenho por questão
+                </Text>
+                <Text style={styles.opcaoDescricao}>
+                  {temQuestoes
+                    ? "Quantos acertaram cada questão, da pior para a melhor."
+                    : "Nenhuma questão foi corrigida ainda."}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COR.chevron}
+              />
+            </TouchableOpacity>
+
+            {/* Depende das questões pelo mesmo motivo que a opção de cima:
+                sem nenhuma questão corrigida, este documento sairia igual ao
+                de notas, e duas opções que fazem a mesma coisa só fazem a
+                pessoa desconfiar de qual escolheu. Por ser o mesmo motivo, é
+                a mesma frase — duas maneiras de dizer o mesmo fato parecem
+                dois problemas diferentes. */}
+            <TouchableOpacity
+              style={[styles.opcao, !temQuestoes && styles.opcaoDesativada]}
+              activeOpacity={0.8}
+              disabled={!temQuestoes}
+              onPress={() => exportarPdf("tudo")}
+            >
+              <View style={styles.opcaoIcone}>
+                <Ionicons
+                  name="documents-outline"
+                  size={19}
+                  color={COR.marcador}
+                />
+              </View>
+              <View style={styles.opcaoTextos}>
+                {/* "Relatório completo" é o título que o próprio PDF leva
+                    impresso. O nome da opção e o nome do documento que sai
+                    dela têm que ser o mesmo. */}
+                <Text style={styles.opcaoTitulo}>Relatório completo</Text>
+                <Text style={styles.opcaoDescricao}>
+                  {temQuestoes
+                    ? "As notas e o desempenho por questão no mesmo documento."
+                    : "Nenhuma questão foi corrigida ainda."}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COR.chevron}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelar}
+              activeOpacity={0.7}
+              onPress={() => setEscolhendoRelatorio(false)}
+            >
+              <Text style={styles.modalCancelarTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -836,6 +1241,81 @@ const styles = StyleSheet.create({
     color: COR.branco,
   },
 
+  exportarLinha: { flexDirection: "row", gap: 8 },
+  botaoExportar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1.2,
+    borderColor: COR.linha,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  botaoExportarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 12,
+    color: COR.marcador,
+  },
+
+  modalFundo: {
+    flex: 1,
+    backgroundColor: "rgba(11,30,61,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: COR.branco,
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  modalCardDesktop: { maxWidth: 440, padding: 24 },
+  modalTitulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
+  modalSub: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaFraca,
+    marginTop: -6,
+    marginBottom: 4,
+  },
+  opcao: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COR.linhaSuave,
+    borderRadius: 12,
+    padding: 12,
+  },
+  opcaoDesativada: { opacity: 0.45 },
+  opcaoIcone: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COR.emAndamentoFundo,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  opcaoTextos: { flex: 1, gap: 2 },
+  opcaoTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, color: COR.tintaForte },
+  opcaoDescricao: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    lineHeight: 16,
+  },
+  modalCancelar: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
+  modalCancelarTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 13,
+    color: COR.tintaMedia,
+  },
+
   botaoEscuro: {
     flexDirection: "row",
     alignItems: "center",
@@ -909,6 +1389,63 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: COR.tintaFraca,
     textAlign: "center",
+  },
+
+  // ------------------------------------------------- desempenho por questão
+  listaQuestoes: { gap: 16, borderTopWidth: 1, borderTopColor: COR.linhaSuave, paddingTop: 14 },
+  questaoResumo: { gap: 6 },
+  resumoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  resumoNumero: {
+    fontFamily: FONTE.bold,
+    fontSize: 12.5,
+    color: COR.tintaMedia,
+    minWidth: 18,
+  },
+  resumoPergunta: {
+    flex: 1,
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaForte,
+    lineHeight: 17,
+  },
+  // Fora da barra, não dentro: a questão com o menor aproveitamento tem a
+  // barra mais curta e é justamente a que mais importa ler.
+  resumoPorcento: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.tintaForte,
+    minWidth: 38,
+    textAlign: "right",
+  },
+  trilho: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: BARRA_TRILHO,
+    overflow: "hidden",
+  },
+  // Quadrado onde nasce, arredondado só na ponta dos dados — a ponta é a
+  // única coisa que o olho precisa achar.
+  preenchimento: {
+    height: 8,
+    backgroundColor: COR.marcador,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  resumoContas: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+  },
+  resumoAjuste: {
+    fontFamily: FONTE.semi,
+    fontSize: 10.5,
+    color: COR.avisoTexto,
+  },
+  resumoRodape: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+    fontStyle: "italic",
   },
 
   listaAlunos: { borderTopWidth: 1, borderTopColor: COR.linhaSuave },

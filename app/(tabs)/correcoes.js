@@ -1,10 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Print from "expo-print";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +14,10 @@ import {
 import CabecalhoMobile from "../../components/CabecalhoMobile";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import { listarCorrecoes } from "../../constants/api";
+import {
+  semAcento,
+  visualDaDisciplina,
+} from "../../constants/disciplinas";
 
 // "Em processamento" saiu da lista de propósito. No sistema de verdade a IA
 // termina de corrigir antes de gravar, então nenhuma correção fica nesse
@@ -26,77 +28,9 @@ const FILTROS = ["Todas", "Aguardando você", "Concluídas"];
 // Mesma regra de ícone do Scanner e da tela de Atividades: ele sai da
 // disciplina, não do banco. Assim a mesma atividade aparece igual nas três.
 // ---------------------------------------------------------------------------
-const VISUAL_PADRAO = {
-  icone: "file-document-outline",
-  corFundo: "#EEF2F4",
-  corIcone: "#55646F",
-};
 
-const POR_DISCIPLINA = [
-  {
-    termos: ["matematica", "algebra", "geometria", "calculo", "aritmetica"],
-    icone: "function-variant",
-    corFundo: "#E7EFF7",
-    corIcone: "#2E6FB0",
-  },
-  {
-    termos: ["historia"],
-    icone: "book-open-page-variant",
-    corFundo: "#FBF1E0",
-    corIcone: "#8A4A12",
-  },
-  {
-    termos: ["geografia"],
-    icone: "earth",
-    corFundo: "#F3EDE6",
-    corIcone: "#A85A3C",
-  },
-  {
-    termos: ["ciencias", "biologia", "quimica", "fisica"],
-    icone: "flask-outline",
-    corFundo: "#E6F2EC",
-    corIcone: "#2F7D5C",
-  },
-  {
-    termos: ["portugues", "literatura", "redacao", "gramatica"],
-    icone: "format-quote-close",
-    corFundo: "#EFEAF7",
-    corIcone: "#6B4E9B",
-  },
-  {
-    termos: ["ingles", "espanhol", "frances", "idioma"],
-    icone: "translate",
-    corFundo: "#E9EEF0",
-    corIcone: "#55646F",
-  },
-  {
-    termos: ["arte", "artes", "musica", "educacao fisica"],
-    icone: "palette-outline",
-    corFundo: "#FBEAE8",
-    corIcone: "#B4443A",
-  },
-];
 
-function semAcento(texto) {
-  return String(texto ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
-function visualDaDisciplina(disciplina) {
-  const nome = semAcento(disciplina);
-  if (!nome) return VISUAL_PADRAO;
-
-  const achou = POR_DISCIPLINA.find((grupo) =>
-    grupo.termos.some((termo) => nome.includes(termo)),
-  );
-
-  return achou
-    ? { icone: achou.icone, corFundo: achou.corFundo, corIcone: achou.corIcone }
-    : VISUAL_PADRAO;
-}
 
 const CONFIG_STATUS = {
   concluida: {
@@ -112,12 +46,6 @@ const CONFIG_STATUS = {
     icone: "time-outline",
   },
 };
-
-function formatarNota(valor) {
-  return Number(valor ?? 0)
-    .toFixed(1)
-    .replace(".", ",");
-}
 
 // "Hoje, 10:15" diz mais que "20/09/2026 10:15" quando foi hoje. Depois de uma
 // semana o contrário é verdade, e aí volta a data cheia.
@@ -143,12 +71,17 @@ function quando(dataIso) {
 }
 
 // ---------------------------------------------------------------------------
-// A API devolve uma correção por aluno. A tela mostra por atividade, com os
-// alunos dentro — então o agrupamento acontece aqui.
+// A API devolve uma correção por aluno. A tela mostra por atividade — então o
+// agrupamento acontece aqui.
 //
 // Correção cuja atividade foi apagada é descartada: sem atividade não há
 // cartão onde encaixar, e mostrar um cartão "sem nome" confunde mais do que
 // esconder.
+//
+// ATENÇÃO: é exatamente por causa deste `continue` que o resumo lá embaixo
+// tem que contar a partir dos GRUPOS, e não da lista crua que veio da API.
+// Contar da lista crua incluiria essas correções órfãs, e o resumo diria um
+// número de folhas que não existe em cartão nenhum da tela.
 // ---------------------------------------------------------------------------
 function agruparPorAtividade(correcoes) {
   const mapa = new Map();
@@ -170,7 +103,6 @@ function agruparPorAtividade(correcoes) {
     );
 
     const concluidas = alunos.filter((a) => a.status === "concluida").length;
-    const soma = alunos.reduce((s, a) => s + Number(a.nota ?? 0), 0);
 
     // A atividade só é "concluída" quando todas as folhas dela já passaram
     // pela revisão. Uma sozinha pendente mantém o cartão em aberto.
@@ -187,8 +119,9 @@ function agruparPorAtividade(correcoes) {
       alunos,
       total: alunos.length,
       concluidas,
-      media: alunos.length ? soma / alunos.length : 0,
-      peso_total: alunos[0]?.peso_total ?? 10,
+      // A média e o peso_total saíram junto com o PDF: eram só o que o
+      // relatório precisava, e esta tela nunca os mostrou. Quem quer a média
+      // da turma abre a atividade — o Editar correção tem ela no Resumo.
       status,
       quando: quando(maisRecente),
     };
@@ -200,104 +133,6 @@ function grupoCombinaComFiltro(grupo, filtro) {
   if (filtro === "Concluídas") return grupo.status === "concluida";
   if (filtro === "Aguardando você") return grupo.status === "pendente";
   return true;
-}
-
-// ---------------------------------------------------------------------------
-// O PDF é montado como HTML e mandado para a impressão do sistema, onde
-// "Salvar como PDF" é uma das opções. É o mesmo caminho no navegador e no
-// celular, e não precisa de servidor gerando arquivo.
-//
-// escapar() existe porque nome de aluno e de atividade vêm do banco: um "&"
-// ou um "<" solto quebraria o HTML do relatório.
-// ---------------------------------------------------------------------------
-function escapar(texto) {
-  return String(texto ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function montarHtmlDoResumo(grupos) {
-  const hoje = new Date().toLocaleDateString("pt-BR");
-
-  const folhas = grupos.reduce((s, g) => s + g.total, 0);
-  const revisadas = grupos.reduce((s, g) => s + g.concluidas, 0);
-
-  const titulo =
-    grupos.length === 1
-      ? `${escapar(grupos[0].atividade.nome)} — correções`
-      : "Resumo das correções";
-
-  const secoes = grupos
-    .map((g) => {
-      const linhas = g.alunos
-        .map(
-          (c) => `
-          <tr>
-            <td>${escapar(c.aluno?.nome || "Aluno")}</td>
-            <td class="nota">${formatarNota(c.nota)} / ${formatarNota(c.peso_total)}</td>
-            <td class="status">${c.status === "concluida" ? "revisada" : "aguardando revisão"}</td>
-          </tr>`,
-        )
-        .join("");
-
-      // Com uma atividade só, o nome dela já está no título lá em cima —
-      // repetir aqui só ocupa linha.
-      const cabecalho =
-        grupos.length === 1 ? "" : `<h2>${escapar(g.atividade.nome)}</h2>`;
-
-      return `
-        <section>
-          ${cabecalho}
-          <p class="sub">${escapar(g.atividade.turma)} · ${g.concluidas} de ${g.total} revisadas · média ${formatarNota(g.media)}</p>
-          <table>
-            <thead>
-              <tr><th>Aluno</th><th class="nota">Nota</th><th class="status">Situação</th></tr>
-            </thead>
-            <tbody>${linhas}</tbody>
-          </table>
-        </section>`;
-    })
-    .join("");
-
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8" />
-<title>EduSync — Resumo das correções</title>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    color: #17242E;
-    margin: 32px;
-  }
-  header { border-bottom: 2px solid #0B1E3D; padding-bottom: 12px; margin-bottom: 22px; }
-  h1 { font-size: 19px; margin: 0; color: #0B1E3D; }
-  header p { margin: 4px 0 0; font-size: 12px; color: #8795A0; }
-  section { margin-bottom: 26px; page-break-inside: avoid; }
-  h2 { font-size: 14px; margin: 0 0 2px; }
-  .sub { margin: 0 0 8px; font-size: 11px; color: #8795A0; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #E9EEF0; }
-  th { font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #8795A0; }
-  .nota { text-align: right; white-space: nowrap; }
-  .status { text-align: right; color: #55646F; white-space: nowrap; }
-  footer { margin-top: 30px; font-size: 10px; color: #8795A0; border-top: 1px solid #E9EEF0; padding-top: 10px; }
-</style>
-</head>
-<body>
-  <header>
-    <h1>${titulo}</h1>
-    <p>EduSync · gerado em ${hoje} · ${folhas} ${folhas === 1 ? "folha" : "folhas"} · ${revisadas} ${revisadas === 1 ? "revisada" : "revisadas"}</p>
-  </header>
-  ${secoes || "<p>Nenhuma correção no período.</p>"}
-  <footer>
-    As notas foram calculadas pelo sistema a partir do gabarito cadastrado e
-    revisadas pelo professor. Documento gerado automaticamente pelo EduSync.
-  </footer>
-</body>
-</html>`;
 }
 
 export default function Correcoes() {
@@ -314,8 +149,6 @@ export default function Correcoes() {
   const [correcoes, setCorrecoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [abertas, setAbertas] = useState({});
-  const [gerando, setGerando] = useState(null);
 
   // Recarrega a cada foco: a professora volta da revisão e o status precisa
   // estar atualizado, sem precisar fechar o app.
@@ -344,19 +177,44 @@ export default function Correcoes() {
   );
 
   const grupos = agruparPorAtividade(correcoes);
+  const procurado = semAcento(busca);
 
   const gruposFiltrados = grupos.filter(
     (g) =>
       grupoCombinaComFiltro(g, filtroAtivo) &&
-      g.atividade.nome.toLowerCase().includes(busca.toLowerCase()),
+      semAcento(g.atividade.nome).includes(procurado),
   );
 
-  const totalConcluidas = grupos.filter((g) => g.status === "concluida").length;
-  const totalPendentes = grupos.filter((g) => g.status === "pendente").length;
-  const totalFolhas = correcoes.length;
-  const folhasRevisadas = correcoes.filter(
-    (c) => c.status === "concluida",
+  // ---------------------------------------------------------------------------
+  // O RESUMO CONTA O QUE ESTÁ NA TELA.
+  //
+  // Duas coisas estavam erradas aqui, e as duas pelo mesmo motivo: a conta
+  // saía da lista crua da API (`correcoes`) em vez dos cartões montados.
+  //
+  // 1. Correção de atividade apagada entrava na conta. O agrupamento descarta
+  //    essas (não há cartão onde encaixar), mas `correcoes.length` continuava
+  //    contando — o resumo dizia "16 folhas corrigidas" com 15 nos cartões, e
+  //    não havia como descobrir de onde vinha a diferença.
+  //
+  // 2. Filtrar ou buscar não mexia em número nenhum. Você clicava em
+  //    "Aguardando você", a lista encolhia para um cartão, e o resumo
+  //    continuava dizendo "1 atividade concluída" — que não estava em lugar
+  //    nenhum da tela. É o que faz um resumo parecer quebrado mesmo quando a
+  //    soma está certa: ele contradiz o que está logo acima dele.
+  //
+  // Agora tudo sai de `gruposFiltrados`, que é literalmente o que foi
+  // desenhado. O resumo não pode discordar da lista porque é a mesma fonte.
+  // ---------------------------------------------------------------------------
+  const filtrando = filtroAtivo !== "Todas" || busca.trim().length > 0;
+
+  const totalConcluidas = gruposFiltrados.filter(
+    (g) => g.status === "concluida",
   ).length;
+  const totalPendentes = gruposFiltrados.filter(
+    (g) => g.status === "pendente",
+  ).length;
+  const totalFolhas = gruposFiltrados.reduce((s, g) => s + g.total, 0);
+  const folhasRevisadas = gruposFiltrados.reduce((s, g) => s + g.concluidas, 0);
 
   const RESUMO = [
     {
@@ -385,56 +243,11 @@ export default function Correcoes() {
     },
   ];
 
-  // ---------------------------------------------------------------------------
-  // Gera o PDF de UMA atividade.
-  //
-  // No navegador o Print.printAsync do expo-print acaba mandando a própria
-  // página para a impressora em vez do HTML que passamos — sai a tela do app,
-  // com menu lateral e tudo. Por isso no web abrimos uma janela nova, escrevemos
-  // o relatório nela e mandamos imprimir dali. No celular o expo-print funciona
-  // como deveria.
-  // ---------------------------------------------------------------------------
-  async function salvarPdf(grupo) {
-    if (gerando) return;
-
-    setGerando(grupo.atividade.id_atividade);
-    setErro("");
-
-    const html = montarHtmlDoResumo([grupo]);
-
-    try {
-      if (Platform.OS === "web") {
-        const janela = window.open("", "_blank");
-
-        if (!janela) {
-          setErro(
-            "O navegador bloqueou a janela do relatório. Libere os pop-ups para este site e tente de novo.",
-          );
-          return;
-        }
-
-        janela.document.write(html);
-        janela.document.close();
-        janela.focus();
-        // Um instante para o navegador desenhar antes de abrir a impressão,
-        // senão em alguns casos ele imprime a folha ainda em branco.
-        setTimeout(() => janela.print(), 250);
-      } else {
-        await Print.printAsync({ html });
-      }
-    } catch (e) {
-      if (e?.message && !/cancel|dismiss/i.test(e.message)) {
-        setErro("Não consegui gerar o PDF: " + e.message);
-      }
-    } finally {
-      setGerando(null);
-    }
-  }
-
-  function alternar(id) {
-    setAbertas((atual) => ({ ...atual, [id]: !atual[id] }));
-  }
-
+  // Esta tela não gera mais relatório. O lugar de salvar em PDF é dentro da
+  // atividade (Editar correção), onde o professor escolhe se quer as notas, o
+  // desempenho por questão ou os dois. Aqui só dava para gerar as notas, e
+  // duas portas para a mesma coisa — uma delas sem as opções — é o tipo de
+  // escolha que o professor faz errado uma vez e não entende por quê.
   return (
     <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile comSino />}
@@ -540,120 +353,131 @@ export default function Correcoes() {
               {gruposFiltrados.map((grupo) => {
                 const status = CONFIG_STATUS[grupo.status];
                 const visual = visualDaDisciplina(grupo.atividade.disciplina);
-                const aberta = !!abertas[grupo.atividade.id_atividade];
 
+                // O cartão INTEIRO abre a atividade, e por isso ele próprio é
+                // o TouchableOpacity. Antes havia uma View por fora e só o
+                // topo respondia ao toque, porque o rodapé pertencia ao botão
+                // de PDF; sem ele, não há mais razão para uma parte do cartão
+                // responder e a outra não — nem para a camada a mais.
                 return (
-                  <View
+                  <TouchableOpacity
                     key={grupo.atividade.id_atividade}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/editar",
+                        params: {
+                          id_atividade: grupo.atividade.id_atividade,
+                        },
+                      })
+                    }
                     style={[
                       styles.correcaoCard,
                       ehDesktop && styles.correcaoCardDesktop,
-                      !ehDesktop && styles.correcaoCardMobile,
                     ]}
                   >
-                    {/* O topo abre a atividade inteira; o rodapé continua
-                        sendo do cartão (expandir e exportar). */}
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/editar",
-                          params: {
-                            id_atividade: grupo.atividade.id_atividade,
-                          },
-                        })
-                      }
+                    <View
+                      style={[
+                        styles.correcaoLinhaTopo,
+                        ehDesktop && styles.correcaoLinhaTopoDesktop,
+                      ]}
                     >
                       <View
                         style={[
-                          styles.correcaoLinhaTopo,
-                          ehDesktop && styles.correcaoLinhaTopoDesktop,
+                          styles.correcaoIconeCirculo,
+                          ehDesktop && styles.correcaoIconeCirculoDesktop,
+                          { backgroundColor: visual.corFundo },
                         ]}
                       >
-                        <View
-                          style={[
-                            styles.correcaoIconeCirculo,
-                            ehDesktop && styles.correcaoIconeCirculoDesktop,
-                            { backgroundColor: visual.corFundo },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name={visual.icone}
-                            size={ehDesktop ? 24 : 20}
-                            color={visual.corIcone}
-                          />
-                        </View>
-
-                        <View style={styles.correcaoTextos}>
-                          <Text
-                            style={[
-                              styles.correcaoTitulo,
-                              ehDesktop && styles.correcaoTituloDesktop,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {grupo.atividade.nome}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.correcaoTurma,
-                              ehDesktop && styles.correcaoTurmaDesktop,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {grupo.atividade.turma}
-                          </Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            ehDesktop && styles.statusBadgeDesktop,
-                            { backgroundColor: status.corFundo },
-                          ]}
-                        >
-                          <Ionicons
-                            name={status.icone}
-                            size={ehDesktop ? 14 : 12}
-                            color={status.cor}
-                          />
-                          <Text
-                            style={[
-                              styles.statusBadgeTexto,
-                              ehDesktop && styles.statusBadgeTextoDesktop,
-                              { color: status.cor },
-                            ]}
-                          >
-                            {status.rotulo}
-                          </Text>
-                        </View>
+                        <MaterialCommunityIcons
+                          name={visual.icone}
+                          size={ehDesktop ? 24 : 20}
+                          color={visual.corIcone}
+                        />
                       </View>
 
-                      <View style={styles.correcaoContagemLinha}>
+                      <View style={styles.correcaoTextos}>
+                        <Text
+                          style={[
+                            styles.correcaoTitulo,
+                            ehDesktop && styles.correcaoTituloDesktop,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {grupo.atividade.nome}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.correcaoTurma,
+                            ehDesktop && styles.correcaoTurmaDesktop,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {grupo.atividade.turma}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          ehDesktop && styles.statusBadgeDesktop,
+                          { backgroundColor: status.corFundo },
+                        ]}
+                      >
                         <Ionicons
-                          name={
-                            grupo.status === "concluida"
-                              ? "checkmark-circle-outline"
-                              : "time-outline"
-                          }
-                          size={ehDesktop ? 15 : 13}
+                          name={status.icone}
+                          size={ehDesktop ? 14 : 12}
                           color={status.cor}
                         />
                         <Text
                           style={[
-                            styles.correcaoContagemTexto,
-                            ehDesktop && styles.correcaoContagemTextoDesktop,
+                            styles.statusBadgeTexto,
+                            ehDesktop && styles.statusBadgeTextoDesktop,
                             { color: status.cor },
                           ]}
                         >
-                          {grupo.status === "concluida"
-                            ? `${grupo.total} ${grupo.total === 1 ? "folha corrigida e revisada" : "folhas corrigidas e revisadas"} por você`
-                            : `${grupo.concluidas} de ${grupo.total} revisadas — as outras esperam você`}
+                          {status.rotulo}
                         </Text>
                       </View>
-                    </TouchableOpacity>
 
-                    <View style={styles.correcaoRodapeLinha}>
+                      {/* Depois da pastilha, no fim da linha, como em
+                            Turmas. COR.tintaFraca é o mesmo cinza do
+                            subtítulo, que é com o que a setinha de Turmas é
+                            desenhada (medi no print: #8795A0 nos dois). */}
+                      <Ionicons
+                        name="chevron-forward"
+                        size={ehDesktop ? 20 : 18}
+                        color={COR.tintaFraca}
+                      />
+                    </View>
+
+                    <View style={styles.correcaoContagemLinha}>
+                      <Ionicons
+                        name={
+                          grupo.status === "concluida"
+                            ? "checkmark-circle-outline"
+                            : "time-outline"
+                        }
+                        size={ehDesktop ? 15 : 13}
+                        color={status.cor}
+                      />
+                      <Text
+                        style={[
+                          styles.correcaoContagemTexto,
+                          ehDesktop && styles.correcaoContagemTextoDesktop,
+                          { color: status.cor },
+                        ]}
+                      >
+                        {grupo.status === "concluida"
+                          ? `${grupo.total} ${grupo.total === 1 ? "folha corrigida e revisada" : "folhas corrigidas e revisadas"} por você`
+                          : `${grupo.concluidas} de ${grupo.total} revisadas — as outras esperam você`}
+                      </Text>
+
+                      {/* A data subiu para esta linha. Com o PDF fora, o
+                            rodapé ficaria sendo uma faixa só para ela — e uma
+                            faixa que não faz nada embaixo de um cartão que a
+                            setinha diz ser todo clicável confunde. Agora o
+                            cartão inteiro é uma coisa só. */}
                       <Text
                         style={[
                           styles.correcaoData,
@@ -661,128 +485,9 @@ export default function Correcoes() {
                         ]}
                       >
                         {grupo.quando}
-                        {grupo.total > 0
-                          ? ` · média ${formatarNota(grupo.media)}`
-                          : ""}
                       </Text>
-
-                      <View style={styles.acoesCartao}>
-                        <TouchableOpacity
-                          style={[
-                            styles.botaoPdf,
-                            ehDesktop && styles.botaoPdfDesktop,
-                          ]}
-                          activeOpacity={0.8}
-                          disabled={!!gerando}
-                          onPress={() => salvarPdf(grupo)}
-                        >
-                          <Ionicons
-                            name="download-outline"
-                            size={ehDesktop ? 16 : 14}
-                            color={COR.marcador}
-                          />
-                          <Text
-                            style={[
-                              styles.botaoPdfTexto,
-                              ehDesktop && styles.botaoPdfTextoDesktop,
-                            ]}
-                          >
-                            {gerando === grupo.atividade.id_atividade
-                              ? "Gerando..."
-                              : "PDF"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={styles.verAlunos}
-                          activeOpacity={0.7}
-                          onPress={() => alternar(grupo.atividade.id_atividade)}
-                        >
-                          <Text
-                            style={[
-                              styles.verAlunosTexto,
-                              ehDesktop && styles.verAlunosTextoDesktop,
-                            ]}
-                          >
-                            {aberta
-                              ? "Esconder alunos"
-                              : grupo.total === 1
-                                ? "Ver 1 aluno"
-                                : `Ver ${grupo.total} alunos`}
-                          </Text>
-                          <Ionicons
-                            name={aberta ? "chevron-up" : "chevron-down"}
-                            size={ehDesktop ? 16 : 14}
-                            color={COR.marcador}
-                          />
-                        </TouchableOpacity>
-                      </View>
                     </View>
-
-                    {aberta && (
-                      <View style={styles.listaAlunos}>
-                        {grupo.alunos.map((c) => (
-                          <TouchableOpacity
-                            key={c.id_correcao}
-                            style={[
-                              styles.linhaAluno,
-                              ehDesktop && styles.linhaAlunoDesktop,
-                            ]}
-                            activeOpacity={0.7}
-                            onPress={() =>
-                              router.push({
-                                pathname: "/revisar",
-                                params: { id_correcao: c.id_correcao },
-                              })
-                            }
-                          >
-                            <Ionicons
-                              name={
-                                c.status === "concluida"
-                                  ? "checkmark-done"
-                                  : "time-outline"
-                              }
-                              size={ehDesktop ? 16 : 14}
-                              color={
-                                c.status === "concluida" ? COR.ok : COR.marcador
-                              }
-                            />
-                            <Text
-                              style={[
-                                styles.nomeAluno,
-                                ehDesktop && styles.nomeAlunoDesktop,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {c.aluno?.nome || "Aluno"}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.notaAluno,
-                                ehDesktop && styles.notaAlunoDesktop,
-                              ]}
-                            >
-                              {formatarNota(c.nota)}
-                              <Text
-                                style={[
-                                  styles.notaAlunoPeso,
-                                  ehDesktop && styles.notaAlunoPesoDesktop,
-                                ]}
-                              >
-                                {" "}
-                                / {formatarNota(c.peso_total)}
-                              </Text>
-                            </Text>
-                            <Ionicons
-                              name="chevron-forward"
-                              size={ehDesktop ? 16 : 14}
-                              color={COR.chevron}
-                            />
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
 
@@ -834,6 +539,18 @@ export default function Correcoes() {
             >
               Resumo das correções
             </Text>
+
+            {/* Sem esta linha, um resumo filtrado parece um resumo errado:
+                os números batem com a lista, mas quem vê "Resumo das
+                correções" espera o total de tudo. */}
+            <Text
+              style={[styles.resumoSub, ehDesktop && styles.resumoSubDesktop]}
+            >
+              {filtrando
+                ? "Contando só o que está na lista acima"
+                : "Todas as suas correções"}
+            </Text>
+
             <View style={styles.resumoGrade}>
               {RESUMO.map((item) => (
                 <View
@@ -962,7 +679,7 @@ const styles = StyleSheet.create({
   //
   // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
   // entra empilhado por cima do compartilhado:
-  // [styles.nomeAluno, ehDesktop && styles.nomeAlunoDesktop].
+  // [styles.correcaoTitulo, ehDesktop && styles.correcaoTituloDesktop].
   // O primeiro define, o segundo corrige, e o celular não passa por aqui.
   //
   // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
@@ -974,7 +691,9 @@ const styles = StyleSheet.create({
   filtroTextoDesktop: { fontSize: 14 },
 
   listaDesktop: { gap: 12 },
-  correcaoCardDesktop: { padding: 18, borderRadius: 16 },
+  // Sem borderRadius: só o espaçamento interno muda entre celular e
+  // computador, o canto não.
+  correcaoCardDesktop: { padding: 18 },
   correcaoLinhaTopoDesktop: { gap: 16 },
   correcaoIconeCirculoDesktop: { width: 48, height: 48, borderRadius: 16 },
   correcaoTituloDesktop: { fontSize: 15.5 },
@@ -983,36 +702,7 @@ const styles = StyleSheet.create({
   statusBadgeTextoDesktop: { fontSize: 12 },
   correcaoContagemTextoDesktop: { fontSize: 12.5 },
   correcaoDataDesktop: { fontSize: 12 },
-  botaoPdfDesktop: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  botaoPdfTextoDesktop: { fontSize: 12.5 },
-  verAlunosTextoDesktop: { fontSize: 13.5 },
-  linhaAlunoDesktop: { paddingVertical: 15, gap: 12 },
-  nomeAlunoDesktop: { fontSize: 14.5 },
-  notaAlunoDesktop: { fontSize: 15 },
-  notaAlunoPesoDesktop: { fontSize: 12 },
   vazioTextoDesktop: { fontSize: 14.5 },
-
-  acoesCartao: { flexDirection: "row", alignItems: "center", gap: 12 },
-  botaoPdf: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 8,
-    borderWidth: 1.2,
-    borderColor: COR.linha,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  botaoPdfTexto: {
-    fontFamily: FONTE.bold,
-    fontSize: 11,
-    fontWeight: "700",
-    color: COR.marcador,
-  },
 
   filtrosLinha: {
     flexDirection: "row",
@@ -1050,12 +740,15 @@ const styles = StyleSheet.create({
   lista: { width: "100%", gap: 10, marginBottom: 20 },
   correcaoCard: {
     backgroundColor: COR.branco,
-    borderRadius: 14,
+    // RAIO.superficie, o raio de cartão do app, em vez do 14 escrito à mão
+    // que estava aqui (e do 16 que estava no estilo de computador — o mesmo
+    // cartão mudava de canto ao abrir no notebook). Medi no print de Turmas:
+    // 12px. Mudando em estilo.js, todos os cartões acompanham.
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 14,
   },
-  correcaoCardMobile: { gap: 10 },
   correcaoLinhaTopo: { flexDirection: "row", alignItems: "center", gap: 12 },
   correcaoIconeCirculo: {
     width: 40,
@@ -1107,48 +800,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  correcaoRodapeLinha: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
   correcaoData: {
     fontFamily: FONTE.regular,
     fontSize: 10,
-    color: COR.tintaFraca,
-  },
-  verAlunos: { flexDirection: "row", alignItems: "center", gap: 4 },
-  verAlunosTexto: {
-    fontFamily: FONTE.bold,
-    fontSize: 11.5,
-    fontWeight: "700",
-    color: COR.marcador,
-  },
-
-  listaAlunos: {
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COR.linhaSuave,
-  },
-  linhaAluno: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: COR.linhaSuave,
-  },
-  nomeAluno: {
-    flex: 1,
-    fontFamily: FONTE.media,
-    fontSize: 12.5,
-    color: COR.tintaForte,
-  },
-  notaAluno: { fontFamily: FONTE.bold, fontSize: 13, color: COR.tintaForte },
-  notaAlunoPeso: {
-    fontFamily: FONTE.regular,
-    fontSize: 10.5,
     color: COR.tintaFraca,
   },
 
@@ -1196,9 +850,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: COR.tintaForte,
+  },
+  resumoTituloDesktop: { fontSize: 17 },
+  resumoSub: {
+    fontFamily: FONTE.regular,
+    fontSize: 11,
+    color: COR.tintaFraca,
+    marginTop: 3,
     marginBottom: 14,
   },
-  resumoTituloDesktop: { fontSize: 17, marginBottom: 22 },
+  resumoSubDesktop: { fontSize: 12.5, marginBottom: 22 },
   resumoGrade: {
     flexDirection: "row",
     flexWrap: "wrap",

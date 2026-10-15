@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -171,6 +171,40 @@ async function prepararParaEnvio(imagem) {
   return { uri: endereco, mime, objetoWeb };
 }
 
+// ---------------------------------------------------------------------------
+// O ALERTA
+//
+// Um componente só, usado nos dois lugares da tela, para os dois avisos serem
+// a mesma coisa aos olhos do professor. Antes isto era um <Text> vermelho
+// solto, e um texto vermelho sem nada em volta some no meio de um formulário
+// deste tamanho.
+//
+// A faixa vermelha fica só na borda ESQUERDA: borda vermelha nos quatro lados
+// em cima de fundo vermelho clarinho vira uma caixa pesada demais para uma
+// coisa que o professor resolve em dois segundos. É um aviso, não um erro
+// grave.
+//
+// `acao` é opcional e entra embaixo do texto — é por onde passa o
+// "Ver questão 3".
+// ---------------------------------------------------------------------------
+function Alerta({ titulo, texto, acao }) {
+  return (
+    <View style={styles.alerta}>
+      <Ionicons
+        name="alert-circle"
+        size={18}
+        color={COR.perigo}
+        style={styles.alertaIcone}
+      />
+      <View style={styles.alertaTextos}>
+        <Text style={styles.alertaTitulo}>{titulo}</Text>
+        <Text style={styles.alertaTexto}>{texto}</Text>
+        {acao}
+      </View>
+    </View>
+  );
+}
+
 export default function CriarAtividade() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
@@ -193,7 +227,24 @@ export default function CriarAtividade() {
 
   const [salvando, setSalvando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+
+  // DOIS avisos, e não um só, porque o aviso tem que aparecer perto do botão
+  // que o fez aparecer. O formulário é comprido: quem aperta "Publicar" lá
+  // embaixo não vê nada escrito no topo da tela — foi exatamente isso que fez
+  // a versão antiga parecer que o botão não funcionava.
+  //
+  //   erro      coisas que deram errado nos controles de CIMA: carregar a
+  //             tela, escolher imagem, importar arquivo.
+  //   problema  o que falta preencher e a falha ao salvar — as duas vêm de
+  //             apertar "Publicar", que fica EMBAIXO.
   const [erro, setErro] = useState("");
+  const [problema, setProblema] = useState(null);
+
+  // Onde cada questão começa dentro da rolagem, para o "Ver questão 3" do
+  // aviso saber para onde levar. Guardado em ref e não em estado: muda a cada
+  // layout e não precisa redesenhar nada.
+  const rolagem = useRef(null);
+  const alturaDasQuestoes = useRef({});
 
   const [importando, setImportando] = useState(false);
   const [resumoImport, setResumoImport] = useState("");
@@ -495,6 +546,28 @@ export default function CriarAtividade() {
     return contarPalavrasChave(questao.palavrasChave) === 0;
   }
 
+  // -------------------------------------------------------------------------
+  // Para onde a seta de voltar leva.
+  //
+  // Editando, volta para a própria atividade: foi de lá que você veio, e é lá
+  // que dá para conferir se a mudança pegou. O router.back() devolvia para o
+  // que estivesse antes no histórico, que depois de uma navegação ou outra
+  // podia ser qualquer tela.
+  //
+  // Criando, não existe atividade para onde voltar ainda, então vai para a
+  // lista — o mesmo lugar para onde o "publicar" leva quando dá certo.
+  //
+  // replace e não push: troca esta tela em vez de empilhar, senão o botão de
+  // voltar do aparelho traria o formulário de volta.
+  // -------------------------------------------------------------------------
+  function voltar() {
+    if (emEdicao && id) {
+      router.replace({ pathname: "/atividade", params: { id } });
+      return;
+    }
+    router.replace("/atividades");
+  }
+
   function gabaritoDaQuestao(questao) {
     if (questao.tipo === "alternativa") return questao.letraCorreta.trim();
     if (questao.tipo === "calculo") return questao.respostaEsperada.trim();
@@ -503,41 +576,68 @@ export default function CriarAtividade() {
 
   // Confere antes de mandar. Gabarito vazio não dá erro no banco — ele salva
   // e só aparece na hora da correção, com a nota saindo zero sem explicação.
+  //
+  // Devolve null quando está tudo certo, ou { texto, idQuestao, numero } — o
+  // id vai junto para a tela poder marcar o cartão da questão de vermelho e
+  // levar o professor até ela. Só dizer "questão 7" numa prova de dez
+  // questões é mandar a pessoa procurar.
   function primeiroProblema() {
-    if (!titulo.trim()) return "Dê um título para a atividade.";
-    if (!disciplina.trim()) return "Escolha a disciplina.";
-    if (!turmaSelecionada) return "Escolha a turma.";
-    if (questoes.length === 0) return "Adicione pelo menos uma questão.";
+    const noTopo = (texto) => ({ texto, idQuestao: null, numero: null });
+
+    if (!titulo.trim()) return noTopo("Dê um título para a atividade.");
+    if (!disciplina.trim()) return noTopo("Escolha a disciplina.");
+    if (!turmaSelecionada) return noTopo("Escolha a turma.");
+    if (questoes.length === 0)
+      return noTopo("Adicione pelo menos uma questão.");
 
     for (let i = 0; i < questoes.length; i++) {
       const q = questoes[i];
       const n = i + 1;
+      const na = (texto) => ({ texto, idQuestao: q.id, numero: n });
 
-      if (!q.enunciado.trim()) return `Escreva o enunciado da questão ${n}.`;
+      if (!q.enunciado.trim()) return na("Falta o enunciado.");
       if (comoNumero(q.peso) <= 0)
-        return `O peso da questão ${n} precisa ser maior que zero.`;
+        return na("O peso precisa ser maior que zero.");
 
       if (q.tipo === "alternativa") {
-        if (!q.letraCorreta)
-          return `Marque a alternativa correta da questão ${n}.`;
+        if (!q.letraCorreta) return na("Marque a alternativa correta.");
         const vazias = q.alternativas.filter((a) => !a.texto.trim());
         if (vazias.length)
-          return `Preencha o texto de todas as alternativas da questão ${n}.`;
+          return na("Preencha o texto de todas as alternativas.");
       }
 
       if (
         q.tipo === "dissertativa" &&
         contarPalavrasChave(q.palavrasChave) === 0
       ) {
-        return `Escreva as palavras-chave do gabarito da questão ${n}.`;
+        return na("Falta escrever as palavras-chave do gabarito.");
       }
 
       if (q.tipo === "calculo" && !q.respostaEsperada.trim()) {
-        return `Escreva o resultado esperado da questão ${n}.`;
+        return na("Falta o resultado esperado.");
       }
     }
 
-    return "";
+    return null;
+  }
+
+  // Enquanto um aviso está na tela, ele se refaz a cada tecla: assim que o
+  // campo é preenchido o aviso some sozinho, ou pula para o que falta agora.
+  // Sem isto, o professor arruma o campo e continua olhando para um aviso
+  // vermelho que já não vale.
+  //
+  // O `problema` NÃO entra nas dependências de propósito — entraria em laço,
+  // porque o próprio efeito o reescreve.
+  useEffect(() => {
+    if (problema) setProblema(primeiroProblema());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titulo, disciplina, turmaSelecionada, questoes]);
+
+  function irParaQuestao(idQuestao) {
+    const y = alturaDasQuestoes.current[idQuestao];
+    if (y === undefined || !rolagem.current) return;
+    // -12 para o cartão não encostar na borda de cima da tela.
+    rolagem.current.scrollTo({ y: Math.max(y - 12, 0), animated: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -655,14 +755,15 @@ export default function CriarAtividade() {
   }
 
   async function publicarAtividade() {
-    const problema = primeiroProblema();
-    if (problema) {
-      setErro(problema);
+    const falta = primeiroProblema();
+    if (falta) {
+      setProblema(falta);
       return;
     }
 
     setSalvando(true);
     setErro("");
+    setProblema(null);
 
     try {
       let id_atividade = id;
@@ -698,13 +799,18 @@ export default function CriarAtividade() {
       const texto = String(e.message || "");
 
       // Erro de chave estrangeira ao apagar questão já respondida.
+      // Vai no aviso de baixo, junto do botão que a pessoa acabou de apertar.
       if (/foreign key|constraint|referenc/i.test(texto)) {
-        setErro(
-          "Esta atividade já tem folhas corrigidas, então as questões não podem ser trocadas. " +
-            "Crie uma atividade nova ou apague as correções antes.",
-        );
+        setProblema({
+          titulo: "Não dá para trocar as questões",
+          texto:
+            "Esta atividade já tem folhas corrigidas. Crie uma atividade nova ou apague as correções antes.",
+        });
       } else {
-        setErro(texto || "Não consegui salvar.");
+        setProblema({
+          titulo: "Não consegui salvar",
+          texto: texto || "Tente de novo em alguns segundos.",
+        });
       }
     } finally {
       setSalvando(false);
@@ -714,6 +820,7 @@ export default function CriarAtividade() {
   return (
     <View style={styles.tela}>
       <ScrollView
+        ref={rolagem}
         style={styles.conteudo}
         contentContainerStyle={[
           styles.conteudoInterno,
@@ -724,7 +831,7 @@ export default function CriarAtividade() {
           {ehDesktop ? (
             <View style={styles.cabecalhoDesktopLinha}>
               <TouchableOpacity
-                onPress={() => router.back()}
+                onPress={voltar}
                 style={styles.voltarLinha}
               >
                 <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
@@ -735,7 +842,7 @@ export default function CriarAtividade() {
             </View>
           ) : (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={voltar}
               style={styles.voltarLinha}
             >
               <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
@@ -745,9 +852,7 @@ export default function CriarAtividade() {
             </TouchableOpacity>
           )}
 
-          {erro ? (
-            <Text style={{ color: "#EF4444", marginBottom: 12 }}>{erro}</Text>
-          ) : null}
+          {erro ? <Alerta titulo="Não deu certo" texto={erro} /> : null}
 
           {/* Importar fica no topo porque é o atalho: quem tem a prova pronta
               resolve tudo daqui, e os campos de baixo já chegam preenchidos.
@@ -884,14 +989,35 @@ export default function CriarAtividade() {
           {questoes.map((questao, indice) => (
             <View
               key={questao.id}
-              style={[styles.secaoCard, ehDesktop && styles.secaoCardDesktop]}
+              // Guarda onde este cartão começa, para o "Ver questão N" do
+              // aviso conseguir rolar até aqui.
+              onLayout={(e) => {
+                alturaDasQuestoes.current[questao.id] = e.nativeEvent.layout.y;
+              }}
+              style={[
+                styles.secaoCard,
+                ehDesktop && styles.secaoCardDesktop,
+                problema?.idQuestao === questao.id && styles.secaoCardComFalta,
+              ]}
             >
               <View style={styles.questaoCabecalho}>
                 <View style={styles.questaoCabecalhoEsquerda}>
                   <Text style={styles.numeroQuestao}>
                     QUESTÃO {indice + 1}
                   </Text>
-                  {faltaGabarito(questao) ? (
+                  {/* O selo do que falta substitui o "falta o gabarito"
+                      enquanto o aviso aponta para esta questão: dois selos ao
+                      mesmo tempo no mesmo cartão competem pela atenção, e o
+                      que o professor precisa ler é o mais específico. */}
+                  {problema?.idQuestao === questao.id ? (
+                    <View style={[styles.selo, styles.seloFalta]}>
+                      {/* Sem o ponto final: dentro de uma pastilha, ponto de
+                          frase fica com cara de erro de digitação. */}
+                      <Text style={[styles.seloTexto, styles.seloFaltaTexto]}>
+                        {problema.texto.replace(/\.$/, "").toLowerCase()}
+                      </Text>
+                    </View>
+                  ) : faltaGabarito(questao) ? (
                     <View style={styles.selo}>
                       <Text style={styles.seloTexto}>falta o gabarito</Text>
                     </View>
@@ -1168,6 +1294,38 @@ export default function CriarAtividade() {
             </Text>
           </TouchableOpacity>
 
+          {/* Logo acima do botão, porque é ele que faz este aviso aparecer.
+              No topo da tela ninguém veria — o formulário é comprido. */}
+          {problema ? (
+            <Alerta
+              titulo={problema.titulo || "Falta preencher"}
+              texto={
+                problema.numero
+                  ? `Questão ${problema.numero}: ${problema.texto.toLowerCase()}`
+                  : problema.texto
+              }
+              acao={
+                problema.idQuestao ? (
+                  <TouchableOpacity
+                    onPress={() => irParaQuestao(problema.idQuestao)}
+                    activeOpacity={0.7}
+                    hitSlop={6}
+                    style={styles.alertaAcao}
+                  >
+                    <Text style={styles.alertaAcaoTexto}>
+                      Ver questão {problema.numero}
+                    </Text>
+                    <Ionicons
+                      name="arrow-up"
+                      size={13}
+                      color={COR.perigo}
+                    />
+                  </TouchableOpacity>
+                ) : null
+              }
+            />
+          ) : null}
+
           <View
             style={[
               styles.acoesFinais,
@@ -1377,6 +1535,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexShrink: 1,
+    // Quebra em duas linhas no celular: o selo do que falta pode ser uma
+    // frase ("preencha o texto de todas as alternativas") e, sem isto, ela
+    // empurraria a lixeira para fora do cartão.
+    flexWrap: "wrap",
   },
   selo: {
     paddingHorizontal: 8,
@@ -1440,6 +1602,56 @@ const styles = StyleSheet.create({
     color: COR.tintaFraca,
   },
   obrigatorio: { color: COR.perigo },
+
+  // ------------------------------------------------------------ o alerta
+  alerta: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: COR.perigoFundo,
+    borderLeftWidth: 3,
+    borderLeftColor: COR.perigo,
+    borderRadius: RAIO.controle,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  // 1px de folga para o ícone alinhar com a LETRA do título, e não com o topo
+  // da caixa de texto dele.
+  alertaIcone: { marginTop: 1 },
+  alertaTextos: { flex: 1, gap: 2 },
+  alertaTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    fontWeight: "700",
+    color: COR.perigo,
+  },
+  alertaTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    color: COR.tintaMedia,
+    lineHeight: 18,
+  },
+  alertaAcao: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+    alignSelf: "flex-start",
+  },
+  alertaAcaoTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: COR.perigo,
+    textDecorationLine: "underline",
+  },
+
+  // A borda do cartão da questão que está faltando preencher. Só a cor muda:
+  // mudar a espessura junto empurraria o conteúdo e a tela daria um pulo.
+  secaoCardComFalta: { borderColor: COR.perigo },
+  seloFalta: { backgroundColor: COR.perigoFundo },
+  seloFaltaTexto: { color: COR.perigo },
 
   campoTexto: {
     borderWidth: 1,

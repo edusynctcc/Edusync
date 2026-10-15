@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -24,7 +24,14 @@ import {
   importarAlunos,
   lerListaDeChamada,
   listarAlunos,
+  listarAtividades,
 } from "../../constants/api";
+import { visualDaDisciplina } from "../../constants/disciplinas";
+
+const ABAS = [
+  { chave: "alunos", rotulo: "Alunos", icone: "people-outline" },
+  { chave: "atividades", rotulo: "Atividades", icone: "document-text-outline" },
+];
 
 function iniciais(nome) {
   const texto = String(nome ?? "").trim();
@@ -96,6 +103,8 @@ export default function TurmaDetalhe() {
 
   const [turma, setTurma] = useState(null);
   const [alunos, setAlunos] = useState([]);
+  const [atividades, setAtividades] = useState([]);
+  const [abaAtiva, setAbaAtiva] = useState("alunos");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -143,6 +152,34 @@ export default function TurmaDetalhe() {
       setErro(e.message);
     } finally {
       setCarregando(false);
+    }
+
+    // As atividades vêm DEPOIS e num try próprio, de propósito: se esta
+    // chamada falhar, a tela da turma continua funcionando inteira — a lista
+    // de atividades é um extra, não é o motivo de a tela existir. Juntar as
+    // duas no mesmo try faria a chamada perder os alunos por causa de um
+    // erro numa lista de atividades.
+    //
+    // O servidor não tem rota de "atividades desta turma": o listarAtividades
+    // devolve as do professor e cada uma traz o id_turma. Filtrar aqui evita
+    // mexer no backend, e numa conta de professor são dezenas de atividades,
+    // não milhares.
+    try {
+      const todas = await listarAtividades();
+      setAtividades(
+        todas
+          .filter((a) => String(a.id_turma) === String(id_turma))
+          // Mais nova em cima. O `?? ""` não é enfeite: sem ele, uma atividade
+          // com criado_em nulo virava a string "null", que ordena DEPOIS de
+          // "2026-..." — e a atividade sem data pulava para o topo da lista.
+          .sort((a, b) =>
+            String(b.criado_em ?? "").localeCompare(String(a.criado_em ?? "")),
+          ),
+      );
+    } catch {
+      // Em silêncio: o cartão simplesmente não aparece. Um erro vermelho aqui
+      // assustaria por causa de algo que o professor nem pediu.
+      setAtividades([]);
     }
   }, [id_turma]);
 
@@ -295,7 +332,9 @@ export default function TurmaDetalhe() {
       ).length;
 
       if (jaEstavam > 0) {
-        partes.push(`${jaEstavam} já ${jaEstavam === 1 ? "estava" : "estavam"}`);
+        partes.push(
+          `${jaEstavam} já ${jaEstavam === 1 ? "estava" : "estavam"}`,
+        );
       }
 
       const comProblema = (resultado.ignorados || []).filter(
@@ -432,6 +471,283 @@ export default function TurmaDetalhe() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // O conteúdo de cada aba, em função própria.
+  //
+  // É o mesmo jeito do editar.js, e não é só organização: deixar os dois
+  // blocos inteiros dentro do return, cada um atrás de um `abaAtiva === ...`,
+  // dá um return de trezentas linhas em que não se enxerga mais onde um
+  // termina e o outro começa.
+  // ---------------------------------------------------------------------------
+  function abaDeAlunos() {
+    return (
+      <>
+        <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
+          <Text
+            style={[
+              styles.cartaoTitulo,
+              ehDesktop && styles.cartaoTituloDesktop,
+            ]}
+          >
+            Adicionar aluno
+          </Text>
+
+          {/* A importação vem antes do formulário de propósito: numa turma
+                vazia, mandar a lista de chamada resolve tudo de uma vez, e
+                digitar 30 nomes um a um é o caminho longo. */}
+          <TouchableOpacity
+            style={[
+              styles.botaoImportar,
+              ehDesktop && styles.botaoImportarDesktop,
+              !!ocupado && styles.desativado,
+            ]}
+            activeOpacity={0.85}
+            disabled={!!ocupado}
+            onPress={escolherLista}
+          >
+            {ocupado === "lendoLista" ? (
+              <ActivityIndicator size="small" color={COR.marcador} />
+            ) : (
+              <Ionicons
+                name="document-attach-outline"
+                size={ehDesktop ? 19 : 17}
+                color={COR.marcador}
+              />
+            )}
+            <Text
+              style={[
+                styles.botaoImportarTexto,
+                ehDesktop && styles.botaoImportarTextoDesktop,
+              ]}
+            >
+              {ocupado === "lendoLista"
+                ? "Lendo a lista..."
+                : "Importar lista de chamada"}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.dica, ehDesktop && styles.dicaDesktop]}>
+            PDF, foto, Excel ou CSV. Você confere os nomes antes de salvar.
+          </Text>
+
+          <View style={styles.separador}>
+            <View style={styles.separadorLinha} />
+            <Text style={styles.separadorTexto}>ou um por um</Text>
+            <View style={styles.separadorLinha} />
+          </View>
+
+          <TextInput
+            value={novoNome}
+            onChangeText={setNovoNome}
+            placeholder="Nome completo"
+            placeholderTextColor={COR.tintaFraca}
+            style={[styles.campo, ehDesktop && styles.campoDesktop]}
+            autoCapitalize="words"
+            onSubmitEditing={adicionarAluno}
+          />
+
+          <TextInput
+            value={novaMatricula}
+            onChangeText={setNovaMatricula}
+            placeholder="Matrícula (opcional)"
+            placeholderTextColor={COR.tintaFraca}
+            style={[styles.campo, ehDesktop && styles.campoDesktop]}
+            maxLength={50}
+            onSubmitEditing={adicionarAluno}
+          />
+
+          <Text style={[styles.dica, ehDesktop && styles.dicaDesktop]}>
+            Sem matrícula, o sistema gera uma provisória. O número de chamada
+            será {chamada(proximaChamada)}.
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.botaoEscuroLargo,
+              ehDesktop && styles.botaoEscuroLargoDesktop,
+              (!novoNome.trim() || !!ocupado) && styles.desativado,
+            ]}
+            activeOpacity={0.85}
+            disabled={!novoNome.trim() || !!ocupado}
+            onPress={adicionarAluno}
+          >
+            <Ionicons
+              name="person-add-outline"
+              size={ehDesktop ? 18 : 16}
+              color={COR.branco}
+            />
+            <Text
+              style={[
+                styles.botaoEscuroTexto,
+                ehDesktop && styles.botaoEscuroTextoDesktop,
+              ]}
+            >
+              {ocupado === "adicionar" ? "Adicionando..." : "Adicionar"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ------------------------------------------------------ alunos */}
+        <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
+          <Text
+            style={[
+              styles.cartaoTitulo,
+              ehDesktop && styles.cartaoTituloDesktop,
+            ]}
+          >
+            {alunos.length === 1 ? "1 aluno" : `${alunos.length} alunos`}
+          </Text>
+
+          {alunos.length === 0 && (
+            <Text style={styles.textoApoio}>
+              Nenhum aluno cadastrado nesta turma ainda.
+            </Text>
+          )}
+
+          {alunos.map((aluno) => (
+            <View
+              key={aluno.id_aluno}
+              style={[styles.alunoLinha, ehDesktop && styles.alunoLinhaDesktop]}
+            >
+              <Text
+                style={[
+                  styles.alunoChamada,
+                  ehDesktop && styles.alunoChamadaDesktop,
+                ]}
+              >
+                {chamada(aluno.numero_chamada)}
+              </Text>
+
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[
+                    styles.alunoNome,
+                    ehDesktop && styles.alunoNomeDesktop,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {aluno.nome}
+                </Text>
+                {!!aluno.matricula && (
+                  <Text
+                    style={[
+                      styles.alunoMatricula,
+                      ehDesktop && styles.alunoMatriculaDesktop,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {aluno.matricula}
+                  </Text>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.botaoLixeira,
+                  ehDesktop && styles.botaoLixeiraDesktop,
+                ]}
+                activeOpacity={0.7}
+                hitSlop={8}
+                disabled={!!ocupado}
+                onPress={() => setAlunoParaExcluir(aluno)}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={ehDesktop ? 18 : 16}
+                  color={COR.perigo}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </>
+    );
+  }
+
+  function abaDeAtividades() {
+    return (
+      <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
+        <Text
+          style={[styles.cartaoTitulo, ehDesktop && styles.cartaoTituloDesktop]}
+        >
+          {atividades.length === 1
+            ? "1 atividade"
+            : `${atividades.length} atividades`}
+        </Text>
+
+        {atividades.length === 0 && (
+          <Text style={styles.textoApoio}>
+            Nenhuma atividade cadastrada para esta turma ainda.
+          </Text>
+        )}
+
+        {atividades.map((atividade) => {
+          const visual = visualDaDisciplina(atividade.disciplina);
+
+          return (
+            <TouchableOpacity
+              key={atividade.id_atividade}
+              style={[
+                styles.atividadeLinha,
+                ehDesktop && styles.atividadeLinhaDesktop,
+              ]}
+              activeOpacity={0.7}
+              onPress={() =>
+                router.push({
+                  pathname: "/atividade",
+                  params: { id: atividade.id_atividade },
+                })
+              }
+            >
+              <View
+                style={[
+                  styles.atividadeIcone,
+                  ehDesktop && styles.atividadeIconeDesktop,
+                  { backgroundColor: visual.corFundo },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={visual.icone}
+                  size={ehDesktop ? 20 : 18}
+                  color={visual.corIcone}
+                />
+              </View>
+
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[
+                    styles.alunoNome,
+                    ehDesktop && styles.alunoNomeDesktop,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {atividade.nome}
+                </Text>
+                {!!atividade.disciplina && (
+                  <Text
+                    style={[
+                      styles.alunoMatricula,
+                      ehDesktop && styles.alunoMatriculaDesktop,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {atividade.disciplina}
+                  </Text>
+                )}
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={ehDesktop ? 20 : 18}
+                color={COR.tintaFraca}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile />}
@@ -560,188 +876,35 @@ export default function TurmaDetalhe() {
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
           {!!aviso && <Text style={styles.avisoFaixa}>{aviso}</Text>}
 
-          {/* -------------------------------------------- adicionar aluno */}
-          <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
-            <Text
-              style={[
-                styles.cartaoTitulo,
-                ehDesktop && styles.cartaoTituloDesktop,
-              ]}
-            >
-              Adicionar aluno
-            </Text>
-
-            {/* A importação vem antes do formulário de propósito: numa turma
-                vazia, mandar a lista de chamada resolve tudo de uma vez, e
-                digitar 30 nomes um a um é o caminho longo. */}
-            <TouchableOpacity
-              style={[
-                styles.botaoImportar,
-                ehDesktop && styles.botaoImportarDesktop,
-                !!ocupado && styles.desativado,
-              ]}
-              activeOpacity={0.85}
-              disabled={!!ocupado}
-              onPress={escolherLista}
-            >
-              {ocupado === "lendoLista" ? (
-                <ActivityIndicator size="small" color={COR.marcador} />
-              ) : (
-                <Ionicons
-                  name="document-attach-outline"
-                  size={ehDesktop ? 19 : 17}
-                  color={COR.marcador}
-                />
-              )}
-              <Text
-                style={[
-                  styles.botaoImportarTexto,
-                  ehDesktop && styles.botaoImportarTextoDesktop,
-                ]}
-              >
-                {ocupado === "lendoLista"
-                  ? "Lendo a lista..."
-                  : "Importar lista de chamada"}
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={[styles.dica, ehDesktop && styles.dicaDesktop]}>
-              PDF, foto, Excel ou CSV. Você confere os nomes antes de salvar.
-            </Text>
-
-            <View style={styles.separador}>
-              <View style={styles.separadorLinha} />
-              <Text style={styles.separadorTexto}>ou um por um</Text>
-              <View style={styles.separadorLinha} />
-            </View>
-
-            <TextInput
-              value={novoNome}
-              onChangeText={setNovoNome}
-              placeholder="Nome completo"
-              placeholderTextColor={COR.tintaFraca}
-              style={[styles.campo, ehDesktop && styles.campoDesktop]}
-              autoCapitalize="words"
-              onSubmitEditing={adicionarAluno}
-            />
-
-            <TextInput
-              value={novaMatricula}
-              onChangeText={setNovaMatricula}
-              placeholder="Matrícula (opcional)"
-              placeholderTextColor={COR.tintaFraca}
-              style={[styles.campo, ehDesktop && styles.campoDesktop]}
-              maxLength={50}
-              onSubmitEditing={adicionarAluno}
-            />
-
-            <Text style={[styles.dica, ehDesktop && styles.dicaDesktop]}>
-              Sem matrícula, o sistema gera uma provisória. O número de chamada
-              será {chamada(proximaChamada)}.
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.botaoEscuroLargo,
-                ehDesktop && styles.botaoEscuroLargoDesktop,
-                (!novoNome.trim() || !!ocupado) && styles.desativado,
-              ]}
-              activeOpacity={0.85}
-              disabled={!novoNome.trim() || !!ocupado}
-              onPress={adicionarAluno}
-            >
-              <Ionicons
-                name="person-add-outline"
-                size={ehDesktop ? 18 : 16}
-                color={COR.branco}
-              />
-              <Text
-                style={[
-                  styles.botaoEscuroTexto,
-                  ehDesktop && styles.botaoEscuroTextoDesktop,
-                ]}
-              >
-                {ocupado === "adicionar" ? "Adicionando..." : "Adicionar"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ------------------------------------------------------ alunos */}
-          <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
-            <Text
-              style={[
-                styles.cartaoTitulo,
-                ehDesktop && styles.cartaoTituloDesktop,
-              ]}
-            >
-              {alunos.length === 1 ? "1 aluno" : `${alunos.length} alunos`}
-            </Text>
-
-            {alunos.length === 0 && (
-              <Text style={styles.textoApoio}>
-                Nenhum aluno cadastrado nesta turma ainda.
-              </Text>
-            )}
-
-            {alunos.map((aluno) => (
-              <View
-                key={aluno.id_aluno}
-                style={[
-                  styles.alunoLinha,
-                  ehDesktop && styles.alunoLinhaDesktop,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.alunoChamada,
-                    ehDesktop && styles.alunoChamadaDesktop,
-                  ]}
-                >
-                  {chamada(aluno.numero_chamada)}
-                </Text>
-
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    style={[
-                      styles.alunoNome,
-                      ehDesktop && styles.alunoNomeDesktop,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {aluno.nome}
-                  </Text>
-                  {!!aluno.matricula && (
-                    <Text
-                      style={[
-                        styles.alunoMatricula,
-                        ehDesktop && styles.alunoMatriculaDesktop,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {aluno.matricula}
-                    </Text>
-                  )}
-                </View>
-
+          {/* ------------------------------------------------------- abas
+              Mesmo componente do editar.js. Com duas listas na mesma tela,
+              empilhar as duas faria o professor rolar trinta alunos para
+              chegar nas atividades. */}
+          <View style={styles.abasLinha}>
+            {ABAS.map((aba) => {
+              const ativa = aba.chave === abaAtiva;
+              return (
                 <TouchableOpacity
-                  style={[
-                    styles.botaoLixeira,
-                    ehDesktop && styles.botaoLixeiraDesktop,
-                  ]}
-                  activeOpacity={0.7}
-                  hitSlop={8}
-                  disabled={!!ocupado}
-                  onPress={() => setAlunoParaExcluir(aluno)}
+                  key={aba.chave}
+                  style={[styles.aba, ativa && styles.abaAtiva]}
+                  onPress={() => setAbaAtiva(aba.chave)}
                 >
                   <Ionicons
-                    name="trash-outline"
-                    size={ehDesktop ? 18 : 16}
-                    color={COR.perigo}
+                    name={aba.icone}
+                    size={15}
+                    color={ativa ? COR.marcador : COR.tintaFraca}
                   />
+                  <Text
+                    style={[styles.abaTexto, ativa && styles.abaTextoAtiva]}
+                  >
+                    {aba.rotulo}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            ))}
+              );
+            })}
           </View>
+
+          {abaAtiva === "alunos" ? abaDeAlunos() : abaDeAtividades()}
         </View>
       </ScrollView>
 
@@ -778,7 +941,9 @@ export default function TurmaDetalhe() {
 
             <Text style={styles.modalTextoEsquerda}>
               Encontrei{" "}
-              <Text style={styles.metaForte}>{listaLida?.total_lidos ?? 0}</Text>{" "}
+              <Text style={styles.metaForte}>
+                {listaLida?.total_lidos ?? 0}
+              </Text>{" "}
               {(listaLida?.total_lidos ?? 0) === 1 ? "nome" : "nomes"} no
               arquivo.
               {(listaLida?.ja_na_turma ?? 0) > 0
@@ -1103,6 +1268,31 @@ const styles = StyleSheet.create({
   },
   tituloPagina: { fontFamily: FONTE.bold, fontSize: 18, color: COR.tintaForte },
 
+  // --------------------------------------------------- abas (iguais ao editar.js)
+  abasLinha: {
+    flexDirection: "row",
+    width: "100%",
+    backgroundColor: COR.branco,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COR.linhaSuave,
+    padding: 4,
+    gap: 4,
+    marginBottom: 16,
+  },
+  aba: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  abaAtiva: { backgroundColor: COR.emAndamentoFundo },
+  abaTexto: { fontFamily: FONTE.semi, fontSize: 12.5, color: COR.tintaFraca },
+  abaTextoAtiva: { color: COR.marcador },
+
   cartao: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -1171,6 +1361,27 @@ const styles = StyleSheet.create({
   botaoEscuroLargoDesktop: { paddingVertical: 16, borderRadius: 13 },
   botaoEscuroTextoDesktop: { fontSize: 15 },
   alunoLinhaDesktop: { paddingVertical: 14, gap: 14 },
+
+  // A linha da atividade copia a medida da linha do aluno de propósito: as
+  // duas vivem no mesmo cartão-irmão e qualquer diferença de altura entre
+  // elas aparece como desalinhamento.
+  atividadeLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: COR.linhaSuave,
+  },
+  atividadeLinhaDesktop: { paddingVertical: 14, gap: 14 },
+  atividadeIcone: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atividadeIconeDesktop: { width: 38, height: 38, borderRadius: 11 },
   alunoChamadaDesktop: { fontSize: 13, minWidth: 26 },
   alunoNomeDesktop: { fontSize: 15 },
   alunoMatriculaDesktop: { fontSize: 12, marginTop: 2 },

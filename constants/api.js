@@ -655,6 +655,21 @@ export function listarCorrecoes({ limite, id_atividade } = {}) {
 }
 
 // Fecha (ou reabre) todas as correções de uma atividade de uma vez.
+// ---------------------------------------------------------------------------
+// Desempenho por questão de uma atividade.
+//
+// Devolve, para cada questão, quantos alunos acertaram, acertaram em parte e
+// erraram. A soma é feita no servidor: buscar as correções uma a uma e somar
+// aqui daria 30 requisições numa turma de 30, e a regra de "o que conta como
+// acerto" passaria a existir em dois lugares.
+// ---------------------------------------------------------------------------
+export function desempenhoPorQuestao(id_atividade) {
+  return apiFetch(
+    `${ENDPOINTS.correcoes}/atividade/${id_atividade}/questoes`,
+    { autenticado: true }
+  );
+}
+
 export function concluirAtividade(id_atividade, { reabrir } = {}) {
   return apiFetch(`${ENDPOINTS.correcoes}/atividade/${id_atividade}/concluir`, {
     method: "PUT",

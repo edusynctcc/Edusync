@@ -9,6 +9,7 @@ import {
   concluirCorrecao,
   concluirAtividade,
 } from '../controllers/revisaoController';
+import { desempenhoPorQuestao } from '../controllers/estatisticaController';
 
 const router = Router();
 
@@ -51,6 +52,16 @@ router.post('/confirmar', confirmarCorrecao);
 //   ?limite=5        só as mais recentes
 //   ?id_atividade=3  só as de uma atividade
 router.get('/', listarCorrecoes);
+
+// GET /correcoes/atividade/:id_atividade/questoes  —  desempenho por questão
+//
+// Quantos alunos acertaram cada questão, quantos acertaram em parte e quantos
+// erraram. É o que o professor abre para descobrir o que a turma não aprendeu.
+//
+// Fica junto das outras rotas de três segmentos, antes de /:id. O Express
+// acertaria mesmo depois (o número de segmentos é diferente), mas manter as
+// específicas acima evita surpresa quando alguém acrescentar outra.
+router.get('/atividade/:id_atividade/questoes', desempenhoPorQuestao);
 
 // PUT /correcoes/atividade/:id_atividade/concluir  —  fecha a atividade toda
 //   reabrir (bool, opcional)  true devolve tudo para "pendente"

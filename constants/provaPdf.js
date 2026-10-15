@@ -2,11 +2,11 @@ import * as Print from "expo-print";
 import { Platform } from "react-native";
 import {
   listarAlternativas,
-  listarAlunos,
   listarQuestoes,
   listarTurmas,
   urlDaImagem,
 } from "./api";
+import { LOGO_EDUSYNC } from "./logo";
 import { qrSvg } from "./qr";
 
 // ---------------------------------------------------------------------------
@@ -27,35 +27,44 @@ import { qrSvg } from "./qr";
 // ---------------------------------------------------------------------------
 // O CÓDIGO DA FOLHA
 //
-// Formato: EDU-<atividade>-<aluno>-<D>, onde D é um dígito verificador.
+// Formato: EDU-<atividade>-<D>, onde D é um dígito verificador.
 //
-// Ele aparece em dois lugares na folha: dentro do QR e impresso em texto ao
-// lado dele. Os dois existem por motivos diferentes:
+// Ele identifica A ATIVIDADE, não o aluno — e isso é consequência de como a
+// prova funciona de verdade: o professor imprime N folhas IGUAIS, distribui, e
+// o aluno escreve o nome. Na hora de imprimir ninguém sabe quem vai receber
+// qual folha, então não há aluno para colocar no código.
 //
-//   o texto  é o que funciona HOJE. O Scanner manda a foto para o Gemini, e
-//            modelo lê texto impresso muito melhor do que decodifica QR.
-//   o QR     é para ler de perto, com a câmera apontada só nele — e para o
-//            dia em que a leitura do código sair do modelo e virar um
-//            decodificador de verdade.
+// (A primeira versão disto imprimia o nome de cada aluno numa folha própria.
+// Funcionava, mas criava trabalho novo: achar a folha certa para cada aluno
+// antes de começar a prova. Não vale.)
 //
-// O dígito verificador é o que separa um dos outros: se o modelo ler "EDU-12-41"
-// onde estava "EDU-12-47", a conta não fecha e o servidor descarta o código em
-// vez de gravar a nota no boletim do aluno errado. Sem ele, um 1 lido como 7
-// seria aceito em silêncio.
+// O que o código resolve sozinho: hoje, ao escanear, o professor escolhe a
+// atividade na mão — e escolher errado corrige a prova contra o gabarito de
+// outra. Com o código na folha, o Scanner já sabe qual é.
+//
+// Quem identifica o ALUNO é o número de chamada, escrito pelo aluno na caixa
+// ao lado. Dois dígitos à mão a IA lê muito melhor do que um nome completo em
+// letra cursiva, e o número já está cadastrado em cada aluno da turma. O nome
+// continua na folha como confirmação.
+//
+// O código aparece em dois lugares: dentro do QR e impresso em texto ao lado.
+// O texto é o que funciona hoje (o modelo lê texto impresso bem melhor do que
+// decodifica QR numa foto de página inteira); o QR é para ler de perto, com a
+// câmera apontada só nele.
 // ---------------------------------------------------------------------------
-export function digitoDaFolha(id_atividade, id_aluno) {
-  const base = `${Number(id_atividade) || 0}-${Number(id_aluno) || 0}`;
+export function digitoDaFolha(id_atividade) {
+  const base = String(Number(id_atividade) || 0);
   let soma = 0;
   for (let i = 0; i < base.length; i++) {
     // O peso alternado faz a troca de dois dígitos vizinhos mudar o resultado;
-    // uma soma simples não pegaria "47" lido como "74".
+    // uma soma simples não pegaria "12" lido como "21".
     soma += base.charCodeAt(i) * (i % 2 === 0 ? 3 : 1);
   }
   return "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[soma % 36];
 }
 
-export function codigoDaFolha(id_atividade, id_aluno) {
-  return `EDU-${id_atividade}-${id_aluno}-${digitoDaFolha(id_atividade, id_aluno)}`;
+export function codigoDaFolha(id_atividade) {
+  return `EDU-${id_atividade}-${digitoDaFolha(id_atividade)}`;
 }
 
 function escaparHtml(texto) {
@@ -143,7 +152,6 @@ export function montarHtmlDaProva({
   descricao,
   questoes,
   id_atividade,
-  alunos,
 }) {
   const lista = questoes || [];
   const pesoTotal = lista.reduce((soma, q) => soma + comoNumero(q.peso), 0);
@@ -151,31 +159,44 @@ export function montarHtmlDaProva({
   // -------------------------------------------------------------------------
   // O cabeçalho de identificação.
   //
-  // Com aluno, sai o nome impresso, o QR e o código. Sem aluno (turma vazia,
-  // ou atividade ainda sem turma), volta a linha em branco de sempre — a
-  // prova sai de qualquer jeito, que é melhor do que não sair.
+  // Três coisas, em ordem de confiabilidade para a correção:
+  //   o QR + código    identificam a ATIVIDADE, impressos, sempre iguais
+  //   o nº de chamada  identifica o ALUNO — dois dígitos, que a IA lê bem
+  //   o nome           confirmação, e o que vale se o número vier em branco
+  //
+  // As duas casinhas do número existem para o aluno escrever um dígito em
+  // cada: número solto no meio de uma linha sai torto e grudado, e é aí que
+  // 13 vira 18.
   // -------------------------------------------------------------------------
-  const identificacao = (aluno) => {
-    if (!aluno) {
-      return `<div class="identificacao">
-    <div class="campo"><span>Nome do aluno</span><span class="preencher"></span></div>
-    <div class="campo data"><span>Data</span><span class="preencher"></span></div>
-  </div>
-  <p class="aviso">Escreva seu nome completo com letra legível — é por ele que a prova é identificada.</p>`;
-    }
+  const codigo = id_atividade ? codigoDaFolha(id_atividade) : "";
 
-    const codigo = codigoDaFolha(id_atividade, aluno.id_aluno);
-
-    return `<div class="identidade">
-    <div class="qr">${qrSvg(codigo, 120)}</div>
-    <div class="dados">
-      <div class="aluno">${escaparHtml(aluno.nome)}</div>
+  const identificacao = `<div class="identidade">
+    ${
+      codigo
+        ? `<div class="qr">
+      ${qrSvg(codigo, 108)}
       <div class="codigo">${codigo}</div>
-      <div class="nota">Não apague nem cubra este bloco — é por ele que a correção identifica a sua folha.</div>
+    </div>`
+        : ""
+    }
+    <div class="dados">
+      <div class="linha-nome">
+        <span class="rotulo">Nome do aluno</span>
+        <span class="preencher"></span>
+      </div>
+      <div class="linha-baixo">
+        <div class="campo-data">
+          <span class="rotulo">Data</span>
+          <span class="preencher"></span>
+        </div>
+        <div class="chamada">
+          <span class="rotulo">Nº de chamada</span>
+          <div class="casinhas"><span></span><span></span></div>
+        </div>
+      </div>
     </div>
-    <div class="campo data"><span>Data</span><span class="preencher"></span></div>
-  </div>`;
-  };
+  </div>
+  <p class="aviso">Escreva o seu <b>número de chamada</b> nas duas casinhas e o seu nome completo. É por eles que a prova é identificada.</p>`;
 
   const blocos = lista
     .map((questao, indice) => {
@@ -216,39 +237,38 @@ export function montarHtmlDaProva({
     })
     .join("");
 
-  // Uma seção por aluno. Sem lista de alunos, uma só, em branco.
-  const paraQuem = Array.isArray(alunos) && alunos.length > 0 ? alunos : [null];
-
-  const folhas = paraQuem
-    .map(
-      (aluno) => `<section class="folha">
-  <header>
-    <h1>${escaparHtml(titulo)}</h1>
-    <p class="materia">${escaparHtml(disciplina)}${turma ? " · " + escaparHtml(turma) : ""}</p>
-    ${String(descricao || "").trim() ? `<p class="descricao">${escaparHtml(descricao)}</p>` : ""}
-  </header>
-
-  ${identificacao(aluno)}
-
-  ${blocos}
-
-  <footer>
-    <span>${lista.length} ${lista.length === 1 ? "questão" : "questões"} · total ${comVirgula(pesoTotal)} pontos</span>
-    <span>EduSync</span>
-  </footer>
-</section>`
-    )
-    .join("\n");
-
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <title>${escaparHtml(titulo)}</title>
 <style>
+  /* A MARGEM DE 8mm NAO E ESTETICA, E O QUE TIRA O CABECALHO DO NAVEGADOR.
+     Na web, imprimir abre a caixa do proprio navegador, que escreve a data e
+     o titulo da pagina no alto e a URL no rodape — aquele texto pequeno que
+     aparecia acima do titulo da prova. Ele e desenhado DENTRO da margem da
+     pagina, entao com pouca margem nao cabe e o navegador nao desenha.
+     Testei de 0 a 10mm: ate 8mm sai limpo, de 10mm em diante ele volta.
+     Oito milimetros tambem ficam acima da area que impressora nenhuma
+     alcanca (uns 5mm), entao nada e cortado — e, diferente de zerar a
+     margem, as paginas 2, 3... continuam com folga em vez de o texto
+     encostar na borda do papel. */
+  @page { size: A4 portrait; margin: 8mm; }
+
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #17242E; margin: 30px 34px; }
-  header { border-bottom: 2px solid #0B1E3D; padding-bottom: 10px; }
+  /* A logo fica no alto à direita, pequena, e o título continua começando na
+     margem esquerda. É a folha da escola, não a nossa — a marca ali é
+     assinatura, não cabeçalho, e não disputa espaço com o nome da prova. */
+  header { border-bottom: 2px solid #0B1E3D; padding-bottom: 10px; display: flex; align-items: center; gap: 16px; }
+  .cabecalho-texto { flex: 1; min-width: 0; }
+  /* A logo ocupa uma FRACAO da largura util da pagina, nao um tanto fixo de
+     pixels. Em A4 isso da os mesmos ~21mm de antes, mas se a folha mudar de
+     tamanho (A5, carta) ou as margens mudarem, ela acompanha em vez de ficar
+     grande demais ou perdida no canto.
+     O height: auto mantem a proporcao da imagem: ela nunca estica. */
+  .marca { flex: 0 0 7%; }
+  .marca img { display: block; width: 100%; height: auto; }
   h1 { font-size: 18px; margin: 0 0 3px; color: #0B1E3D; }
   .materia { font-size: 12px; color: #55646F; margin: 0; }
   .descricao { font-size: 11.5px; color: #55646F; margin: 10px 0 0; line-height: 1.5; }
@@ -286,26 +306,44 @@ export function montarHtmlDaProva({
 
   footer { margin-top: 26px; border-top: 1px solid #E9EEF0; padding-top: 8px; font-size: 10px; color: #8795A0; display: flex; justify-content: space-between; }
 
-  /* Uma folha por aluno. A última não leva quebra, senão sai uma página em
-     branco no fim do PDF. */
-  .folha { page-break-after: always; }
-  .folha:last-child { page-break-after: auto; }
+  /* ---------------------------------------------------------------- */
+  /* O bloco de identificação: QR + código à esquerda, campos à direita */
+  .identidade { display: flex; gap: 16px; align-items: stretch; border: 1.5px solid #17242E; border-radius: 8px; padding: 12px 14px; margin: 16px 0 6px; font-size: 12px; }
+  .identidade .qr { flex: 0 0 auto; text-align: center; line-height: 0; }
+  /* Monoespaçada e espaçada: é este texto que a IA lê para saber de que
+     atividade é a folha, e largura fixa separa melhor o 1 do 7 e o 0 do O. */
+  .identidade .codigo { font-family: "Courier New", Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #17242E; line-height: 1.4; margin-top: 4px; }
+  .identidade .dados { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  .identidade .rotulo { color: #55646F; font-size: 11px; }
+  .identidade .preencher { display: block; border-bottom: 1px solid #17242E; height: 20px; margin-top: 2px; }
+  .linha-baixo { display: flex; gap: 18px; align-items: flex-end; }
+  .campo-data { flex: 1; }
+  .chamada { flex: 0 0 auto; text-align: center; }
+  /* Uma casinha por dígito. Número solto numa linha sai grudado e torto, e é
+     assim que 13 vira 18 na hora de ler. */
+  .casinhas { display: flex; gap: 6px; margin-top: 3px; }
+  .casinhas span { display: block; width: 30px; height: 36px; border: 1.5px solid #17242E; border-radius: 4px; }
 
-  /* O bloco de identificação do aluno, que substitui a linha em branco. */
-  /* O font-size explicito importa: sem ele o campo "Data" aqui dentro herda
-     o tamanho do body e sai maior que o do resto da folha. */
-  .identidade { display: flex; gap: 14px; align-items: center; border: 1px solid #17242E; border-radius: 8px; padding: 12px 14px; margin-bottom: 6px; font-size: 12px; }
-  .identidade .qr { flex: 0 0 auto; line-height: 0; }
-  .identidade .dados { flex: 1; min-width: 0; }
-  .identidade .aluno { font-size: 15px; font-weight: 700; color: #0B1E3D; }
-  /* Monoespaçada e espaçada: é este texto que a IA lê na hora de corrigir, e
-     fonte de largura fixa separa melhor o 1 do 7 e o 0 do O. */
-  .identidade .codigo { font-family: "Courier New", Courier, monospace; font-size: 14px; letter-spacing: 2px; color: #17242E; margin-top: 4px; }
-  .identidade .nota { font-size: 10px; color: #8795A0; margin-top: 5px; }
 </style>
 </head>
 <body>
-  ${folhas}
+  <header>
+    <div class="cabecalho-texto">
+      <h1>${escaparHtml(titulo)}</h1>
+      <p class="materia">${escaparHtml(disciplina)}${turma ? " · " + escaparHtml(turma) : ""}</p>
+      ${String(descricao || "").trim() ? `<p class="descricao">${escaparHtml(descricao)}</p>` : ""}
+    </div>
+    <div class="marca"><img src="${LOGO_EDUSYNC}" alt="EduSync" /></div>
+  </header>
+
+  ${identificacao}
+
+  ${blocos}
+
+  <footer>
+    <span>${lista.length} ${lista.length === 1 ? "questão" : "questões"} · total ${comVirgula(pesoTotal)} pontos</span>
+    <span>EduSync</span>
+  </footer>
 </body>
 </html>`;
 }
@@ -400,24 +438,6 @@ export async function imprimirProvaDaAtividade(atividade) {
     turma = turmas.find((t) => t.id_turma === atividade.id_turma)?.nome || "";
   }
 
-  // Os alunos da turma, para sair uma folha por aluno com o nome impresso.
-  //
-  // Se a busca falhar, ou a turma estiver vazia, a prova sai com a linha em
-  // branco de sempre em vez de não sair. O professor prefere uma folha
-  // genérica a um erro na hora de imprimir.
-  let alunos = [];
-
-  if (atividade.id_turma) {
-    const lidos = await listarAlunos(atividade.id_turma).catch(() => []);
-    alunos = (lidos || [])
-      .slice()
-      .sort(
-        (a, b) =>
-          (Number(a.numero_chamada) || 999) - (Number(b.numero_chamada) || 999) ||
-          String(a.nome || "").localeCompare(String(b.nome || ""))
-      );
-  }
-
   return imprimirHtml(
     montarHtmlDaProva({
       titulo: atividade.nome || atividade.titulo || "Atividade",
@@ -426,7 +446,6 @@ export async function imprimirProvaDaAtividade(atividade) {
       descricao: atividade.descricao || "",
       questoes: await embutirImagens(questoes),
       id_atividade,
-      alunos,
     })
   );
 }
