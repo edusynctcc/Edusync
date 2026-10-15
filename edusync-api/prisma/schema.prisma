@@ -66,13 +66,16 @@ model correcao {
 }
 
 model professor {
-  id_professor Int         @id @default(autoincrement())
-  nome         String      @db.VarChar(100)
-  email        String      @unique(map: "email") @db.VarChar(100)
-  senha        String      @db.VarChar(255)
-  criado_em    DateTime?   @default(now()) @db.Timestamp(0)
-  atividade    atividade[]
-  turma        turma[]
+  id_professor   Int         @id @default(autoincrement())
+  nome           String      @db.VarChar(100)
+  email          String      @unique(map: "email") @db.VarChar(100)
+  senha          String      @db.VarChar(255)
+  telefone       String?     @db.VarChar(20)
+  endereco       String?     @db.VarChar(150)
+  notif_correcao Boolean     @default(true)
+  criado_em      DateTime?   @default(now()) @db.Timestamp(0)
+  atividade      atividade[]
+  turma          turma[]
 }
 
 model questao {
