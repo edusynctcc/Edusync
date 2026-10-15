@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
+const TIPOS_VALIDOS = ['multipla_escolha', 'dissertativa', 'calculo'];
+
 export async function register(req: Request, res: Response) {
   const { nome, email, senha } = req.body;
 
@@ -70,7 +72,11 @@ export async function me(req: Request, res: Response) {
       email: true,
       telefone: true,
       endereco: true,
+      foto: true,
       notif_correcao: true,
+      pref_peso_padrao: true,
+      pref_tipo_padrao: true,
+      pref_nota_minima: true,
       _count: {
         select: { turma: true, atividade: true },
       },
@@ -102,7 +108,11 @@ export async function me(req: Request, res: Response) {
     email: professor.email,
     telefone: professor.telefone,
     endereco: professor.endereco,
+    foto: professor.foto,
     notif_correcao: professor.notif_correcao,
+    pref_peso_padrao: professor.pref_peso_padrao,
+    pref_tipo_padrao: professor.pref_tipo_padrao,
+    pref_nota_minima: professor.pref_nota_minima,
     total_turmas: professor._count.turma,
     total_atividades: professor._count.atividade,
     total_alunos: totalAlunos,
@@ -177,6 +187,52 @@ export async function atualizarNotificacoes(req: Request, res: Response) {
     where: { id_professor },
     data: { notif_correcao },
     select: { notif_correcao: true },
+  });
+
+  return res.json(professor);
+}
+
+export async function atualizarFoto(req: Request, res: Response) {
+  const id_professor = req.professor!.id;
+  const { foto } = req.body;
+
+  // foto = null remove a foto atual
+  if (foto !== null && (typeof foto !== 'string' || !foto.startsWith('data:image/'))) {
+    return res.status(400).json({ erro: 'Envie uma imagem válida' });
+  }
+  if (typeof foto === 'string' && foto.length > 1_500_000) {
+    return res.status(400).json({ erro: 'Imagem muito grande' });
+  }
+
+  const professor = await prisma.professor.update({
+    where: { id_professor },
+    data: { foto },
+    select: { foto: true },
+  });
+
+  return res.json(professor);
+}
+
+export async function atualizarPreferencias(req: Request, res: Response) {
+  const id_professor = req.professor!.id;
+  const peso = Number(req.body.pref_peso_padrao);
+  const nota = Number(req.body.pref_nota_minima);
+  const tipo = req.body.pref_tipo_padrao;
+
+  if (!Number.isFinite(peso) || peso <= 0 || peso > 10) {
+    return res.status(400).json({ erro: 'O peso padrão deve ser maior que 0 e no máximo 10' });
+  }
+  if (!Number.isFinite(nota) || nota < 0 || nota > 10) {
+    return res.status(400).json({ erro: 'A nota mínima deve estar entre 0 e 10' });
+  }
+  if (!TIPOS_VALIDOS.includes(tipo)) {
+    return res.status(400).json({ erro: 'Tipo de questão inválido' });
+  }
+
+  const professor = await prisma.professor.update({
+    where: { id_professor },
+    data: { pref_peso_padrao: peso, pref_tipo_padrao: tipo, pref_nota_minima: nota },
+    select: { pref_peso_padrao: true, pref_tipo_padrao: true, pref_nota_minima: true },
   });
 
   return res.json(professor);

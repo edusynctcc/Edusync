@@ -76,6 +76,10 @@ model professor {
   criado_em      DateTime?   @default(now()) @db.Timestamp(0)
   atividade      atividade[]
   turma          turma[]
+  foto             String?  @db.MediumText
+  pref_peso_padrao Float    @default(1)
+  pref_tipo_padrao String   @default("multipla_escolha") @db.VarChar(20)
+  pref_nota_minima Float    @default(6)
 }
 
 model questao {

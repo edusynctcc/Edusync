@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Image,
   Platform,
@@ -8,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { buscarPerfil } from "../constants/api";
 
 const SISTEMA = Platform.select({
   ios: "System",
@@ -26,7 +29,11 @@ const FONTE = {
       : "PublicSans_700Bold",
 };
 
-const INICIAIS_PROFESSOR = "AS";
+function iniciais(nome) {
+  if (!nome) return "?";
+  const partes = String(nome).trim().split(/\s+/);
+  return ((partes[0]?.[0] || "") + (partes[1]?.[0] || "")).toUpperCase();
+}
 
 export default function CabecalhoMobile({
   linkPerfil = true,
@@ -34,19 +41,47 @@ export default function CabecalhoMobile({
   paddingBottom = 11,
 }) {
   const router = useRouter();
+  const [professor, setProfessor] = useState(null);
 
-  function sair() {
+  // Busca o professor sempre que a tela ganha foco, assim o nome e a foto
+  // editados no Perfil aparecem aqui ao navegar para outra tela.
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      buscarPerfil()
+        .then((dados) => {
+          if (ativo) setProfessor(dados);
+        })
+        .catch(() => {
+          // sem perfil (ex.: token expirado), o cabeçalho só fica sem nome
+        });
+      return () => {
+        ativo = false;
+      };
+    }, [])
+  );
+
+  async function sair() {
+    await AsyncStorage.removeItem("token");
     router.replace("/login");
   }
 
   const conteudoAvatar = (
     <>
-      <View style={styles.avatarPequeno}>
-        <Text style={styles.avatarPequenoTexto}>{INICIAIS_PROFESSOR}</Text>
-      </View>
+      {professor?.foto ? (
+        <Image source={{ uri: professor.foto }} style={styles.avatarFoto} />
+      ) : (
+        <View style={styles.avatarPequeno}>
+          <Text style={styles.avatarPequenoTexto}>
+            {iniciais(professor?.nome)}
+          </Text>
+        </View>
+      )}
       {!ehMobilePequeno && (
         <View style={styles.usuarioNomeLinha}>
-          <Text style={styles.usuarioNome}>Ana Silva</Text>
+          <Text style={styles.usuarioNome} numberOfLines={1}>
+            {professor?.nome || ""}
+          </Text>
           {linkPerfil && (
             <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
           )}
@@ -116,13 +151,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarFoto: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+  },
   avatarPequenoTexto: {
     fontFamily: FONTE.bold,
     color: "#0B1E3D",
     fontSize: 11,
   },
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
-  usuarioNome: { fontFamily: FONTE.semi, fontSize: 12.5, color: "#FFFFFF" },
+  usuarioNome: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    color: "#FFFFFF",
+    maxWidth: 110,
+  },
   botaoSair: {
     width: 30,
     height: 30,
