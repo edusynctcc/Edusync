@@ -19,15 +19,8 @@ import {
   visualDaDisciplina,
 } from "../../constants/disciplinas";
 
-// "Em processamento" saiu da lista de propósito. No sistema de verdade a IA
-// termina de corrigir antes de gravar, então nenhuma correção fica nesse
-// estado — o filtro nunca acharia nada e só ocuparia espaço.
 const FILTROS = ["Todas", "Aguardando você", "Concluídas"];
 
-// ---------------------------------------------------------------------------
-// Mesma regra de ícone do Scanner e da tela de Atividades: ele sai da
-// disciplina, não do banco. Assim a mesma atividade aparece igual nas três.
-// ---------------------------------------------------------------------------
 
 
 
@@ -47,8 +40,6 @@ const CONFIG_STATUS = {
   },
 };
 
-// "Hoje, 10:15" diz mais que "20/09/2026 10:15" quando foi hoje. Depois de uma
-// semana o contrário é verdade, e aí volta a data cheia.
 function quando(dataIso) {
   if (!dataIso) return "";
 
@@ -70,19 +61,6 @@ function quando(dataIso) {
   return data.toLocaleDateString("pt-BR");
 }
 
-// ---------------------------------------------------------------------------
-// A API devolve uma correção por aluno. A tela mostra por atividade — então o
-// agrupamento acontece aqui.
-//
-// Correção cuja atividade foi apagada é descartada: sem atividade não há
-// cartão onde encaixar, e mostrar um cartão "sem nome" confunde mais do que
-// esconder.
-//
-// ATENÇÃO: é exatamente por causa deste `continue` que o resumo lá embaixo
-// tem que contar a partir dos GRUPOS, e não da lista crua que veio da API.
-// Contar da lista crua incluiria essas correções órfãs, e o resumo diria um
-// número de folhas que não existe em cartão nenhum da tela.
-// ---------------------------------------------------------------------------
 function agruparPorAtividade(correcoes) {
   const mapa = new Map();
 
@@ -104,8 +82,6 @@ function agruparPorAtividade(correcoes) {
 
     const concluidas = alunos.filter((a) => a.status === "concluida").length;
 
-    // A atividade só é "concluída" quando todas as folhas dela já passaram
-    // pela revisão. Uma sozinha pendente mantém o cartão em aberto.
     const status = concluidas === alunos.length ? "concluida" : "pendente";
 
     const maisRecente = alunos.reduce((maior, a) => {
@@ -119,9 +95,6 @@ function agruparPorAtividade(correcoes) {
       alunos,
       total: alunos.length,
       concluidas,
-      // A média e o peso_total saíram junto com o PDF: eram só o que o
-      // relatório precisava, e esta tela nunca os mostrou. Quem quer a média
-      // da turma abre a atividade — o Editar correção tem ela no Resumo.
       status,
       quando: quando(maisRecente),
     };
@@ -150,8 +123,6 @@ export default function Correcoes() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // Recarrega a cada foco: a professora volta da revisão e o status precisa
-  // estar atualizado, sem precisar fechar o app.
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
@@ -185,26 +156,6 @@ export default function Correcoes() {
       semAcento(g.atividade.nome).includes(procurado),
   );
 
-  // ---------------------------------------------------------------------------
-  // O RESUMO CONTA O QUE ESTÁ NA TELA.
-  //
-  // Duas coisas estavam erradas aqui, e as duas pelo mesmo motivo: a conta
-  // saía da lista crua da API (`correcoes`) em vez dos cartões montados.
-  //
-  // 1. Correção de atividade apagada entrava na conta. O agrupamento descarta
-  //    essas (não há cartão onde encaixar), mas `correcoes.length` continuava
-  //    contando — o resumo dizia "16 folhas corrigidas" com 15 nos cartões, e
-  //    não havia como descobrir de onde vinha a diferença.
-  //
-  // 2. Filtrar ou buscar não mexia em número nenhum. Você clicava em
-  //    "Aguardando você", a lista encolhia para um cartão, e o resumo
-  //    continuava dizendo "1 atividade concluída" — que não estava em lugar
-  //    nenhum da tela. É o que faz um resumo parecer quebrado mesmo quando a
-  //    soma está certa: ele contradiz o que está logo acima dele.
-  //
-  // Agora tudo sai de `gruposFiltrados`, que é literalmente o que foi
-  // desenhado. O resumo não pode discordar da lista porque é a mesma fonte.
-  // ---------------------------------------------------------------------------
   const filtrando = filtroAtivo !== "Todas" || busca.trim().length > 0;
 
   const totalConcluidas = gruposFiltrados.filter(
@@ -243,11 +194,6 @@ export default function Correcoes() {
     },
   ];
 
-  // Esta tela não gera mais relatório. O lugar de salvar em PDF é dentro da
-  // atividade (Editar correção), onde o professor escolhe se quer as notas, o
-  // desempenho por questão ou os dois. Aqui só dava para gerar as notas, e
-  // duas portas para a mesma coisa — uma delas sem as opções — é o tipo de
-  // escolha que o professor faz errado uma vez e não entende por quê.
   return (
     <View style={styles.tela}>
       {!ehDesktop && <CabecalhoMobile comSino />}
@@ -354,11 +300,6 @@ export default function Correcoes() {
                 const status = CONFIG_STATUS[grupo.status];
                 const visual = visualDaDisciplina(grupo.atividade.disciplina);
 
-                // O cartão INTEIRO abre a atividade, e por isso ele próprio é
-                // o TouchableOpacity. Antes havia uma View por fora e só o
-                // topo respondia ao toque, porque o rodapé pertencia ao botão
-                // de PDF; sem ele, não há mais razão para uma parte do cartão
-                // responder e a outra não — nem para a camada a mais.
                 return (
                   <TouchableOpacity
                     key={grupo.atividade.id_atividade}
@@ -440,10 +381,8 @@ export default function Correcoes() {
                         </Text>
                       </View>
 
-                      {/* Depois da pastilha, no fim da linha, como em
-                            Turmas. COR.tintaFraca é o mesmo cinza do
-                            subtítulo, que é com o que a setinha de Turmas é
-                            desenhada (medi no print: #8795A0 nos dois). */}
+                      {
+                                                                           }
                       <Ionicons
                         name="chevron-forward"
                         size={ehDesktop ? 20 : 18}
@@ -473,11 +412,8 @@ export default function Correcoes() {
                           : `${grupo.concluidas} de ${grupo.total} revisadas — as outras esperam você`}
                       </Text>
 
-                      {/* A data subiu para esta linha. Com o PDF fora, o
-                            rodapé ficaria sendo uma faixa só para ela — e uma
-                            faixa que não faz nada embaixo de um cartão que a
-                            setinha diz ser todo clicável confunde. Agora o
-                            cartão inteiro é uma coisa só. */}
+                      {
+                                                             }
                       <Text
                         style={[
                           styles.correcaoData,
@@ -540,9 +476,8 @@ export default function Correcoes() {
               Resumo das correções
             </Text>
 
-            {/* Sem esta linha, um resumo filtrado parece um resumo errado:
-                os números batem com a lista, mas quem vê "Resumo das
-                correções" espera o total de tudo. */}
+            {
+                                                     }
             <Text
               style={[styles.resumoSub, ehDesktop && styles.resumoSubDesktop]}
             >
@@ -674,25 +609,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.correcaoTitulo, ehDesktop && styles.correcaoTituloDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
-  // bloco.
-  // -------------------------------------------------------------------------
   buscaBoxDesktop: { paddingHorizontal: 14, paddingVertical: 13 },
   buscaInputDesktop: { fontSize: 14.5 },
   filtroPillDesktop: { paddingHorizontal: 19, paddingVertical: 10 },
   filtroTextoDesktop: { fontSize: 14 },
 
   listaDesktop: { gap: 12 },
-  // Sem borderRadius: só o espaçamento interno muda entre celular e
-  // computador, o canto não.
   correcaoCardDesktop: { padding: 18 },
   correcaoLinhaTopoDesktop: { gap: 16 },
   correcaoIconeCirculoDesktop: { width: 48, height: 48, borderRadius: 16 },
@@ -740,10 +662,6 @@ const styles = StyleSheet.create({
   lista: { width: "100%", gap: 10, marginBottom: 20 },
   correcaoCard: {
     backgroundColor: COR.branco,
-    // RAIO.superficie, o raio de cartão do app, em vez do 14 escrito à mão
-    // que estava aqui (e do 16 que estava no estilo de computador — o mesmo
-    // cartão mudava de canto ao abrir no notebook). Medi no print de Turmas:
-    // 12px. Mudando em estilo.js, todos os cartões acompanham.
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,

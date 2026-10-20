@@ -38,14 +38,6 @@ function palavrasDoGabarito(texto) {
     .filter(Boolean).length;
 }
 
-// ---------------------------------------------------------------------------
-// Os botões de nota saem da própria questão, não de uma régua fixa.
-//
-// Numa dissertativa de 5 palavras-chave, o servidor só consegue produzir 0/5,
-// 1/5 ... 5/5. Se os botões fossem 0%, 25%, 50%, 75%, 100%, quase nenhuma nota
-// da IA cairia em cima de um deles, e a professora veria todas as questões
-// "fora da régua" — parecendo erro quando não é.
-// ---------------------------------------------------------------------------
 function opcoesDeNota(resposta) {
   if (resposta.tipo === "alternativa") {
     return [
@@ -64,8 +56,6 @@ function opcoesDeNota(resposta) {
 
   const total = palavrasDoGabarito(resposta.resposta_correta);
 
-  // Gabarito sem palavras-chave separadas, ou com um número grande demais para
-  // virar botão: cai numa régua simples.
   if (total < 2 || total > 8) {
     return [0, 0.25, 0.5, 0.75, 1].map((fracao) => ({
       fracao,
@@ -79,8 +69,6 @@ function opcoesDeNota(resposta) {
   }));
 }
 
-// Qual botão fica marcado. Tolerância porque 2.8 vindo do banco como Decimal
-// nunca bate exato com 0.8 × 3.5 em ponto flutuante.
 function fracaoAtual(nota, peso, opcoes) {
   if (!peso) return null;
   const bruta = nota / peso;
@@ -138,13 +126,6 @@ export default function Revisar() {
 
   const concluida = correcao?.status === "concluida";
 
-  // -------------------------------------------------------------------------
-  // O professor discorda da IA numa questão.
-  //
-  // A nota nova não é calculada aqui: mandamos o valor e o servidor devolve o
-  // total recalculado. Se a tela somasse por conta própria, o número na tela e
-  // o número no banco poderiam divergir sem ninguém perceber.
-  // -------------------------------------------------------------------------
   async function mudarNota(resposta, fracao) {
     if (concluida || salvandoId) return;
 
@@ -287,7 +268,7 @@ export default function Revisar() {
             </Text>
           </TouchableOpacity>
 
-          {/* ---------------------------------------------------------- topo */}
+          {                                                                     }
           <View style={[styles.cartaoTopo, ehDesktop && styles.cartaoDesktop]}>
             <View style={styles.topoLinha}>
               <View style={styles.topoTextos}>
@@ -371,8 +352,8 @@ export default function Revisar() {
             </View>
           </View>
 
-          {/* Concluída = tudo travado. O botão que destrava também existe no
-              rodapé, mas depois de rolar todas as questões ninguém acha. */}
+          {
+                                                                            }
           {concluida && (
             <View
               style={[
@@ -420,7 +401,7 @@ export default function Revisar() {
             </Text>
           )}
 
-          {/* ------------------------------------------------------- questões */}
+          {                                                                      }
           {correcao.respostas.map((resposta) => {
             const opcoes = opcoesDeNota(resposta);
             const marcada = fracaoAtual(resposta.nota, resposta.peso, opcoes);
@@ -471,8 +452,8 @@ export default function Revisar() {
                   </Text>
                 </View>
 
-                {/* O que a IA leu na folha. É o que permite conferir se ela leu
-                    certo antes de discutir a nota. */}
+                {
+                                                      }
                 <View
                   style={[
                     styles.blocoLeitura,
@@ -621,7 +602,7 @@ export default function Revisar() {
             );
           })}
 
-          {/* ------------------------------------------------------ rodapé */}
+          {                                                                   }
           <View style={[styles.cartaoRodape, ehDesktop && styles.cartaoDesktop]}>
             <Text
               style={[styles.rotuloBloco, ehDesktop && styles.rotuloBlocoDesktop]}
@@ -692,8 +673,8 @@ export default function Revisar() {
               </TouchableOpacity>
             )}
 
-            {/* Navegação, não ação: por isso sem borda, para não competir com
-                o botão de cima. */}
+            {
+                                   }
             <TouchableOpacity
               style={styles.linkCorrecoes}
               activeOpacity={0.7}
@@ -720,18 +701,6 @@ export default function Revisar() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// AUMENTO_DESKTOP
-//
-// Tudo que cresce no web mora aqui, e em lugar nenhum mais. Na tela cada
-// estilo entra empilhado por cima do compartilhado:
-//
-//   [styles.nomeAluno, ehDesktop && styles.nomeAlunoDesktop]
-//
-// O primeiro define, o segundo corrige, e o celular não passa por aqui — é a
-// mesma montagem da Home, do Perfil, das Correções e do Editar. Se algum
-// tamanho ficar errado no web, é só este bloco que se mexe.
-// ---------------------------------------------------------------------------
 const AUMENTO_DESKTOP = {
   conteudoInternoDesktop: {
     padding: 34,
@@ -744,7 +713,6 @@ const AUMENTO_DESKTOP = {
 
   voltarTextoDesktop: { fontSize: 15 },
 
-  // Vale para os três cartões: topo, questão e rodapé.
   cartaoDesktop: { padding: 24, borderRadius: 18, gap: 16 },
 
   nomeAlunoDesktop: { fontSize: 22 },

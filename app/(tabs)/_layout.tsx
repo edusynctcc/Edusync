@@ -15,8 +15,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-// Largura da barra lateral. Quem importa esta constante (as telas que
-// calculam a largura disponível) se ajusta sozinho ao novo valor.
 export const LARGURA_LATERAL = 272;
 
 const SISTEMA: any = Platform.select({
@@ -345,18 +343,13 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   turma: "Turma",
 };
 
-// Telas que existem mas não viram botão na barra de baixo. Chega-se nelas por
-// dentro do fluxo: o scanner leva para "processando", que leva para "revisar".
 const ROTAS_OCULTAS_DA_BARRA: string[] = [
   "criar-atividade",
   "perfil",
   "processando",
   "editar",
   "revisar",
-  // Detalhe de uma turma. Chega-se nela tocando num card da lista de Turmas,
-  // então não precisa de botão próprio na barra de baixo.
   "turma",
-  // Idem para o detalhe de uma atividade, que abre pelo "Ver atividade".
   "atividade",
 ];
 
@@ -378,19 +371,8 @@ export default function TabsLayout() {
       {ehDesktop && <LateralDesktop />}
 
       <View style={[styles.area, ehDesktop && styles.areaDesktop]}>
-        {/*
-          As telas "turma" e "atividade" NÃO aparecem como <Tabs.Screen> aqui,
-          de propósito.
-
-          O Expo Router já transforma todo arquivo desta pasta em rota
-          sozinho. O <Tabs.Screen> serve para configurar uma rota, não para
-          criá-la — e declarar uma que o roteador ainda não registrou é o tipo
-          de coisa que derruba o build inteiro, com tela branca e sem
-          explicação.
-
-          Elas continuam escondidas da barra de baixo porque os nomes estão em
-          ROTAS_OCULTAS_DA_BARRA, que é o que a BarraMobile realmente lê.
-        */}
+        {
+          }
         <Tabs
           tabBar={(props: any) =>
             ehDesktop ? null : <BarraMobile {...props} />
@@ -439,9 +421,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 20,
   },
-  // A logo cresceu junto com a barra. O resizeMode="contain" do <Image>
-  // preserva a proporção, então mexer só nestes dois números não distorce
-  // nada — a imagem se encaixa no espaço.
   logoLateral: { width: 176, height: 48, marginLeft: 4, marginBottom: 22 },
 
   buscaCaixa: {
@@ -496,8 +475,6 @@ const styles = StyleSheet.create({
   itemEnvolucro: { position: "relative", justifyContent: "center" },
   marcaAtivo: {
     position: "absolute",
-    // tem de ser o negativo do paddingHorizontal da lateral, senão a marca
-    // desencosta da borda
     left: -16,
     top: 10,
     bottom: 10,

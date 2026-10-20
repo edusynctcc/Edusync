@@ -3,27 +3,27 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { enviarEmail } from './emailService';
- 
+
 const prisma = new PrismaClient();
- 
+
 export type TipoCodigo = 'cadastro' | 'login' | 'senha';
- 
+
 const VALIDADE_MIN = 10;
 const INTERVALO_REENVIO_S = 60;
 const MAX_TENTATIVAS = 5;
- 
+
 const ASSUNTOS: Record<TipoCodigo, string> = {
   cadastro: 'Edusync - confirme seu e-mail',
   login: 'Edusync - código de acesso',
   senha: 'Edusync - redefinição de senha',
 };
- 
+
 const MOTIVOS: Record<TipoCodigo, string> = {
   cadastro: 'confirmar o seu e-mail',
   login: 'entrar na sua conta',
   senha: 'redefinir a sua senha',
 };
- 
+
 export function gerarToken(professor: { id_professor: number; email: string }) {
   return jwt.sign(
     { id: professor.id_professor, email: professor.email },
@@ -31,9 +31,7 @@ export function gerarToken(professor: { id_professor: number; email: string }) {
     { expiresIn: '8h' }
   );
 }
- 
-// Gera um código de 6 dígitos, guarda só o hash e manda por e-mail.
-// Devolve uma mensagem de erro (string) ou null se deu certo.
+
 export async function enviarCodigo(
   professor: { id_professor: number; nome: string; email: string; codigo_enviado_em: Date | null },
   tipo: TipoCodigo
@@ -44,10 +42,10 @@ export async function enviarCodigo(
       return 'Aguarde alguns segundos antes de pedir outro código.';
     }
   }
- 
+
   const codigo = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   const hash = await bcrypt.hash(codigo, 8);
- 
+
   await prisma.professor.update({
     where: { id_professor: professor.id_professor },
     data: {
@@ -58,7 +56,7 @@ export async function enviarCodigo(
       codigo_enviado_em: new Date(),
     },
   });
- 
+
   try {
     await enviarEmail(
       professor.email,
@@ -72,8 +70,7 @@ export async function enviarCodigo(
   }
   return null;
 }
- 
-// Confere o código. Devolve uma mensagem de erro (string) ou null se está certo.
+
 export async function validarCodigo(
   professor: {
     id_professor: number;
@@ -94,7 +91,7 @@ export async function validarCodigo(
   if (professor.codigo_tentativas >= MAX_TENTATIVAS) {
     return 'Muitas tentativas. Peça um novo código.';
   }
- 
+
   const ok = await bcrypt.compare(String(codigo ?? '').trim(), professor.codigo_hash);
   if (!ok) {
     await prisma.professor.update({
@@ -105,7 +102,7 @@ export async function validarCodigo(
   }
   return null;
 }
- 
+
 export async function limparCodigo(id_professor: number) {
   await prisma.professor.update({
     where: { id_professor },

@@ -24,22 +24,8 @@ import {
 } from "../../constants/api";
 import { guardarArquivo } from "../../constants/arquivoSelecionado";
 
-// ---------------------------------------------------------------------------
-// O amarelo do botão principal. É o mesmo do "Revisar" da Home (home.js).
-//
-// A regra é uma só no app: amarelo marca a ação principal de cada tela, sempre
-// sobre o bloco azul-marinho, sempre com a letra em marinho. Aqui a ação
-// principal é tirar a foto da folha.
-//
-// A letra é marinho e não branca de propósito: branco sobre este amarelo dá
-// contraste 1,9 e some no projetor; marinho dá 8,6.
-// ---------------------------------------------------------------------------
 const AMARELO = "#EAB308";
 
-// ---------------------------------------------------------------------------
-// Mesma regra da tela de Atividades: o banco não guarda ícone, então ele sai
-// da disciplina. Assim a mesma atividade aparece igual nas duas telas.
-// ---------------------------------------------------------------------------
 const VISUAL_PADRAO = {
   icone: "file-document-outline",
   corFundo: "#EEF2F4",
@@ -112,7 +98,6 @@ function visualDaDisciplina(disciplina) {
     : VISUAL_PADRAO;
 }
 
-// Título do botão que abriu o modal, só para o subtítulo dele fazer sentido.
 function formatarNota(valor) {
   return Number(valor ?? 0)
     .toFixed(1)
@@ -139,18 +124,12 @@ export default function Scanner() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // Recarrega toda vez que a tela ganha foco: assim uma atividade criada
-  // agora já aparece aqui, sem precisar fechar o app.
   useFocusEffect(
     useCallback(() => {
       async function carregar() {
         setCarregando(true);
         setErro("");
         try {
-          // A atividade guarda id_turma, não o nome da turma. Buscamos as duas
-          // listas e juntamos aqui, em vez de mexer no back-end.
-          // As últimas correções vêm junto. Se essa parte falhar, o Scanner
-          // continua funcionando — histórico é informação, não é o trabalho.
           const [listaAtividades, listaTurmas, ultimas] = await Promise.all([
             listarAtividades(),
             listarTurmas(),
@@ -187,13 +166,6 @@ export default function Scanner() {
     setAcaoSelecionada(acao);
   }
 
-  // -------------------------------------------------------------------------
-  // Escolheu a atividade -> abre a câmera, a galeria ou os arquivos, conforme
-  // o botão que trouxe a professora até aqui.
-  //
-  // A captura acontece AQUI, não na tela seguinte, porque assim cancelar
-  // deixa ela no Scanner em vez de numa tela de conferência vazia.
-  // -------------------------------------------------------------------------
   async function escolherAtividade(atividade) {
     const acao = acaoSelecionada;
     setAcaoSelecionada(null);
@@ -202,11 +174,8 @@ export default function Scanner() {
     try {
       const arquivo = await capturarArquivo(acao);
 
-      // Desistiu ou deu algum aviso: não navega.
       if (!arquivo) return;
 
-      // O arquivo vai pela memória, não pela URL. Só os dados curtos da
-      // atividade viajam como params.
       guardarArquivo(arquivo);
 
       router.push({
@@ -223,7 +192,6 @@ export default function Scanner() {
     }
   }
 
-  // Devolve { uri, tipo, nome, mime } ou null quando a professora desiste.
   async function capturarArquivo(acao) {
     if (acao === "pdf") {
       const resultado = await DocumentPicker.getDocumentAsync({
@@ -244,13 +212,10 @@ export default function Scanner() {
         tipo: "pdf",
         nome: doc.name || "folha.pdf",
         mime: doc.mimeType || "application/pdf",
-        // Só existe no navegador. É o arquivo de verdade, que o FormData
-        // precisa na hora de enviar — e que também serve pra pré-visualizar.
         objetoWeb: doc.file ?? null,
       };
     }
 
-    // No navegador não existe câmera nativa: cai no seletor de arquivo.
     const usarCamera = acao === "foto" && Platform.OS !== "web";
 
     if (usarCamera) {
@@ -791,17 +756,6 @@ const styles = StyleSheet.create({
   },
   cardScannerDesktop: { padding: 38, marginBottom: 24, alignItems: "center" },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela usa o mesmo JSX nas duas larguras, então os estilos de baixo
-  // entram empilhados por cima dos compartilhados:
-  // [styles.historicoAluno, ehDesktop && styles.historicoAlunoDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // É o mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o tamanho do
-  // web, é só este bloco.
-  // -------------------------------------------------------------------------
   cardScannerTituloDesktop: { fontSize: 21, marginBottom: 8 },
   cardScannerSubtituloDesktop: {
     fontSize: 14.5,
@@ -896,8 +850,6 @@ const styles = StyleSheet.create({
   botoesLinhaMobile: { flexDirection: "column" },
   botoesLinhaDesktop: { flexDirection: "row" },
 
-  // O botão da ação principal da tela. Amarelo sobre o bloco azul-marinho,
-  // letra marinho — igual ao "Revisar" da Home.
   botaoPrincipal: {
     flexDirection: "row",
     alignItems: "center",
@@ -939,9 +891,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // No celular a folha sobe pela borda de baixo, perto do polegar. No
-  // computador ninguém alcança o rodapé com o mouse mais rápido que o centro
-  // da tela — e uma caixa colada embaixo parece que escorregou.
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.45)",
@@ -961,9 +910,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     maxHeight: "78%",
   },
-  // A caixa de escolher a atividade cresceu junto com a tela. Ela estava com
-  // 440 de largura e letra de celular, o que a deixava parecendo um aviso
-  // pequeno em cima de uma tela grande.
   modalFolhaDesktop: {
     alignSelf: "center",
     width: "100%",

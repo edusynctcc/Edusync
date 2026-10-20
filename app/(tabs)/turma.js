@@ -49,22 +49,16 @@ function iniciais(nome) {
 }
 
 function chamada(numero) {
-  // Sem o guarda, um aluno sem número de chamada saía como "0–": o padStart
-  // completava o travessão com um zero.
   if (numero === null || numero === undefined || numero === "") return "–";
   return String(numero).padStart(2, "0");
 }
 
-// A coluna `matricula` é VARCHAR(50) e tem índice único. Quando o professor
-// não digita uma, o sistema inventa uma que caiba: base 36 encurta o tempo de
-// 13 dígitos para 8, e as seis letras de sorteio evitam colisão.
 function matriculaProvisoria() {
   const tempo = Date.now().toString(36);
   const sorteio = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
   return `M${tempo}${sorteio}`.slice(0, 50);
 }
 
-// Ignora acento, caixa e espaço sobrando ao comparar nomes.
 function mesmoNome(a, b) {
   const limpar = (texto) =>
     String(texto ?? "")
@@ -78,18 +72,12 @@ function mesmoNome(a, b) {
   return !!limpo && limpo === limpar(b);
 }
 
-// Os tipos que a importação aceita. O Android às vezes não identifica o tipo
-// de um arquivo vindo do Drive e manda application/octet-stream — por isso o
-// servidor também olha a extensão.
 const TIPOS_DA_LISTA = [
   "application/pdf",
   "image/*",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
   "text/csv",
-  // Sem este, o arquivo que o Android não soube identificar aparece cinza no
-  // seletor e o professor não consegue escolher. O servidor olha a extensão,
-  // então deixar passar aqui é mais seguro que travar na frente.
   "application/octet-stream",
 ];
 
@@ -110,15 +98,12 @@ export default function TurmaDetalhe() {
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
 
-  // formulário de adicionar aluno
   const [novoNome, setNovoNome] = useState("");
   const [novaMatricula, setNovaMatricula] = useState("");
 
-  // importação da lista de chamada
   const [listaLida, setListaLida] = useState(null);
   const [marcados, setMarcados] = useState({});
 
-  // modais
   const [editando, setEditando] = useState(null);
   const [alunoParaExcluir, setAlunoParaExcluir] = useState(null);
   const [confirmandoExclusaoTurma, setConfirmandoExclusaoTurma] =
@@ -138,9 +123,6 @@ export default function TurmaDetalhe() {
       const dados = await buscarTurma(id_turma);
       setTurma(dados);
 
-      // O buscarTurma já traz os alunos, mas nem toda versão da API devolve
-      // essa lista. Se não vier, busca em separado em vez de mostrar a turma
-      // vazia como se não tivesse ninguém.
       const lista = dados.aluno ?? (await listarAlunos(id_turma));
       setAlunos(
         [...lista].sort(
@@ -154,31 +136,16 @@ export default function TurmaDetalhe() {
       setCarregando(false);
     }
 
-    // As atividades vêm DEPOIS e num try próprio, de propósito: se esta
-    // chamada falhar, a tela da turma continua funcionando inteira — a lista
-    // de atividades é um extra, não é o motivo de a tela existir. Juntar as
-    // duas no mesmo try faria a chamada perder os alunos por causa de um
-    // erro numa lista de atividades.
-    //
-    // O servidor não tem rota de "atividades desta turma": o listarAtividades
-    // devolve as do professor e cada uma traz o id_turma. Filtrar aqui evita
-    // mexer no backend, e numa conta de professor são dezenas de atividades,
-    // não milhares.
     try {
       const todas = await listarAtividades();
       setAtividades(
         todas
           .filter((a) => String(a.id_turma) === String(id_turma))
-          // Mais nova em cima. O `?? ""` não é enfeite: sem ele, uma atividade
-          // com criado_em nulo virava a string "null", que ordena DEPOIS de
-          // "2026-..." — e a atividade sem data pulava para o topo da lista.
           .sort((a, b) =>
             String(b.criado_em ?? "").localeCompare(String(a.criado_em ?? "")),
           ),
       );
     } catch {
-      // Em silêncio: o cartão simplesmente não aparece. Um erro vermelho aqui
-      // assustaria por causa de algo que o professor nem pediu.
       setAtividades([]);
     }
   }, [id_turma]);
@@ -199,9 +166,6 @@ export default function TurmaDetalhe() {
     const nome = novoNome.trim();
     if (!nome || ocupado) return;
 
-    // Antes de criar: esse nome já é de alguém da turma? Dois cadastros da
-    // mesma pessoa espalham as notas dela em dois lugares, e isso só aparece
-    // no fechamento do bimestre.
     if (alunos.some((aluno) => mesmoNome(aluno.nome, nome))) {
       setErro(`"${nome}" já está nesta turma.`);
       return;
@@ -230,13 +194,6 @@ export default function TurmaDetalhe() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // IMPORTAR A LISTA DE CHAMADA — primeiro tempo: ler
-  //
-  // O arquivo vai para o servidor, que devolve os alunos encontrados. Nada é
-  // gravado aqui: o que volta é uma proposta, e quem decide é o professor na
-  // tela de conferência.
-  // -------------------------------------------------------------------------
   async function escolherLista() {
     if (ocupado) return;
 
@@ -275,8 +232,6 @@ export default function TurmaDetalhe() {
     try {
       const dados = await lerListaDeChamada(id_turma, arquivo);
 
-      // Quem já está na turma vem desmarcado. O professor ainda vê o nome na
-      // lista — some-lo seria deixá-lo na dúvida se o arquivo foi lido errado.
       const marcasIniciais = {};
       (dados.alunos || []).forEach((aluno, i) => {
         marcasIniciais[i] = !aluno.ja_existe;
@@ -291,7 +246,6 @@ export default function TurmaDetalhe() {
     }
   }
 
-  // Segundo tempo: o professor conferiu e confirmou.
   async function confirmarImportacao() {
     if (!listaLida || ocupado) return;
 
@@ -317,8 +271,6 @@ export default function TurmaDetalhe() {
 
       setListaLida(null);
 
-      // O resumo conta as três coisas que o professor precisa saber: quantos
-      // entraram, quantos já estavam, e se alguém ficou de fora por erro.
       const partes = [];
 
       if (resultado.criados > 0) {
@@ -365,9 +317,6 @@ export default function TurmaDetalhe() {
   function marcarTodos(valor) {
     const novos = {};
     (listaLida?.alunos || []).forEach((aluno, i) => {
-      // Quem já está na turma continua desmarcado mesmo no "marcar todos" —
-      // marcar não faria nada (o servidor ignora) e daria a impressão errada
-      // de que vai duplicar.
       novos[i] = valor && !aluno.ja_existe;
     });
     setMarcados(novos);
@@ -471,14 +420,6 @@ export default function TurmaDetalhe() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // O conteúdo de cada aba, em função própria.
-  //
-  // É o mesmo jeito do editar.js, e não é só organização: deixar os dois
-  // blocos inteiros dentro do return, cada um atrás de um `abaAtiva === ...`,
-  // dá um return de trezentas linhas em que não se enxerga mais onde um
-  // termina e o outro começa.
-  // ---------------------------------------------------------------------------
   function abaDeAlunos() {
     return (
       <>
@@ -492,9 +433,8 @@ export default function TurmaDetalhe() {
             Adicionar aluno
           </Text>
 
-          {/* A importação vem antes do formulário de propósito: numa turma
-                vazia, mandar a lista de chamada resolve tudo de uma vez, e
-                digitar 30 nomes um a um é o caminho longo. */}
+          {
+                                                              }
           <TouchableOpacity
             style={[
               styles.botaoImportar,
@@ -587,7 +527,7 @@ export default function TurmaDetalhe() {
           </TouchableOpacity>
         </View>
 
-        {/* ------------------------------------------------------ alunos */}
+        {                                                                   }
         <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
           <Text
             style={[
@@ -776,7 +716,7 @@ export default function TurmaDetalhe() {
             </Text>
           </TouchableOpacity>
 
-          {/* ------------------------------------------------------- topo */}
+          {                                                                  }
           <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
             <View style={styles.topoLinha}>
               <View style={[styles.sigla, ehDesktop && styles.siglaDesktop]}>
@@ -876,10 +816,8 @@ export default function TurmaDetalhe() {
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
           {!!aviso && <Text style={styles.avisoFaixa}>{aviso}</Text>}
 
-          {/* ------------------------------------------------------- abas
-              Mesmo componente do editar.js. Com duas listas na mesma tela,
-              empilhar as duas faria o professor rolar trinta alunos para
-              chegar nas atividades. */}
+          {
+                                       }
           <View style={styles.abasLinha}>
             {ABAS.map((aba) => {
               const ativa = aba.chave === abaAtiva;
@@ -908,7 +846,7 @@ export default function TurmaDetalhe() {
         </View>
       </ScrollView>
 
-      {/* ------------------------------ conferir a lista antes de importar */}
+      {                                                                       }
       <Modal
         visible={!!listaLida}
         transparent
@@ -1050,7 +988,7 @@ export default function TurmaDetalhe() {
         </View>
       </Modal>
 
-      {/* ------------------------------------------------- editar a turma */}
+      {                                                                      }
       <Modal
         visible={!!editando}
         transparent
@@ -1129,7 +1067,7 @@ export default function TurmaDetalhe() {
         </View>
       </Modal>
 
-      {/* ------------------------------------------------- excluir aluno */}
+      {                                                                     }
       <Modal
         visible={!!alunoParaExcluir}
         transparent
@@ -1183,7 +1121,7 @@ export default function TurmaDetalhe() {
         </View>
       </Modal>
 
-      {/* ------------------------------------------------- excluir turma */}
+      {                                                                     }
       <Modal
         visible={confirmandoExclusaoTurma}
         transparent
@@ -1268,7 +1206,6 @@ const styles = StyleSheet.create({
   },
   tituloPagina: { fontFamily: FONTE.bold, fontSize: 18, color: COR.tintaForte },
 
-  // --------------------------------------------------- abas (iguais ao editar.js)
   abasLinha: {
     flexDirection: "row",
     width: "100%",
@@ -1333,17 +1270,6 @@ const styles = StyleSheet.create({
     color: COR.tintaMedia,
   },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.alunoNome, ehDesktop && styles.alunoNomeDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
-  // bloco.
-  // -------------------------------------------------------------------------
   tituloPaginaDesktop: { fontSize: 24 },
   cartaoDesktop: { padding: 22, borderRadius: 18, gap: 12 },
   cartaoTituloDesktop: { fontSize: 16.5 },
@@ -1362,9 +1288,6 @@ const styles = StyleSheet.create({
   botaoEscuroTextoDesktop: { fontSize: 15 },
   alunoLinhaDesktop: { paddingVertical: 14, gap: 14 },
 
-  // A linha da atividade copia a medida da linha do aluno de propósito: as
-  // duas vivem no mesmo cartão-irmão e qualquer diferença de altura entre
-  // elas aparece como desalinhamento.
   atividadeLinha: {
     flexDirection: "row",
     alignItems: "center",
@@ -1420,9 +1343,6 @@ const styles = StyleSheet.create({
     color: COR.marcador,
   },
 
-  // O botão de importar é tracejado como o de adicionar questão do
-  // criar-atividade: nos dois, o tracejado quer dizer "isto é opcional, e
-  // entra uma coisa nova aqui se você quiser".
   botaoImportar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1552,7 +1472,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ----------------------------------------------- conferência da lista
   modalTextoEsquerda: {
     fontFamily: FONTE.regular,
     fontSize: 12.5,
@@ -1567,8 +1486,6 @@ const styles = StyleSheet.create({
   },
   marcarSeparador: { color: COR.tintaFraca, fontSize: 12 },
 
-  // Altura máxima, e não fixa: uma lista de 3 nomes não precisa de um painel
-  // de 380 de altura com o fundo vazio embaixo.
   listaConferencia: {
     maxHeight: 340,
     borderTopWidth: 1,

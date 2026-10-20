@@ -29,14 +29,6 @@ export async function listarAtividades(req: Request, res: Response) {
   return res.json(atividades);
 }
 
-// ---------------------------------------------------------------------------
-// Traz a atividade com tudo que a tela de detalhe precisa, numa chamada só:
-// a turma, as questões em ordem com as alternativas, e um resumo das
-// correções já feitas.
-//
-// Poderia ser a tela pedindo quatro coisas em sequência, mas aí ela apareceria
-// aos pedaços — primeiro o nome, depois as questões, depois a média.
-// ---------------------------------------------------------------------------
 export async function buscarAtividade(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_atividade = Number(req.params.id);
@@ -62,13 +54,10 @@ export async function buscarAtividade(req: Request, res: Response) {
 
   return res.json({
     ...atividade,
-    // Decimal do Prisma vira objeto no JSON; o peso sai como número para a
-    // tela não precisar saber disso.
     questao: atividade.questao.map((q) => ({ ...q, peso: Number(q.peso ?? 1) })),
     turma: atividade.turma
       ? { id_turma: atividade.turma.id_turma, nome: atividade.turma.nome }
       : null,
-    // as correções em si não interessam aqui, só o resumo delas
     correcao: undefined,
     resumo: {
       folhas: correcoes.length,
@@ -115,9 +104,6 @@ export async function excluirAtividade(req: Request, res: Response) {
     return res.status(404).json({ erro: 'Atividade não encontrada' });
   }
 
-  // Apagar uma atividade corrigida levaria junto as notas dos alunos. O banco
-  // já barraria pela chave estrangeira, mas o erro dele não explica nada —
-  // esta mensagem explica.
   const folhas = atividadeExiste.correcao.length;
 
   if (folhas > 0) {

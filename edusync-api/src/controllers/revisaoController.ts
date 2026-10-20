@@ -3,14 +3,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Decimal do Prisma não é número: vira objeto. Se mandar direto no JSON, o app
-// recebe { s: 1, e: 0, d: [ 3 ] } em vez de 3. Sempre passar por aqui.
 function numero(valor: any) {
   return valor === null || valor === undefined ? 0 : Number(valor);
 }
 
-// A correção é do professor dono da atividade. Sem essa checagem, qualquer
-// professor logado abriria a correção de qualquer outro trocando o id na URL.
 async function carregarCorrecaoDoProfessor(id_correcao: number, id_professor: number) {
   return prisma.correcao.findFirst({
     where: { id_correcao, atividade: { id_professor } },
@@ -22,8 +18,6 @@ async function carregarCorrecaoDoProfessor(id_correcao: number, id_professor: nu
   });
 }
 
-// Soma as notas das questões. É sempre isto que manda na nota da correção —
-// nunca um valor vindo do app.
 async function recalcularNotaTotal(id_correcao: number) {
   const respostas = await prisma.resposta.findMany({
     where: { id_correcao },
@@ -42,7 +36,6 @@ async function recalcularNotaTotal(id_correcao: number) {
 }
 
 function montarResposta(correcao: any) {
-  // Ordena pelo número da questão. O banco devolve na ordem que quiser.
   const respostas = [...correcao.resposta].sort(
     (a: any, b: any) => (a.questao?.numero ?? 0) - (b.questao?.numero ?? 0)
   );
@@ -87,15 +80,6 @@ function montarResposta(correcao: any) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// GET /correcoes  —  lista as correções do professor
-//
-//   ?limite=5           traz só as mais recentes (o Scanner usa isso)
-//   ?id_atividade=3     só as de uma atividade
-//
-// Traz tudo numa consulta só, com os pesos das questões junto, para calcular
-// o total sem uma ida ao banco por correção.
-// ---------------------------------------------------------------------------
 export async function listarCorrecoes(req: Request, res: Response) {
   const id_professor = req.professor!.id;
 
@@ -150,9 +134,6 @@ export async function listarCorrecoes(req: Request, res: Response) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// GET /correcoes/:id  —  abre uma correção para revisão
-// ---------------------------------------------------------------------------
 export async function buscarCorrecao(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_correcao = Number(req.params.id);
@@ -170,12 +151,6 @@ export async function buscarCorrecao(req: Request, res: Response) {
   return res.json(montarResposta(correcao));
 }
 
-// ---------------------------------------------------------------------------
-// PUT /correcoes/:id/respostas/:id_resposta  —  o professor muda uma nota
-//
-// Marca ajustado_manualmente = true. Esse campo é o dado da monografia: quantas
-// questões a IA acertou sem precisar de correção humana.
-// ---------------------------------------------------------------------------
 export async function ajustarResposta(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_correcao = Number(req.params.id);
@@ -233,13 +208,9 @@ export async function ajustarResposta(req: Request, res: Response) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// PUT /correcoes/:id/concluir  —  o professor fecha a revisão
-// ---------------------------------------------------------------------------
 export async function concluirCorrecao(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_correcao = Number(req.params.id);
-  // Permite reabrir: manda { reabrir: true } e volta para pendente.
   const reabrir = req.body.reabrir === true;
 
   if (!id_correcao) {
@@ -265,13 +236,6 @@ export async function concluirCorrecao(req: Request, res: Response) {
   return res.json(montarResposta(atualizada));
 }
 
-// ---------------------------------------------------------------------------
-// PUT /correcoes/atividade/:id_atividade/concluir
-//
-// Fecha de uma vez todas as correções pendentes da atividade. É o botão
-// "Concluir correção" da tela da atividade: com 30 alunos, mandar 30 chamadas
-// do app seria lento e deixaria o estado pela metade se uma falhasse.
-// ---------------------------------------------------------------------------
 export async function concluirAtividade(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_atividade = Number(req.params.id_atividade);
@@ -281,7 +245,6 @@ export async function concluirAtividade(req: Request, res: Response) {
     return res.status(400).json({ erro: 'id_atividade inválido' });
   }
 
-  // A atividade tem que ser do professor logado.
   const atividade = await prisma.atividade.findFirst({
     where: { id_atividade, id_professor },
   });

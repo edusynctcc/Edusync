@@ -22,9 +22,6 @@ import {
 } from "../../constants/api";
 import {
   baixarPlanilha,
-  // Vem do relatorio.js porque é a MESMA regra de "como se escreve uma nota"
-  // que o PDF e a planilha usam. Duas cópias e um dia a tela mostra 8,5 e o
-  // PDF mostra 8.50.
   formatarNota,
   imprimirRelatorio,
   montarCsvDasNotas,
@@ -33,22 +30,6 @@ import {
   montarHtmlDasQuestoes,
 } from "../../constants/relatorio";
 
-// ---------------------------------------------------------------------------
-// A barra do desempenho por questão.
-//
-// UMA MATIZ SÓ, o azul do app. A cor não carrega informação aqui — o
-// comprimento já carrega. Verde/amarelo/vermelho gastaria o único canal livre
-// repetindo o que a barra mostra e obrigaria a inventar um limiar ("abaixo de
-// 50% é ruim") que não existe.
-//
-// O trilho é um passo mais escuro que o COR.emAndamentoFundo, e isso foi
-// medido, não escolhido no olho: o tom do app dá 1,16:1 contra o cartão
-// branco e some. Numa questão com 0% o trilho VAZIO é tudo o que aparece — e
-// é justamente a linha que a professora mais precisa ver. Com 1,29:1 o
-// trilho vazio lê como um medidor vazio, e não como um pedaço de tela que
-// não carregou.
-//
-// A barra contra o cartão dá 5,23:1 e contra o trilho 4,05:1.
 const BARRA_TRILHO = "#D7E4F2";
 
 const ABAS = [
@@ -56,7 +37,6 @@ const ABAS = [
   { chave: "individual", rotulo: "Individual", icone: "person-outline" },
 ];
 
-// Mesma regra de ícone do Scanner e das Correções: sai da disciplina.
 const VISUAL_PADRAO = {
   icone: "file-document-outline",
   corFundo: "#EEF2F4",
@@ -133,14 +113,6 @@ function formatarPeso(valor) {
     .replace(".", ",");
 }
 
-// Verde a partir de 7, amarelo de 5 a 7, vermelho abaixo. É a régua que a
-// maioria das escolas usa para média.
-//
-// Repare que o desempenho por questão NÃO usa esta régua, e é de propósito:
-// 7,0 é um limiar que existe de verdade (é a média da escola), enquanto
-// "aproveitamento de questão" não tem limiar nenhum. Pintar de vermelho uma
-// questão em que a turma tirou 48% seria o sistema dando um veredito que não
-// é dele — ali a ordenação já diz qual é a pior, sem inventar uma linha.
 function corDaNota(nota, peso) {
   const proporcao = peso ? nota / peso : 0;
   if (proporcao >= 0.7) return COR.ok;
@@ -155,15 +127,6 @@ function palavrasDoGabarito(texto) {
     .filter(Boolean).length;
 }
 
-// ---------------------------------------------------------------------------
-// Os botões de nota saem da própria questão. Numa dissertativa de 5
-// palavras-chave o servidor só produz 0/5, 1/5 ... 5/5 — uma régua fixa de
-// 0/25/50/75/100% deixaria quase toda nota "fora da régua".
-//
-// Esta lógica é a mesma do revisar.js. Está repetida de propósito: são duas
-// telas independentes e o servidor valida a nota de qualquer jeito, então
-// preferi duas cópias legíveis a um arquivo a mais para colocar no lugar.
-// ---------------------------------------------------------------------------
 function opcoesDeNota(resposta) {
   if (resposta.tipo === "alternativa") {
     return [
@@ -215,21 +178,15 @@ export default function Editar() {
   const [erro, setErro] = useState("");
 
   const [abaAtiva, setAbaAtiva] = useState("resumo");
-  const [selecionada, setSelecionada] = useState(null); // id_correcao
+  const [selecionada, setSelecionada] = useState(null);
   const [detalhe, setDetalhe] = useState(null);
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
   const [salvandoId, setSalvandoId] = useState(null);
   const [fechando, setFechando] = useState(false);
 
-  // O card de "o que você quer no documento" está aberto. Só o PDF o abre: o
-  // Excel baixa a planilha de notas direto (ver o comentário em exportar).
   const [escolhendoRelatorio, setEscolhendoRelatorio] = useState(false);
   const [exportando, setExportando] = useState(false);
 
-  // O desempenho por questão vem somado do servidor. Dava para buscar as
-  // correções uma a uma e contar aqui, mas numa turma de 30 isso seriam 30
-  // requisições para desenhar umas barras — e a regra de "o que conta como
-  // acerto" passaria a existir em dois lugares.
   const [questoes, setQuestoes] = useState([]);
 
   async function carregarLista() {
@@ -244,8 +201,6 @@ export default function Editar() {
     }
   }
 
-  // Falhar aqui não derruba a tela: o resumo some e o resto continua. Ele é
-  // leitura, não a razão de a professora ter aberto a página.
   async function carregarQuestoes() {
     try {
       const dados = await desempenhoPorQuestao(id_atividade);
@@ -310,9 +265,6 @@ export default function Editar() {
     }
   }
 
-  // A nota nova não é somada aqui: mandamos o valor e usamos o total que o
-  // servidor devolve. Se a tela somasse sozinha, o número dela e o do banco
-  // poderiam divergir sem ninguém perceber.
   async function mudarNota(resposta, fracao) {
     if (!detalhe || detalhe.status === "concluida" || salvandoId) return;
 
@@ -339,7 +291,6 @@ export default function Editar() {
         ),
       }));
 
-      // A lista lateral mostra a nota do aluno: precisa acompanhar.
       setCorrecoes((atual) =>
         atual.map((c) =>
           c.id_correcao === detalhe.id_correcao
@@ -348,9 +299,6 @@ export default function Editar() {
         ),
       );
 
-      // E o resumo por questão também: mudar uma nota muda quantos acertaram
-      // aquela questão. Sem isto, voltar para a aba Resumo mostraria o número
-      // de antes do ajuste — e a professora acreditaria nele.
       carregarQuestoes();
     } catch (e) {
       setErro(e.message);
@@ -359,19 +307,6 @@ export default function Editar() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // EXPORTAR
-  //
-  // O PDF é o que o professor imprime, e aí faz diferença o que vai dentro:
-  // quem precisa das notas para o diário não quer o desempenho por questão no
-  // meio; quem quer saber o que a turma não aprendeu não vai imprimir a lista
-  // de notas junto; e quem quer arquivar a correção inteira quer os dois no
-  // mesmo documento. São essas as três opções do card.
-  //
-  // O EXCEL NÃO PERGUNTA NADA: baixa a planilha de notas e pronto. A planilha
-  // é para somar e lançar nota, e isso é o que a lista de alunos serve. Um
-  // card com uma opção só seria um clique a mais para nada.
-  // -------------------------------------------------------------------------
   function montarGrupo() {
     return {
       atividade: { nome: atividade.nome, turma: atividade.turma },
@@ -386,7 +321,6 @@ export default function Editar() {
     (q) => q.aproveitamento !== null && q.aproveitamento !== undefined,
   );
 
-  // conteudo: "notas", "questoes" ou "tudo".
   async function exportarPdf(conteudo) {
     if (exportando) return;
 
@@ -442,7 +376,6 @@ export default function Editar() {
     }
   }
 
-  // -------------------------------------------------------------------------
   if (carregando) {
     return (
       <View style={styles.tela}>
@@ -482,27 +415,6 @@ export default function Editar() {
 
   const visual = visualDaDisciplina(atividade.disciplina);
 
-  // -------------------------------------------------------------------------
-  // DESEMPENHO POR QUESTÃO
-  //
-  // Uma barra por questão, da pior para a melhor. Três decisões que não são
-  // de gosto:
-  //
-  // 1. TODAS AS BARRAS TÊM A MESMA COR. A cor não carrega informação aqui —
-  //    o comprimento já carrega. Pintar de verde/amarelo/vermelho gastaria o
-  //    único canal livre repetindo o que a barra mostra, e, pior, obrigaria a
-  //    inventar um limiar ("abaixo de 50% é ruim") que não existe em lugar
-  //    nenhum. A nota do aluno usa a régua colorida porque ali o 7,0 é um
-  //    limiar de verdade; aqui não há nenhum.
-  //
-  // 2. A ORDEM É A INFORMAÇÃO. A professora não abre isto para conferir a
-  //    prova — abre para saber o que revisar na próxima aula. A pior questão
-  //    tem que ser a primeira linha, não a questão 1.
-  //
-  // 3. O NÚMERO FICA FORA DA BARRA. Texto dentro de barra curta é cortado, e
-  //    uma questão com 4% de aproveitamento tem a barra mais curta de todas,
-  //    justamente a que mais interessa ler.
-  // -------------------------------------------------------------------------
   function desempenhoDasQuestoes() {
     if (questoes.length === 0) return null;
 
@@ -527,19 +439,6 @@ export default function Editar() {
           {daPiorParaMelhor.map((q) => {
             const porcento = Math.round(q.aproveitamento * 100);
 
-            // Um número só: quantos tiraram a nota cheia.
-            //
-            // O "erraram" saiu junto com o "em parte", e não por capricho: em
-            // dissertativa existe nota parcial, então acertos + erros NÃO
-            // somam o total. Escrever "0 acertaram · 2 erraram" numa turma de
-            // 7 deixaria 5 alunos sem aparecer, e quem lê tentaria fechar a
-            // conta. Pior ainda seria jogar os parciais num dos dois lados —
-            // qualquer escolha ali é mentira.
-            //
-            // A nota parcial não sumiu: ela continua contada na BARRA, que é
-            // aproveitamento, não contagem de acertos. Por isso uma questão
-            // pode mostrar "0 de 7 acertaram" com a barra em 50% — ninguém
-            // gabaritou, mas a turma conquistou metade dos pontos.
             const contas = `${q.acertos} de ${q.respondidas} ${q.acertos === 1 ? "acertou" : "acertaram"}`;
 
             return (
@@ -552,8 +451,8 @@ export default function Editar() {
                   <Text style={styles.resumoPorcento}>{porcento}%</Text>
                 </View>
 
-                {/* O trilho é um passo claro da MESMA cor da barra, não um
-                    cinza qualquer: é a mesma escala vista cheia e vazia. */}
+                {
+                                                                            }
                 <View style={styles.trilho}>
                   <View
                     style={[
@@ -565,9 +464,8 @@ export default function Editar() {
 
                 <Text style={styles.resumoContas}>{contas}</Text>
 
-                {/* Linha própria em vez de mais um "·" na frase de cima: é
-                    informação sobre a IA, não sobre a turma, e junto ela
-                    passava de duas linhas no celular. */}
+                {
+                                                         }
                 {q.ajustadas > 0 && (
                   <Text style={styles.resumoAjuste}>
                     {q.ajustadas === 1
@@ -804,15 +702,8 @@ export default function Editar() {
         ]}
       >
         <View style={ehDesktop ? styles.miolo : { width: "100%" }}>
-          {/* Volta para Correções, não para a tela anterior.
-              O router.back() devolvia para o que viesse antes no histórico —
-              e chegando pelo Scanner, isso era a tela de processamento da
-              folha, que não faz sentido reabrir depois de a correção já estar
-              salva. "Editar correção" sempre sai de Correções, então é para lá
-              que a seta volta.
-
-              replace e não push: troca esta tela em vez de empilhar, senão
-              o botão do aparelho ficaria voltando para cá. */}
+          {
+                                                              }
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
@@ -822,7 +713,7 @@ export default function Editar() {
             <Text style={styles.tituloPagina}>Editar correção</Text>
           </TouchableOpacity>
 
-          {/* ------------------------------------------------- cabeçalho */}
+          {                                                                 }
           <View style={styles.cartao}>
             <View style={styles.atividadeLinha}>
               <View
@@ -897,8 +788,8 @@ export default function Editar() {
               </Text>
             </TouchableOpacity>
 
-            {/* Abaixo do concluir e não ao lado: concluir é a ação da tela,
-                exportar é o que se faz depois dela. */}
+            {
+                                                       }
             <View style={styles.exportarLinha}>
               <TouchableOpacity
                 style={styles.botaoExportar}
@@ -914,7 +805,7 @@ export default function Editar() {
                 <Text style={styles.botaoExportarTexto}>Salvar em PDF</Text>
               </TouchableOpacity>
 
-              {/* Direto, sem card: no Excel só sai a lista de notas. */}
+              {                                                         }
               <TouchableOpacity
                 style={styles.botaoExportar}
                 activeOpacity={0.8}
@@ -929,7 +820,7 @@ export default function Editar() {
 
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
-          {/* ------------------------------------------------------- abas */}
+          {                                                                  }
           <View style={styles.abasLinha}>
             {ABAS.map((aba) => {
               const ativa = aba.chave === abaAtiva;
@@ -988,9 +879,8 @@ export default function Editar() {
                 </View>
               </View>
 
-              {/* Antes da lista de alunos de propósito: a lista é o registro,
-                  isto é o que a professora precisa decidir — o que revisar na
-                  próxima aula. */}
+              {
+                                  }
               {desempenhoDasQuestoes()}
 
               {listaDeAlunos(false)}
@@ -1009,7 +899,7 @@ export default function Editar() {
         </View>
       </ScrollView>
 
-      {/* ------------------------------- o card de escolha (só para o PDF) */}
+      {                                                                       }
       <Modal
         visible={escolhendoRelatorio}
         transparent
@@ -1048,9 +938,8 @@ export default function Editar() {
               />
             </TouchableOpacity>
 
-            {/* Sem nenhuma folha corrigida não há desempenho que mostrar.
-                Desabilitado e com o motivo à vista, em vez de sumir: um botão
-                que some faz a pessoa procurar o que ela viu antes. */}
+            {
+                                                                      }
             <TouchableOpacity
               style={[styles.opcao, !temQuestoes && styles.opcaoDesativada]}
               activeOpacity={0.8}
@@ -1065,10 +954,8 @@ export default function Editar() {
                 />
               </View>
               <View style={styles.opcaoTextos}>
-                {/* "Desempenho por questão" e não "Relatório de questões":
-                    é como o cartão do Resumo e o título do PDF já chamam a
-                    mesma coisa. Dois nomes para a mesma tela fazem o
-                    professor achar que são duas coisas diferentes. */}
+                {
+                                                                      }
                 <Text style={styles.opcaoTitulo}>
                   Desempenho por questão
                 </Text>
@@ -1085,12 +972,8 @@ export default function Editar() {
               />
             </TouchableOpacity>
 
-            {/* Depende das questões pelo mesmo motivo que a opção de cima:
-                sem nenhuma questão corrigida, este documento sairia igual ao
-                de notas, e duas opções que fazem a mesma coisa só fazem a
-                pessoa desconfiar de qual escolheu. Por ser o mesmo motivo, é
-                a mesma frase — duas maneiras de dizer o mesmo fato parecem
-                dois problemas diferentes. */}
+            {
+                                             }
             <TouchableOpacity
               style={[styles.opcao, !temQuestoes && styles.opcaoDesativada]}
               activeOpacity={0.8}
@@ -1105,9 +988,8 @@ export default function Editar() {
                 />
               </View>
               <View style={styles.opcaoTextos}>
-                {/* "Relatório completo" é o título que o próprio PDF leva
-                    impresso. O nome da opção e o nome do documento que sai
-                    dela têm que ser o mesmo. */}
+                {
+                                                }
                 <Text style={styles.opcaoTitulo}>Relatório completo</Text>
                 <Text style={styles.opcaoDescricao}>
                   {temQuestoes
@@ -1391,7 +1273,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // ------------------------------------------------- desempenho por questão
   listaQuestoes: { gap: 16, borderTopWidth: 1, borderTopColor: COR.linhaSuave, paddingTop: 14 },
   questaoResumo: { gap: 6 },
   resumoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
@@ -1408,8 +1289,6 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
     lineHeight: 17,
   },
-  // Fora da barra, não dentro: a questão com o menor aproveitamento tem a
-  // barra mais curta e é justamente a que mais importa ler.
   resumoPorcento: {
     fontFamily: FONTE.bold,
     fontSize: 13,
@@ -1423,8 +1302,6 @@ const styles = StyleSheet.create({
     backgroundColor: BARRA_TRILHO,
     overflow: "hidden",
   },
-  // Quadrado onde nasce, arredondado só na ponta dos dados — a ponta é a
-  // única coisa que o olho precisa achar.
   preenchimento: {
     height: 8,
     backgroundColor: COR.marcador,

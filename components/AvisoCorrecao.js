@@ -62,7 +62,6 @@ export default function AvisoCorrecao() {
           if (salvo) {
             vistos.current = new Set(JSON.parse(salvo));
           } else {
-            // primeira vez deste professor neste aparelho: só anota o que já existe
             vistos.current = new Set(ids);
             await AsyncStorage.setItem(chave.current, JSON.stringify(ids));
             return;
@@ -72,8 +71,6 @@ export default function AvisoCorrecao() {
         const novas = concluidas.filter((c) => !vistos.current.has(c.id_correcao));
         if (novas.length === 0) return;
 
-        // marca como vistas mesmo com o aviso desligado, pra não aparecer
-        // tudo de uma vez quando o interruptor for religado
         novas.forEach((c) => vistos.current.add(c.id_correcao));
         await AsyncStorage.setItem(chave.current, JSON.stringify([...vistos.current]));
 
@@ -87,7 +84,6 @@ export default function AvisoCorrecao() {
         clearTimeout(fechar.current);
         fechar.current = setTimeout(() => setAviso(null), VISIVEL_MS);
       } catch {
-        // sem rede ou token expirado: tenta de novo no próximo ciclo
       } finally {
         ocupado.current = false;
       }

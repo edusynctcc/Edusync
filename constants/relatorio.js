@@ -2,30 +2,6 @@ import * as Print from "expo-print";
 import { Platform } from "react-native";
 import { LOGO_EDUSYNC } from "./logo";
 
-// ---------------------------------------------------------------------------
-// OS RELATÓRIOS DAS CORREÇÕES
-//
-// O PDF tem três versões, montadas a partir de DUAS tabelas:
-//
-//   "notas"     a lista de alunos com a nota de cada um. É o que vai para o
-//               diário, para a secretaria, para o pai que pediu.
-//   "questoes"  o desempenho da turma em cada questão. É o que serve para
-//               decidir o que revisar na próxima aula.
-//   "tudo"      os dois no mesmo documento.
-//
-// Repare que as tabelas são montadas por funções próprias (tabelaDasNotas e
-// tabelaDasQuestoes) e os três documentos só as combinam. Sem isso,
-// acrescentar uma coluna significaria mexer em três lugares e esquecer de um
-// — e o "tudo" passaria a mostrar uma tabela diferente da que o relatório
-// separado mostra.
-//
-// A PLANILHA tem uma versão só: as notas. Ela é para somar e lançar nota, e
-// quem abre o Excel quer a lista de alunos — não o desempenho por questão,
-// que é coisa de ler, não de calcular.
-//
-// Este arquivo existe para a geração acontecer num lugar só: a tela de
-// Correções e a de Editar correção chamam daqui. Mesmo motivo do provaPdf.js.
-// ---------------------------------------------------------------------------
 
 function escapar(texto) {
   return String(texto ?? "")
@@ -40,16 +16,12 @@ export function formatarNota(valor) {
     .replace(".", ",");
 }
 
-// Só as questões que já têm resposta corrigida. Questão sem resposta não tem
-// aproveitamento — mostrar 0% seria mentira.
 function comQuestoes(questoes) {
   return (questoes || []).filter(
     (q) => q.aproveitamento !== null && q.aproveitamento !== undefined,
   );
 }
 
-// Da pior para a melhor: o relatório é para achar o problema, não para
-// conferir a prova na ordem em que ela foi aplicada.
 function daPiorParaMelhor(questoes) {
   return [...comQuestoes(questoes)].sort(
     (a, b) => a.aproveitamento - b.aproveitamento,
@@ -62,14 +34,6 @@ function resumoDaTurma(grupo) {
   } · média ${formatarNota(grupo.media)}`;
 }
 
-// ===========================================================================
-// O PDF
-//
-// A logo entra como base64 vindo do logo.js, e não como caminho de arquivo: o
-// expo-print não espera imagem carregar — manda imprimir depois de um
-// setTimeout fixo. Embutida, ela já está lá. (No celular, aliás, um require
-// de imagem devolveria um número, não um caminho.)
-// ===========================================================================
 function moldura({ titulo, subtitulo, corpo }) {
   const hoje = new Date().toLocaleDateString("pt-BR");
 
@@ -150,13 +114,6 @@ function moldura({ titulo, subtitulo, corpo }) {
 </html>`;
 }
 
-// ---------------------------------------------------------------------------
-// A tabela de notas.
-//
-// SEM a coluna "Situação" de propósito: este documento vai para o diário ou
-// para a secretaria, e ali "aguardando revisão" não é informação sobre o
-// aluno — é sobre o trabalho do professor. Quem lê quer a nota.
-// ---------------------------------------------------------------------------
 function tabelaDasNotas(grupo) {
   const linhas = grupo.alunos
     .map(
@@ -223,9 +180,6 @@ export function montarHtmlDasQuestoes(grupo, questoes) {
   });
 }
 
-// As duas tabelas no mesmo documento. As notas vêm primeiro porque são o que
-// alguém procura num relatório de correção; o desempenho por questão é a
-// leitura que o professor faz depois, com calma.
 export function montarHtmlCompleto(grupo, questoes) {
   return moldura({
     titulo: `${grupo.atividade.nome} — relatório completo`,
@@ -243,13 +197,9 @@ export function montarHtmlCompleto(grupo, questoes) {
   });
 }
 
-// Devolve "" quando deu certo, ou a mensagem de erro para a tela mostrar.
 export async function imprimirRelatorio(html) {
   try {
     if (Platform.OS === "web") {
-      // No navegador o Print.printAsync acaba mandando a própria página do app
-      // para a impressora em vez deste HTML — sai a tela com menu lateral e
-      // tudo. Por isso aqui abrimos uma janela e imprimimos de lá.
       const janela = window.open("", "_blank");
 
       if (!janela) {
@@ -259,8 +209,6 @@ export async function imprimirRelatorio(html) {
       janela.document.write(html);
       janela.document.close();
       janela.focus();
-      // Um instante para o navegador desenhar antes de abrir a impressão.
-      // 450ms e não 250: com a logo embutida o desenho demora um pouco mais.
       setTimeout(() => janela.print(), 450);
       return "";
     }
@@ -268,8 +216,6 @@ export async function imprimirRelatorio(html) {
     await Print.printAsync({ html });
     return "";
   } catch (e) {
-    // Fechar a caixa de impressão sem imprimir também cai aqui em alguns
-    // navegadores. Não é erro que valha assustar ninguém.
     if (e?.message && !/cancel|dismiss/i.test(e.message)) {
       return "Não consegui gerar o PDF: " + e.message;
     }
@@ -277,34 +223,10 @@ export async function imprimirRelatorio(html) {
   }
 }
 
-// ===========================================================================
-// A PLANILHA
-//
-// É um .csv, e o Excel abre com dois cliques. Três detalhes fazem ele abrir
-// CERTO no Excel em português, e cada um é um jeito conhecido de a planilha
-// chegar torta:
-//
-// 1. SEPARADOR ";" e não ",". O Excel configurado em português usa o
-//    ponto-e-vírgula como separador de lista. Com vírgula, a planilha inteira
-//    chega numa coluna só.
-// 2. VÍRGULA DECIMAL. "8,5" é lido como número; "8.5" vira texto, e aí não dá
-//    para somar nem ordenar.
-// 3. BOM no começo do arquivo. Sem ele o Excel assume a codificação do
-//    sistema e "João" vira "JoÃ£o".
-//
-// A planilha não leva logo: é um arquivo de dados, para colar numa outra
-// planilha ou somar. Uma imagem no meio das células só atrapalharia.
-//
-// E sai só a lista de notas. Duas tabelas num arquivo só obrigariam quem for
-// somar a selecionar o bloco certo antes, e o desempenho por questão não é
-// número que se calcule — é leitura, e para ler existe o PDF.
-// ===========================================================================
 const SEPARADOR = ";";
 
 function celula(valor) {
   const texto = String(valor ?? "");
-  // Aspas, separador ou quebra de linha dentro do texto obrigam a envolver em
-  // aspas — e as aspas de dentro viram duas. Nome de aluno vem do banco.
   if (texto.includes('"') || texto.includes(SEPARADOR) || /[\r\n]/.test(texto)) {
     return `"${texto.replace(/"/g, '""')}"`;
   }
@@ -343,7 +265,6 @@ function linhasDasNotas(grupo) {
   return linhas;
 }
 
-// \r\n e não \n: é o fim de linha que o Excel espera.
 function fechar(linhas) {
   return "﻿" + linhas.join("\r\n");
 }
@@ -352,7 +273,6 @@ export function montarCsvDasNotas(grupo) {
   return fechar([...cabecalhoDaPlanilha(grupo), "", ...linhasDasNotas(grupo)]);
 }
 
-// Tira do nome do arquivo o que sistema de arquivos recusa.
 function nomeDeArquivo(texto) {
   return (
     String(texto ?? "relatorio")
@@ -364,15 +284,6 @@ function nomeDeArquivo(texto) {
   );
 }
 
-/**
- * Baixa a planilha. Devolve "" quando deu certo, ou a mensagem para a tela.
- *
- * Só funciona na web por enquanto. No celular seria preciso o
- * expo-file-system (para escrever o arquivo) e o expo-sharing (para abrir o
- * "compartilhar com"), e não dá para deixar isso opcional — um import de
- * pacote que não existe quebra o empacotamento inteiro, não só este botão.
- * Com os dois instalados, são dez linhas aqui.
- */
 export function baixarPlanilha(nome, csv) {
   if (Platform.OS !== "web") {
     return "Exportar a planilha está disponível no computador. No celular, use o PDF.";
@@ -389,7 +300,6 @@ export function baixarPlanilha(nome, csv) {
     ancora.click();
     document.body.removeChild(ancora);
 
-    // Sem isto o blob fica na memória do navegador até a aba fechar.
     setTimeout(() => URL.revokeObjectURL(endereco), 1000);
     return "";
   } catch (e) {

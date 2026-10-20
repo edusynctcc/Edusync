@@ -1,35 +1,3 @@
-// ---------------------------------------------------------------------------
-// A LOGO DO EDUSYNC, EMBUTIDA
-//
-// Por que base64 num arquivo em vez de `require("../assets/logo.png")`:
-//
-// 1. O expo-print NAO espera imagem carregar — o imprimirHtml manda imprimir
-//    depois de um setTimeout fixo de 450ms. Foi assim que a figura da questao
-//    saiu em branco na primeira versao. Embutida, ela ja esta la.
-// 2. No celular, o require de uma imagem devolve um NUMERO (o id do modulo),
-//    nao um caminho. Nao existe `src` que aceite isso: seria preciso
-//    expo-asset mais expo-file-system, duas dependencias e duas chamadas
-//    assincronas a mais no caminho de imprimir — e na web esse mesmo codigo
-//    nao serve, porque o readAsStringAsync nao existe la.
-//
-// A logo nao muda, entao converter uma vez e o caminho mais curto e o que
-// menos pode falhar. O custo e a imagem existir duas vezes no repositorio.
-//
-// Esta e a versao vertical: simbolo em cima, EDUSYNC e DESDE 2026 embaixo.
-// Diferente da primeira que voce mandou, aqui o "DESDE 2026" e amarelo e nao
-// branco — entao ele aparece no papel.
-//
-// SOBRE O TAMANHO: esta em paleta de 96 cores em vez de RGBA. Fica
-// indistinguivel a olho e ocupa um terco do espaco — os degrades do azul sao
-// o que fazia o PNG inchar.
-//
-// A imagem tem 240x300px, o triplo dos 80px de largura que aparecem
-// impressos, para ficar nitida em qualquer impressora.
-//
-// Para trocar a logo: recorte o PNG no conteudo (sem margem sobrando),
-// redimensione para ~3x a largura impressa, salve com paleta e substitua a
-// string.
-// ---------------------------------------------------------------------------
 
 export const LOGO_EDUSYNC =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAEsCAMAAADKAM5AAAABIFBMVEUcZJ8RWpz12WAIXKAUmNocmNcJW58RmNsSmt3/uSsT" +

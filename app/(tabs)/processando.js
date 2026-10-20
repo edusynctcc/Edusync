@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -26,31 +27,6 @@ import {
   pegarArquivo,
 } from "../../constants/arquivoSelecionado";
 
-// ---------------------------------------------------------------------------
-// O ENVIO DA FOLHA
-//
-// Esta função vivia no constants/api.js. Ela está aqui porque o envio no
-// celular precisou de mais de uma tentativa, e concentrar tudo num arquivo só
-// é o que permite trocar uma tela sem mexer em mais nada.
-//
-// O problema: existem dois jeitos de descrever um arquivo dentro de um
-// FormData, e qual deles funciona depende da versão do Expo/React Native.
-//
-//   1) { uri, name, type }  -> o jeito clássico do React Native
-//   2) um Blob              -> o jeito do fetch novo (padrão WinterCG)
-//
-// Neste celular o jeito 1 é recusado com "Unsupported FormDataPart
-// implementation" — mensagem que só aparece na hora do envio. Então tentamos
-// os dois, em ordem, e paramos no primeiro que passar.
-//
-// Ler o arquivo para virar Blob tem duas vias também. O XMLHttpRequest é o
-// mais confiável com file:// no Android porque é a implementação do próprio
-// React Native, que não muda com a versão do fetch. O fetch fica de terceira
-// tentativa.
-//
-// Erro vindo DO servidor (400, 401, 500) não repete o envio: o arquivo chegou
-// lá, o problema é outro, e remandar a mesma foto só gasta internet.
-// ---------------------------------------------------------------------------
 function lerComoBlob(uri) {
   return new Promise((resolve, reject) => {
     const requisicao = new XMLHttpRequest();
@@ -66,46 +42,6 @@ function lerComoBlob(uri) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// TEMPO LIMITE
-//
-// O fetch do React Native não tem tempo limite. Se a requisição trava no meio,
-// ela nunca volta: nem resolve, nem dá erro — e a tela fica carregando pra
-// sempre, sem nada no console. Foi o que aconteceu com a foto da câmera.
-//
-// O AbortController cancela de verdade quando a implementação respeita o
-// signal. A corrida com o relógio é o cinto de segurança: mesmo que o signal
-// seja ignorado, a gente desiste e passa para a próxima tentativa.
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// O TIPO DO ARQUIVO
-//
-// Um Blob lido de um file:// vem com type vazio — o celular não sabe dizer que
-// aquilo é um JPEG só pelo caminho. No multipart isso vira
-// "application/octet-stream", e o multer do nosso servidor recusa com "Envie
-// uma foto (JPG, PNG) ou um PDF da folha".
-//
-// O arquivo está certo; falta só a etiqueta. Aqui ela é colada de volta, com o
-// mime que o seletor de imagem já tinha informado.
-//
-// Se o construtor de Blob não existir, ou devolver algo vazio, o original
-// segue — melhor mandar sem etiqueta do que mandar zero byte.
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// NOME E TIPO NO MESMO PACOTE
-//
-// O terceiro argumento do formulario.append("imagem", parte, nome) nem sempre
-// é respeitado: algumas implementações de FormData simplesmente o ignoram, e
-// então o arquivo chega no servidor chamado "blob", sem extensão. Se o multer
-// olhar a extensão, recusa — e a mensagem é a mesma de quando o tipo está
-// errado, o que confunde.
-//
-// Um File resolve os dois de uma vez: ele carrega o nome E o tipo dentro de si,
-// e toda implementação de FormData usa o file.name como nome da parte.
-//
-// Se File não existir neste runtime, cai no Blob reetiquetado, que já é melhor
-// do que nada.
-// ---------------------------------------------------------------------------
 function embrulhar(blob, nome, mime) {
   try {
     if (blob && mime && typeof File === "function") {
@@ -138,8 +74,7 @@ function comTipo(blob, mime) {
 }
 
 function comTempoLimite(promessa, ms, oQueEra) {
-  // Sem este piso, um ms indefinido virava NaN, o setTimeout disparava no
-  // mesmo instante e a promessa boa era descartada antes de começar.
+
   const tempo = Number.isFinite(ms) && ms > 0 ? ms : 90000;
 
   let relogio = null;
@@ -153,35 +88,27 @@ function comTempoLimite(promessa, ms, oQueEra) {
   return Promise.race([promessa, estouro]).finally(() => clearTimeout(relogio));
 }
 
-async function enviarFolha({ arquivo, id_atividade }) {
+async function enviarFolha({ paginas, id_atividade }) {
   const token = await AsyncStorage.getItem("token");
 
-  // O FormData é montado a cada tentativa de propósito: um que já foi entregue
-  // ao fetch não pode ser reaproveitado.
-  // O limite tem padrão próprio de propósito. Ele já foi esquecido uma vez na
-  // chamada do web, e Math.round(undefined / 1000) devolve NaN — o setTimeout
-  // com NaN dispara na hora, e todo envio falhava no primeiro instante com
-  // "o envio passou de NaNs".
-  async function despachar(parte, nome, limite = 90000, pacote = null) {
+  function dadosDaPagina(pagina, indice) {
+    const mime = pagina?.mime || "image/jpeg";
+    const extensao =
+      mime === "application/pdf" ? "pdf" : mime === "image/png" ? "png" : "jpg";
+    return { mime, nome: `folha-${indice + 1}.${extensao}` };
+  }
+
+  async function despachar(partes, limite = 90000, pacote = null) {
     const formulario = new FormData();
-    // Sem o terceiro argumento, de propósito.
-    //
-    // O FormData deste runtime, ao receber append(chave, parte, nome), tenta
-    // fazer parte.name = nome. Em um File o name é somente leitura, e a
-    // atribuição estoura com "Cannot assign to property 'name' which has only
-    // a getter" — foi o que derrubou as duas tentativas de Blob.
-    //
-    // O nome não se perde: quem carrega o nome é o próprio File, e o
-    // { uri, name, type } do jeito clássico traz o dele dentro do objeto.
-    formulario.append("imagem", parte);
+
+    for (const parte of partes) {
+      formulario.append("imagem", parte);
+    }
     formulario.append("id_atividade", String(id_atividade));
 
     const controlador =
       typeof AbortController === "function" ? new AbortController() : null;
 
-    // Quando vem um pacote pronto, ele substitui o FormData inteiro: o corpo
-    // já é o multipart montado à mão, e o Content-Type vai junto porque só nós
-    // sabemos qual é a fronteira usada.
     const envio = fetch(ENDPOINTS.correcoes, {
       method: "POST",
       headers: pacote
@@ -214,71 +141,65 @@ async function enviarFolha({ arquivo, id_atividade }) {
     return dados;
   }
 
-  // No navegador vai o objeto File de verdade, que o próprio input devolveu.
-  if (Platform.OS === "web") {
-    if (!arquivo?.objetoWeb) {
-      throw new Error("O arquivo se perdeu. Escolha a folha de novo no Scanner.");
-    }
-    return await despachar(arquivo.objetoWeb, arquivo.nome, 90000);
-  }
-
-  if (!arquivo?.uri) {
+  if (!paginas || paginas.length === 0) {
     throw new Error("O arquivo se perdeu. Escolha a folha de novo no Scanner.");
   }
 
-  const mime = arquivo.mime || "image/jpeg";
+  if (Platform.OS === "web") {
+    const faltando = paginas.findIndex((p) => !p?.objetoWeb);
+    if (faltando >= 0) {
+      throw new Error(
+        paginas.length === 1
+          ? "O arquivo se perdeu. Escolha a folha de novo no Scanner."
+          : `A página ${faltando + 1} se perdeu. Adicione ela de novo.`,
+      );
+    }
+    return await despachar(
+      paginas.map((p) => p.objetoWeb),
+      90000,
+    );
+  }
 
-  // O nome que sobe não é o que aparece na tela — esse continua sendo o
-  // arquivo.nome. Aqui vale um nome limpo, com a extensão batendo com o tipo,
-  // para o servidor não ter com o que implicar.
-  const extensao =
-    mime === "application/pdf" ? "pdf" : mime === "image/png" ? "png" : "jpg";
-  const nome = `folha.${extensao}`;
+  const semUri = paginas.findIndex((p) => !p?.uri);
+  if (semUri >= 0) {
+    throw new Error(
+      paginas.length === 1
+        ? "O arquivo se perdeu. Escolha a folha de novo no Scanner."
+        : `A página ${semUri + 1} se perdeu. Adicione ela de novo.`,
+    );
+  }
 
-  // A ordem importa. O "blob-fetch" vem antes do "blob-xhr" porque o Blob que
-  // o próprio fetch produz é o que esse fetch sabe enviar. O Blob do
-  // XMLHttpRequest vem do módulo de blob do React Native, que é outra
-  // implementação — foi ele que o envio aceitou e nunca terminou.
-  //
-  // O tempo de cada uma é diferente de propósito: as duas primeiras têm rédea
-  // curta, porque se travarem não adianta esperar. A última ganha 90s, que é o
-  // tempo real de uma correção com a IA lendo a folha.
-  // -------------------------------------------------------------------------
-  // O MULTIPART MONTADO À MÃO
-  //
-  // Todas as tentativas acima dependem do FormData deste runtime, e ele já
-  // recusou duas formas de arquivo. Esta não depende dele: o corpo da
-  // requisição é um Blob montado por nós, com o cabeçalho e o rodapé do
-  // multipart escritos como texto, e os bytes do arquivo no meio.
-  //
-  // É o mesmo formato que o FormData produziria; a diferença é que a fronteira
-  // é nossa, então o Content-Type pode ir no cabeçalho sem estragar nada — o
-  // que normalmente seria erro, aqui é obrigatório.
-  //
-  // O multer do outro lado não sabe a diferença. Para ele é um upload comum.
-  // -------------------------------------------------------------------------
-  function pacoteMultipart(blob, nome, tipo) {
+  function pacoteMultipart(itens) {
     const fronteira = `----EduSync${Date.now().toString(36)}`;
 
-    const cabeca =
+    const pedacos = [];
+
+    for (const item of itens) {
+      pedacos.push(
+        `--${fronteira}\r\n` +
+          `Content-Disposition: form-data; name="imagem"; filename="${item.nome}"\r\n` +
+          `Content-Type: ${item.tipo}\r\n\r\n`,
+      );
+      pedacos.push(item.blob);
+
+      pedacos.push("\r\n");
+    }
+
+    pedacos.push(
       `--${fronteira}\r\n` +
-      `Content-Disposition: form-data; name="imagem"; filename="${nome}"\r\n` +
-      `Content-Type: ${tipo}\r\n\r\n`;
+        `Content-Disposition: form-data; name="id_atividade"\r\n\r\n` +
+        `${id_atividade}\r\n` +
+        `--${fronteira}--\r\n`,
+    );
 
-    const rodape =
-      `\r\n--${fronteira}\r\n` +
-      `Content-Disposition: form-data; name="id_atividade"\r\n\r\n` +
-      `${id_atividade}\r\n` +
-      `--${fronteira}--\r\n`;
-
-    const corpo = new Blob([cabeca, blob, rodape], {
+    const corpo = new Blob(pedacos, {
       type: `multipart/form-data; boundary=${fronteira}`,
     });
 
     return {
       size: corpo.size,
-      name: nome,
-      type: tipo,
+      name: itens[0]?.nome,
+      type: itens[0]?.tipo,
       __pacote: {
         corpo,
         contentType: `multipart/form-data; boundary=${fronteira}`,
@@ -286,28 +207,53 @@ async function enviarFolha({ arquivo, id_atividade }) {
     };
   }
 
+  const porPagina = Math.max(1, paginas.length);
+
   const tentativas = [
     {
       apelido: "uri",
-      limite: 25000,
-      montar: async () => ({ uri: arquivo.uri, name: nome, type: mime }),
+      limite: 25000 * porPagina,
+      montar: async () =>
+        paginas.map((pagina, i) => {
+          const { mime, nome } = dadosDaPagina(pagina, i);
+          return { uri: pagina.uri, name: nome, type: mime };
+        }),
     },
     {
       apelido: "blob-xhr",
-      limite: 60000,
-      montar: async () => embrulhar(await lerComoBlob(arquivo.uri), nome, mime),
+      limite: 60000 * porPagina,
+      montar: async () =>
+        Promise.all(
+          paginas.map(async (pagina, i) => {
+            const { mime, nome } = dadosDaPagina(pagina, i);
+            return embrulhar(await lerComoBlob(pagina.uri), nome, mime);
+          }),
+        ),
     },
     {
       apelido: "multipart-manual",
       limite: 90000,
-      montar: async () =>
-        pacoteMultipart(await lerComoBlob(arquivo.uri), nome, mime),
+      montar: async () => [
+        pacoteMultipart(
+          await Promise.all(
+            paginas.map(async (pagina, i) => {
+              const { mime, nome } = dadosDaPagina(pagina, i);
+              return { blob: await lerComoBlob(pagina.uri), nome, tipo: mime };
+            }),
+          ),
+        ),
+      ],
     },
     {
       apelido: "blob-fetch",
       limite: 90000,
       montar: async () =>
-        embrulhar(await (await fetch(arquivo.uri)).blob(), nome, mime),
+        Promise.all(
+          paginas.map(async (pagina, i) => {
+            const { mime, nome } = dadosDaPagina(pagina, i);
+            return embrulhar(await (await fetch(pagina.uri)).blob(), nome, mime);
+          }),
+        ),
     },
   ];
 
@@ -315,25 +261,32 @@ async function enviarFolha({ arquivo, id_atividade }) {
 
   for (const tentativa of tentativas) {
     try {
-      const parte = await tentativa.montar();
+      const partes = await tentativa.montar();
 
-      // O fetch(file://) deste runtime devolveu um Blob de 0 KB. Mandar zero
-      // byte para o servidor é pior do que falhar: ele responde alguma coisa,
-      // a IA lê uma imagem vazia, e ninguém entende o resultado.
-      if (parte && !parte.__pacote && parte.size === 0) {
-        throw new Error("o arquivo veio com 0 byte");
+      for (let i = 0; i < partes.length; i++) {
+        const parte = partes[i];
+        if (parte && !parte.__pacote && parte.size === 0) {
+          throw new Error(
+            partes.length === 1
+              ? "o arquivo veio com 0 byte"
+              : `a página ${i + 1} veio com 0 byte`,
+          );
+        }
       }
-      const tamanho = parte?.size ? `${Math.round(parte.size / 1024)} KB` : "?";
-      const tipo = parte?.type || parte?.type === "" ? `"${parte.type}"` : mime;
-      const classe = parte?.constructor?.name || typeof parte;
+
+      const soma = partes.reduce((total, p) => total + (p?.size || 0), 0);
+      const tamanho = soma ? `${Math.round(soma / 1024)} KB` : "?";
+      const classe = partes[0]?.constructor?.name || typeof partes[0];
       console.log(
-        `[EduSync] tentando "${tentativa.apelido}" — ${classe}, ${tamanho}, tipo ${tipo}, nome "${parte?.name || nome}", limite ${tentativa.limite / 1000}s`,
+        `[EduSync] tentando "${tentativa.apelido}" — ${partes.length} ` +
+          `${partes.length === 1 ? "parte" : "partes"}, ${classe}, ${tamanho} no total, ` +
+          `limite ${tentativa.limite / 1000}s`,
       );
+
       const dados = await despachar(
-        parte,
-        nome,
+        partes,
         tentativa.limite,
-        parte?.__pacote || null,
+        partes[0]?.__pacote || null,
       );
       console.log(`[EduSync] envio ok pelo jeito "${tentativa.apelido}"`);
       return dados;
@@ -348,14 +301,14 @@ async function enviarFolha({ arquivo, id_atividade }) {
   }
 
   const falha = new Error(
-    "Não consegui enviar essa foto. Tente pela galeria ou mande o PDF.",
+    paginas.length === 1
+      ? "Não consegui enviar essa foto. Tente pela galeria ou mande o PDF."
+      : "Não consegui enviar essas páginas. Tente pela galeria ou mande um PDF com a folha inteira.",
   );
   falha.causa = ultimaFalha?.message;
   throw falha;
 }
 
-// As quatro coisas que acontecem, na ordem, enquanto a folha é corrigida.
-// Escritas como o professor contaria — não como o log do servidor.
 const ETAPAS = [
   "Lendo o que está escrito na folha",
   "Procurando o nome do aluno",
@@ -373,17 +326,6 @@ function chamada(numero) {
   return String(numero ?? "–").padStart(2, "0");
 }
 
-// ---------------------------------------------------------------------------
-// O QUE O PROFESSOR LÊ QUANDO DÁ ERRADO
-//
-// Erro que vem do nosso servidor já chega em português e ajuda ("Atividade não
-// encontrada", "Essa turma não tem alunos"). Esse a gente mostra.
-//
-// Erro que vem de biblioteca chega em inglês e não ajuda ninguém em uma sala
-// de aula: "Unsupported FormDataPart implementation", "Network request
-// failed". Esse vira uma frase nossa, e o texto técnico vai pro console — que
-// é onde ele serve pra alguma coisa.
-// ---------------------------------------------------------------------------
 const ERRO_GENERICO =
   "Tente de novo. Se continuar, escolha a folha pela galeria ou mande o PDF.";
 
@@ -401,8 +343,6 @@ const ERROS_TECNICOS = [
   { marca: /JSON|Unexpected token|SyntaxError/i, texto: "O servidor respondeu uma coisa que eu não entendi." },
 ];
 
-// Toda mensagem nossa tem acento ou uma destas palavras. Se não tiver nenhuma
-// das duas coisas, é texto de biblioteca — não vai pra tela.
 const PALAVRAS_NOSSAS =
   /\b(n[a\u00e3]o|folha|aluno|atividade|professor|servidor|arquivo|nota|turma|imagem|foto|gabarito|quest[a\u00e3]o|senha|email)\b/i;
 
@@ -420,27 +360,12 @@ function humanizar(bruto) {
   return ERRO_GENERICO;
 }
 
-// ---------------------------------------------------------------------------
-// A coluna `matricula` é VARCHAR(20) e tem índice único.
-//
-// O formato antigo era "manual-" + Date.now() + "-" + sorteio, o que dava 27
-// caracteres. O banco recusava, ninguém tratava o erro, e a tela mostrava um
-// "HTTP 500" sem motivo nenhum. Custou horas de procura no lugar errado.
-//
-// Base 36 encurta o tempo de 13 dígitos para 8. Com o prefixo e seis letras de
-// sorteio dá 15 caracteres — cabe com folga, e o sorteio evita colisão quando
-// dois cadastros caem no mesmo milissegundo. Seis e não três porque a coluna é
-// UNIQUE: uma colisão viraria erro na cara do professor, e com três letras ela
-// deixa de ser improvável rápido demais.
-// ---------------------------------------------------------------------------
 function matriculaProvisoria() {
   const tempo = Date.now().toString(36);
   const sorteio = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
   return `M${tempo}${sorteio}`.slice(0, 20);
 }
 
-// Compara nomes ignorando acento, caixa e espaço sobrando: "BEATRIZ  carvalho"
-// e "Beatriz Carvalho" são a mesma pessoa.
 function mesmoNome(a, b) {
   const limpar = (texto) =>
     String(texto ?? "")
@@ -458,14 +383,6 @@ export default function Processando() {
   const { width, height: alturaJanela } = useWindowDimensions();
   const ehDesktop = width >= 900;
 
-  // Altura útil para centralizar o card: a janela menos o cabeçalho da página
-  // (34 de respiro + 56 do título + 22 de margem = 112 acima) e o mesmo tanto
-  // reservado abaixo. Descontando os dois, o card cai no meio da tela — e não
-  // no meio do que sobrou embaixo do título, que era o que o deixava baixo.
-  //
-  // Dá para fazer isso só com flex: 1, mas dentro de um ScrollView o flex nem
-  // sempre resolve para a altura da janela — depende de o container de
-  // conteúdo ter altura definida. Uma conta simples aqui sempre funciona.
   const alturaDoCentro = Math.max(320, alturaJanela - 224);
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -475,15 +392,23 @@ export default function Processando() {
   const atividadeTitulo = params.atividadeTitulo || "Atividade";
   const atividadeTurma = params.atividadeTurma || "";
 
-  const [arquivo, setArquivo] = useState(() => pegarArquivo());
+  const [paginas, setPaginas] = useState(() => {
+    const primeira = pegarArquivo();
+    return primeira ? [primeira] : [];
+  });
+  const arquivo = paginas[0] ?? null;
+
   const [nomeManual, setNomeManual] = useState("");
+  const [adicionando, setAdicionando] = useState(false);
   const ehPdf = arquivo?.tipo === "pdf";
+
+  const origem = String(params.origem || "imagem");
+
+  const MAX_PAGINAS = 6;
+  const podeAdicionar = !ehPdf && paginas.length > 0 && paginas.length < MAX_PAGINAS;
 
   const [enderecoWeb, setEnderecoWeb] = useState("");
 
-  // Guarda qual folha gerou o que está na tela agora. Não dá para usar o
-  // estado `arquivo` aqui porque o useFocusEffect roda antes do React aplicar
-  // o setState, e a comparação leria o valor velho.
   const folhaNaTela = useRef(arquivo);
 
   useEffect(() => {
@@ -495,8 +420,6 @@ export default function Processando() {
 
   const enderecoPreview = enderecoWeb || arquivo?.uri || "";
 
-  // preview -> processando -> confirmarAluno -> resultado
-  //                        \-> erro
   const [etapa, setEtapa] = useState("preview");
   const [progresso, setProgresso] = useState(0);
   const [leitura, setLeitura] = useState(null);
@@ -505,16 +428,6 @@ export default function Processando() {
   const [erro, setErro] = useState("");
   const intervaloRef = useRef(null);
 
-  // -------------------------------------------------------------------------
-  // A logo pulsa enquanto a IA lê a folha.
-  //
-  // A espera aqui é de alguns segundos e a tela não tem o que mostrar nesse
-  // meio tempo. Uma imagem parada parece travada; pulsando, parece trabalhando
-  // — e quem está olhando sabe que não precisa clicar em nada.
-  //
-  // Na web o driver nativo não existe, então a animação roda em JavaScript.
-  // É uma propriedade mudando a cada 900ms: não pesa.
-  // -------------------------------------------------------------------------
   const pulso = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -544,19 +457,6 @@ export default function Processando() {
     outputRange: [1, 1.07],
   });
 
-  // -------------------------------------------------------------------------
-  // Chegou uma folha nova? Então a tela recomeça.
-  //
-  // Esta tela é registrada como aba no _layout.tsx, e o Expo Router NÃO a
-  // desmonta ao navegar. Sem isto, voltar do Scanner com a folha do aluno
-  // seguinte mostrava o resultado do aluno anterior — a tela nem chegava na
-  // etapa de preview, e a folha nova nunca era enviada. Parecia que o app
-  // tinha ignorado o arquivo.
-  //
-  // Só reseta quando vem folha NOVA. Folha nula (o limparArquivo() depois de
-  // salvar) não mexe em nada: senão o professor perderia o resultado da tela
-  // só de a aba receber foco de novo.
-  // -------------------------------------------------------------------------
   const recomecarSeFolhaNova = useCallback(() => {
     const nova = pegarArquivo();
     if (!nova || nova === folhaNaTela.current) return;
@@ -567,7 +467,8 @@ export default function Processando() {
     );
 
     folhaNaTela.current = nova;
-    setArquivo(nova);
+
+    setPaginas([nova]);
     setEtapa("preview");
     setLeitura(null);
     setResultado(null);
@@ -576,17 +477,6 @@ export default function Processando() {
     setNomeManual("");
   }, []);
 
-  // Duas redes para a mesma coisa, de propósito.
-  //
-  // O useFocusEffect é o caminho certo: dispara quando a tela ganha foco. Só
-  // que ele depende do ciclo de foco do React Navigation, e há situações no
-  // navegador (voltar pelo botão do browser, trocar de aba pela barra) em que
-  // esse ciclo não acontece como se espera.
-  //
-  // O useEffect sem lista de dependências roda a cada render. Ele não é
-  // elegante, mas é o que garante que uma folha nova nunca fique esperando um
-  // evento que talvez não venha. Como a função só age quando a folha mudou de
-  // verdade, rodar várias vezes não custa nada.
   useFocusEffect(recomecarSeFolhaNova);
   useEffect(recomecarSeFolhaNova);
 
@@ -600,20 +490,73 @@ export default function Processando() {
     Math.floor((progresso / 100) * ETAPAS.length),
   );
 
-  // -------------------------------------------------------------------------
-  // 1º tempo: a IA lê a folha e o servidor calcula as notas. Nada é gravado
-  // ainda — a resposta traz o resultado e um palpite de quem é o aluno.
-  // -------------------------------------------------------------------------
+  async function adicionarPagina() {
+    if (adicionando || !podeAdicionar) return;
+
+    setAdicionando(true);
+    setErro("");
+
+    try {
+
+      const usarCamera = origem === "foto" && Platform.OS !== "web";
+
+      if (usarCamera) {
+        const permissao = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permissao.granted) {
+          setErro("Preciso da permissão da câmera para fotografar a folha.");
+          return;
+        }
+      }
+
+      const resultado = usarCamera
+        ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
+        : await ImagePicker.launchImageLibraryAsync({
+            quality: 0.7,
+            allowsMultipleSelection: true,
+            selectionLimit: MAX_PAGINAS - paginas.length,
+          });
+
+      if (resultado.canceled) return;
+
+      const novas = (resultado.assets || [])
+        .filter((a) => a?.uri)
+        .map((a) => ({
+          uri: a.uri,
+          tipo: "imagem",
+          nome: a.fileName || "folha.jpg",
+          mime: a.mimeType || "image/jpeg",
+          objetoWeb: a.file ?? null,
+        }));
+
+      if (novas.length === 0) {
+        setErro("Não consegui ler essa imagem. Tente outra.");
+        return;
+      }
+
+      setPaginas((antes) => [...antes, ...novas].slice(0, MAX_PAGINAS));
+    } catch (e) {
+      setErro(e?.message || "Não consegui abrir o seletor de arquivos.");
+    } finally {
+      setAdicionando(false);
+    }
+  }
+
+  function removerPagina(indice) {
+    if (indice === 0) return;
+    setPaginas((antes) => antes.filter((_, i) => i !== indice));
+  }
+
   async function corrigir() {
     console.log(
-      `[processando] enviando "${arquivo?.nome}" para a atividade ${id_atividade}`,
+      `[processando] enviando ${paginas.length} ` +
+        `${paginas.length === 1 ? "página" : "páginas"} para a atividade ${id_atividade}`,
     );
     setEtapa("processando");
     setProgresso(0);
     setErro("");
 
     try {
-      const resposta = await enviarFolha({ arquivo, id_atividade });
+      const resposta = await enviarFolha({ paginas, id_atividade });
       setLeitura(resposta);
       setProgresso(100);
       setEtapa("confirmarAluno");
@@ -624,9 +567,6 @@ export default function Processando() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // 2º tempo: o professor disse de quem é. Só agora a nota entra no boletim.
-  // -------------------------------------------------------------------------
   async function confirmar(id_aluno) {
     if (salvando) return;
     setSalvando(true);
@@ -649,17 +589,6 @@ export default function Processando() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // O campo de nome, quando o professor mexe nele.
-  //
-  // REGRA IMPORTANTE: antes de criar aluno, procura o nome na turma. Se já
-  // existir, a folha é dessa pessoa e o caminho é confirmar, não cadastrar.
-  //
-  // Sem isso, apertar o botão com a sugestão certa no campo criaria uma
-  // SEGUNDA Beatriz na turma, e as notas dela ficariam espalhadas entre dois
-  // cadastros. Numa prova de 30 alunos, ninguém perceberia até o fechamento do
-  // bimestre — é o tipo de erro que só aparece quando já é tarde.
-  // -------------------------------------------------------------------------
   async function confirmarAlunoNovo() {
     const nome = nomeManual.trim();
     if (!nome || !id_turma || salvando) return;
@@ -691,8 +620,6 @@ export default function Processando() {
 
       const id_aluno = alunoCriado?.id_aluno ?? alunoCriado?.id;
 
-      // Sem id não dá para gravar a correção. Melhor dizer isso do que chamar
-      // o confirmar com undefined e receber um erro que não explica nada.
       if (!id_aluno) {
         throw new Error(
           "O aluno foi criado mas o servidor não devolveu o código dele. A nota não foi gravada — escolha o aluno na lista.",
@@ -716,8 +643,6 @@ export default function Processando() {
     }
   }
 
-  // A barra sobe até 90% e espera ali. O resto só acontece quando a resposta
-  // chega — uma barra que completa antes da resposta seria mentira.
   useEffect(() => {
     if (etapa !== "processando") return;
 
@@ -783,21 +708,6 @@ export default function Processando() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // A tela da espera.
-  //
-  // Antes era um círculo grande, um título e uma barra, tudo centralizado — a
-  // cara de qualquer tela de carregamento do mundo. Não dizia de quem era a
-  // folha, nem de que atividade, nem o que estava sendo feito.
-  //
-  // Agora diz. O topo mostra a atividade e a turma; a lista mostra as quatro
-  // coisas que acontecem, com visto no que já passou; o rodapé mostra o nome
-  // do arquivo. Quem olha reconhece a própria aula na tela.
-  //
-  // Os passos são cronometrados, não medidos — o servidor faz tudo numa
-  // chamada só e não reporta progresso. A ordem é verdadeira; o relógio é uma
-  // aproximação.
-  // ---------------------------------------------------------------------------
   function telaProcessando() {
     const contexto = [atividadeTitulo, atividadeTurma]
       .filter(Boolean)
@@ -960,11 +870,6 @@ export default function Processando() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // A confirmação do aluno aparece SEMPRE, mesmo quando a IA reconheceu o nome.
-  // A diferença é que, reconhecendo, o aluno já vem sugerido em cima e basta
-  // confirmar. Nada entra no boletim sem o professor dizer de quem é.
-  // ---------------------------------------------------------------------------
   function telaConfirmarAluno() {
     const sugestao = leitura?.sugestao;
     const turma = leitura?.alunos_da_turma || [];
@@ -973,9 +878,6 @@ export default function Processando() {
       : turma;
     const nomePadrao = (leitura?.nome_aluno || "").trim();
 
-    // O botão diz o que vai fazer de verdade. Se o nome digitado já é de
-    // alguém da turma, ele confirma; se não é, ele cadastra. Rótulo que mente
-    // sobre a ação é como o professor acaba com dois cadastros do mesmo aluno.
     const nomeDigitado = nomeManual.trim();
     const vaiConfirmarExistente = turma.some((aluno) =>
       mesmoNome(aluno.nome, nomeDigitado),
@@ -1374,8 +1276,85 @@ export default function Processando() {
         <Text style={styles.previewDica}>
           {ehPdf
             ? "Confira se é o arquivo certo antes de mandar pra correção."
-            : "Dá pra ler o nome do aluno e todas as respostas? Se ficou torto ou escuro, mande de novo."}
+            : paginas.length > 1
+              ? "Confira se todas as páginas da folha estão aqui, na ordem certa."
+              : "Dá pra ler o nome do aluno e todas as respostas? Se ficou torto ou escuro, mande de novo."}
         </Text>
+
+        {
+
+                                                                          }
+        {!ehPdf && paginas.length > 0 && (
+          <View style={styles.paginasBloco}>
+            <View style={styles.paginasCabecalho}>
+              <Text style={styles.paginasTitulo}>
+                {paginas.length === 1
+                  ? "1 página"
+                  : `${paginas.length} páginas`}
+              </Text>
+              {paginas.length === 1 && (
+                <Text style={styles.paginasDica}>
+                  A prova tem mais de uma folha? Adicione as outras.
+                </Text>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.paginasFaixa}
+            >
+              {paginas.map((pagina, indice) => (
+                <View key={`${pagina.uri}-${indice}`} style={styles.paginaItem}>
+                  <Image
+                    source={{ uri: pagina.uri }}
+                    style={styles.paginaMiniatura}
+                    resizeMode="cover"
+                  />
+                  <Text style={styles.paginaNumero}>{indice + 1}</Text>
+
+                  {
+
+                                                              }
+                  {indice > 0 && (
+                    <TouchableOpacity
+                      style={styles.paginaRemover}
+                      hitSlop={8}
+                      activeOpacity={0.7}
+                      onPress={() => removerPagina(indice)}
+                    >
+                      <Ionicons name="close" size={12} color={COR.branco} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+
+              {podeAdicionar && (
+                <TouchableOpacity
+                  style={styles.paginaAdicionar}
+                  activeOpacity={0.7}
+                  disabled={adicionando}
+                  onPress={adicionarPagina}
+                >
+                  <Ionicons
+                    name={origem === "foto" ? "camera-outline" : "add"}
+                    size={20}
+                    color={COR.marcador}
+                  />
+                  <Text style={styles.paginaAdicionarTexto}>
+                    {adicionando ? "Abrindo..." : "Adicionar"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
+            {paginas.length >= MAX_PAGINAS && (
+              <Text style={styles.paginasDica}>
+                Chegou ao limite de {MAX_PAGINAS} páginas por folha.
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.botoesLinha}>
           <TouchableOpacity
@@ -1422,17 +1401,6 @@ export default function Processando() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Duas etapas são só um card pequeno: "processando" e "erro".
-  //
-  // No desktop elas ficavam penduradas no topo, com meia tela de branco
-  // embaixo — parecia que a página tinha carregado pela metade. Aqui o card
-  // passa a ocupar o meio da tela, que é onde o olho procura quando não há
-  // mais nada nela.
-  //
-  // As outras etapas (preview, confirmar aluno, resultado) têm conteúdo longo
-  // e rolam normalmente, então ficam como estavam: começando em cima.
-  // ---------------------------------------------------------------------------
   const cardSozinho = etapa === "processando" || etapa === "erro";
   const centralizaNaVertical = ehDesktop && cardSozinho;
 
@@ -1494,28 +1462,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexGrow: 1,
   },
-  // O mesmo respiro das outras telas do desktop (a Home usa padding: 34 com
-  // miolo de 940). Estava 20/560, e por isso o conteúdo daqui começava bem
-  // mais longe da barra lateral que o das outras — dava para ver o degrau ao
-  // trocar de tela.
+
   conteudoInternoDesktop: {
     alignItems: "center",
     justifyContent: "flex-start",
     padding: 34,
-    // precisa ser explícito: paddingBottom é mais específico que padding, e o
-    // 60 do estilo de cima venceria o 34 daqui.
+
     paddingBottom: 40,
   },
-  // Mesma largura de miolo da Home: assim o título "Enviar correção" nasce na
-  // mesma vertical que a saudação de lá.
-  //
-  // Os cards ocupam essa largura inteira, então a margem da direita fica igual
-  // à da esquerda: 34 de cada lado. Antes eles paravam em 720 e sobrava um
-  // vazio só de um lado, o que deixava a tela torta.
+
   miolo: { width: "100%", maxWidth: 940, alignSelf: "center" },
 
-  // Teto para quando a coluna do app for mais larga que um celular: o card
-  // para de crescer e continua centralizado, em vez de virar uma faixa.
   mioloMobile: { width: "100%", maxWidth: 520, alignSelf: "center" },
 
   centroVertical: { justifyContent: "center" },
@@ -1546,16 +1503,6 @@ const styles = StyleSheet.create({
   },
   cardCentralDesktop: { padding: 48, borderRadius: 24 },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.nomeAluno, ehDesktop && styles.nomeAlunoDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo da Home e do Scanner. Para ajustar o web, é só este bloco.
-  // -------------------------------------------------------------------------
   tituloCardDesktop: { fontSize: 20 },
   subtituloCardDesktop: { fontSize: 14, lineHeight: 20, marginTop: 8 },
 
@@ -1690,6 +1637,77 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
+  paginasBloco: { width: "100%", marginBottom: 18 },
+  paginasCabecalho: { marginBottom: 8 },
+  paginasTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: COR.tintaForte,
+  },
+  paginasDica: {
+    fontFamily: FONTE.regular,
+    fontSize: 11.5,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
+
+  paginasFaixa: { flexDirection: "row", gap: 8, paddingVertical: 2 },
+  paginaItem: { width: 58, height: 76, position: "relative" },
+  paginaMiniatura: {
+    width: 58,
+    height: 76,
+    borderRadius: 8,
+    backgroundColor: COR.linhaSuave,
+    borderWidth: 1,
+    borderColor: COR.linha,
+  },
+
+  paginaNumero: {
+    position: "absolute",
+    left: 4,
+    bottom: 4,
+    minWidth: 16,
+    textAlign: "center",
+    fontFamily: FONTE.bold,
+    fontSize: 10,
+    fontWeight: "700",
+    color: COR.branco,
+    backgroundColor: "rgba(11,30,61,0.75)",
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
+  paginaRemover: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COR.perigo,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paginaAdicionar: {
+    width: 58,
+    height: 76,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: COR.marcador,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  paginaAdicionarTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 9.5,
+    fontWeight: "600",
+    color: COR.marcador,
+  },
+
   botoesLinha: { flexDirection: "row", gap: 10, width: "100%" },
   botaoSecundario: {
     flex: 1,
@@ -1738,9 +1756,7 @@ const styles = StyleSheet.create({
     width: 74,
     height: 74,
     borderRadius: 37,
-    // O azul-marinho do sistema. A logo tem fundo transparente, então ela fica
-    // sobre o marinho do mesmo jeito que fica na barra lateral — o azul da
-    // figura e o amarelo da estrela aparecem com força sobre ele.
+
     backgroundColor: COR.marinho,
     alignItems: "center",
     justifyContent: "center",
@@ -1748,24 +1764,12 @@ const styles = StyleSheet.create({
   },
   logoProcessando: { width: 48, height: 48 },
 
-  // No desktop sobra espaço, e esta é a tela que fica no ar enquanto todo
-  // mundo espera. A logo cresce junto com o card.
   logoCirculoDesktop: { width: 104, height: 104, borderRadius: 52 },
   logoProcessandoDesktop: { width: 68, height: 68 },
   barraFundoDesktop: { height: 10, borderRadius: 5, marginTop: 26 },
 
-  // -------------------------------------------------------------------------
-  // A tela da espera
-  // -------------------------------------------------------------------------
-
-  // O card deixa de centralizar tudo: o conteúdo é alinhado à esquerda, que é
-  // como se lê. Título, texto e lista centralizados são o que dá aquele ar de
-  // página de carregamento genérica.
   cardTrabalho: { alignItems: "stretch" },
 
-  // O card ocupa a largura toda, mas o conteúdo dele não: ele fica numa coluna
-  // de 560 no meio. Sem isso, num card de 870, a logo, a lista e o rodapé
-  // ficavam encostados à esquerda com meio card vazio do lado direito.
   trabalhoMiolo: { width: "100%", maxWidth: 560, alignSelf: "center" },
 
   trabalhoTopo: { flexDirection: "row", alignItems: "center", gap: 18 },
@@ -1801,8 +1805,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   marcaEtapaFeita: { backgroundColor: COR.ok, borderColor: COR.ok },
-  // anel grosso em vez de bolinha: sem precisar de outra animação, já lê como
-  // "é esta aqui, agora".
+
   marcaEtapaAgora: { borderWidth: 6, borderColor: COR.marcador },
 
   textoEtapa: {

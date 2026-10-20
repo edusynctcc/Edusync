@@ -1,20 +1,6 @@
 import * as XLSX from 'xlsx';
 import { perguntarAoGemini } from './iaService';
 
-// ---------------------------------------------------------------------------
-// LER A LISTA DE CHAMADA DE UM ARQUIVO
-//
-// Dois caminhos, conforme o que o professor mandar:
-//
-//   planilha (.xlsx, .csv)  -> lida aqui mesmo, sem IA. É tabela, tem linha e
-//                              coluna, não precisa de modelo nenhum para isso.
-//   PDF ou foto             -> lida pelo Gemini, que enxerga a página.
-//
-// NADA É GRAVADO AQUI. Esta camada devolve uma lista para a tela mostrar ao
-// professor, e é ele quem confirma. O motivo é concreto: lista de chamada de
-// escola tem aluno transferido riscado, observação no rodapé, linha de
-// cabeçalho repetida no meio da página. Gravar direto seria cadastrar lixo.
-// ---------------------------------------------------------------------------
 
 export type AlunoLido = {
   nome: string;
@@ -59,15 +45,6 @@ Responda SOMENTE com um JSON neste formato, sem texto antes ou depois:
 
 ${FORMATO_JSON}`;
 
-// ---------------------------------------------------------------------------
-// A conversa com o Gemini mora no iaService, junto com a da atividade pronta.
-// Aqui fica só o que é desta leitura: o que perguntar e o que fazer com a
-// resposta.
-//
-// Antes as duas tinham a mesma chamada copiada. A espera entre tentativas, que
-// é o que resolve o "modelo lotado", entrou numa e teria ficado faltando na
-// outra.
-// ---------------------------------------------------------------------------
 async function lerComGemini(
   arquivoBase64: string,
   mimeType: string
@@ -83,17 +60,6 @@ async function lerComGemini(
   return Array.isArray(lido?.alunos) ? lido.alunos : [];
 }
 
-// ---------------------------------------------------------------------------
-// A PLANILHA
-//
-// Lista de chamada em Excel quase sempre tem três colunas: número, nome e às
-// vezes o RA. O que varia é o cabeçalho ("Nº", "N.", "CHAMADA", "ORD") e
-// quantas linhas de enfeite vêm antes dele — nome da escola, da turma, do
-// bimestre.
-//
-// Então: procuramos a linha de cabeçalho pelo texto, e tudo que vem depois é
-// aluno. Sem cabeçalho reconhecível, caímos numa leitura por posição.
-// ---------------------------------------------------------------------------
 function semAcento(texto: unknown) {
   return String(texto ?? '')
     .normalize('NFD')
@@ -129,15 +95,12 @@ function lerPlanilha(arquivo: Buffer): AlunoLido[] {
   const aba = pasta.Sheets[primeiraAba];
   if (!aba) return [];
 
-  // header: 1 devolve array de arrays — linhas cruas, sem o Excel tentar
-  // adivinhar nome de campo a partir da primeira linha.
   const linhas = XLSX.utils.sheet_to_json<unknown[]>(aba, {
     header: 1,
     blankrows: false,
     defval: '',
   });
 
-  // Procura o cabeçalho nas primeiras 15 linhas. Depois disso já é conteúdo.
   let inicio = -1;
   let colunas = { numero: -1, nome: -1, matricula: -1 };
 
@@ -150,8 +113,6 @@ function lerPlanilha(arquivo: Buffer): AlunoLido[] {
     }
   }
 
-  // Sem cabeçalho: assume o formato mais comum, número na primeira coluna e
-  // nome na segunda. Se a primeira não for número, o nome é que está nela.
   if (inicio < 0) {
     const primeira = linhas.find((l) => (l || []).some((c) => String(c ?? '').trim()));
     const comecaComNumero = /^\d+$/.test(String(primeira?.[0] ?? '').trim());
@@ -170,13 +131,6 @@ function lerPlanilha(arquivo: Buffer): AlunoLido[] {
 
     if (!nome) continue;
 
-    // Linha que não é aluno: cabeçalho repetido no meio da página (acontece
-    // quando a lista tem mais de uma folha), total, assinatura, rodapé.
-    //
-    // A comparação usa as MESMAS listas de rótulo do acharColunas. Ter uma
-    // segunda lista aqui significaria que acrescentar "Estudante" num lugar e
-    // esquecer do outro faz o cabeçalho virar aluno — foi exatamente o que
-    // aconteceu no primeiro teste com "Nome do aluno".
     const limpo = semAcento(nome).replace(/[^a-z ]/g, '').trim();
 
     if (
@@ -195,16 +149,6 @@ function lerPlanilha(arquivo: Buffer): AlunoLido[] {
       continue;
     }
 
-    // Nome de gente começa com letra. Nota de rodapé não: "(1 transferida em
-    // 14/03)", "* aluno com laudo", "-- fim da lista --". O teste com uma
-    // planilha de verdade pegou a primeira delas entrando como aluna, logo
-    // abaixo do "TOTAL DE ALUNOS" — que o filtro acima já descartava.
-    //
-    // A checagem é no nome CRU, não no `limpo`: o `limpo` já tirou o
-    // parêntese e o número, então "(1 transferida em 14/03)" chega aqui como
-    // "transferida em" e passa como se fosse nome.
-    // A classe é escrita à mão em vez de \p{L} porque o \p{L} exige
-    // target es2018 no tsconfig, e aqui não vale arriscar o build por isso.
     if (!/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(nome)) continue;
 
     const numeroCru = colunas.numero >= 0 ? String(linha[colunas.numero] ?? '').trim() : '';
@@ -242,8 +186,6 @@ export async function lerChamada(
     ? lerPlanilha(arquivo)
     : await lerComGemini(arquivo.toString('base64'), mimeType);
 
-  // Limpeza final, igual para os dois caminhos: tira espaço duplicado, corta
-  // o que não cabe no banco e descarta repetido dentro do próprio arquivo.
   const vistos = new Set<string>();
   const limpos: AlunoLido[] = [];
 

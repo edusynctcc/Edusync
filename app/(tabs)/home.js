@@ -21,17 +21,6 @@ import {
   listarTurmas,
 } from "../../constants/api";
 
-// ---------------------------------------------------------------------------
-// O amarelo fica em UM botão só: o "Revisar", dentro do bloco escuro.
-//
-// É a ação mais urgente da tela — tem folha de aluno esperando. Amarelo sobre
-// o azul-marinho do bloco salta à vista, e a letra continua marinho: contraste
-// 8,6, se lê de longe e no projetor.
-//
-// O "Nova atividade" voltou a ser o que era (marinho no computador, branco com
-// contorno no celular). Dois botões amarelos na mesma tela disputariam a
-// atenção, e nenhum dos dois seria o destaque.
-// ---------------------------------------------------------------------------
 const AMARELO = "#EAB308";
 
 function saudacao() {
@@ -41,8 +30,6 @@ function saudacao() {
   return "Boa noite";
 }
 
-// O cabeçalho fica melhor com o primeiro nome. "Bom dia, Ana Carolina Silva"
-// ocupa duas linhas e não soa como alguém falando com você.
 function primeiroNome(nome) {
   return (
     String(nome ?? "")
@@ -96,11 +83,6 @@ function quandoFoi(iso) {
   return data.toLocaleDateString("pt-BR");
 }
 
-// ---------------------------------------------------------------------------
-// Uma correção está pendente até o professor fechar a revisão dela. O que
-// interessa na Home não é a folha solta, é a atividade que ainda tem folhas
-// esperando — por isso as correções são agrupadas por atividade.
-// ---------------------------------------------------------------------------
 function pendentesPorAtividade(correcoes) {
   const porAtividade = new Map();
 
@@ -140,9 +122,6 @@ export default function Home() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // useFocusEffect e não useEffect: a Home é tela de aba e não é desmontada ao
-  // navegar. Com useEffect([]) os números ficariam congelados no valor de
-  // quando o app abriu, e corrigir uma folha não mudaria nada aqui.
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
@@ -152,9 +131,6 @@ export default function Home() {
         setErro("");
 
         try {
-          // Em paralelo, e cada uma com a sua própria rede de segurança: se a
-          // lista de correções falhar, a Home ainda mostra turmas e
-          // atividades em vez de virar uma tela de erro inteira.
           const [perfil, listaTurmas, listaAtividades, listaCorrecoes] =
             await Promise.all([
               buscarPerfil().catch(() => null),
@@ -230,7 +206,6 @@ export default function Home() {
     },
   ];
 
-  // A busca é montada com o que existe no banco, não com uma lista fixa.
   const indiceBusca = [
     ...turmas.map((t) => ({
       tipo: "turma",
@@ -269,7 +244,6 @@ export default function Home() {
     router.push({ pathname: "/turma", params: { id: id_turma } });
   }
 
-  // -------------------------------------------------------------- desktop
   if (ehDesktop) {
     return (
       <View style={styles.telaDesktop}>
@@ -511,7 +485,6 @@ export default function Home() {
     );
   }
 
-  // --------------------------------------------------------------- mobile
   const primeiraPendente = pendentes[0];
 
   return (
@@ -685,18 +658,6 @@ export default function Home() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tamanhos só do desktop.
-//
-// Quase tudo nesta tela é compartilhado entre o celular e o computador. Com a
-// barra lateral maior, o miolo ficou pequeno perto dela — mas aumentar os
-// estilos compartilhados aumentaria o celular junto, onde o tamanho já está
-// certo.
-//
-// Então os estilos de baixo são aplicados SÓ no ramo do desktop, empilhados
-// por cima dos compartilhados: [styles.blocoNome, styles.blocoNomeDesktop].
-// O primeiro define, o segundo corrige. O celular nem passa por aqui.
-// ---------------------------------------------------------------------------
 const AUMENTO_DESKTOP = {
   blocoPendentesDesktop: {
     paddingHorizontal: 26,
@@ -757,9 +718,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
 
-  // No celular a data foi para o outro lado: a saudação fica à esquerda e a
-  // data se encosta à direita, na mesma linha de base. Uma linha em vez de
-  // duas, e o topo da tela respira mais.
   saudacaoBloco: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -876,7 +834,6 @@ const styles = StyleSheet.create({
     color: COR.marinhoClaro,
     marginTop: 2,
   },
-  // O destaque da tela. Amarelo sobre o bloco azul-marinho, letra marinho.
   botaoRevisar: {
     backgroundColor: AMARELO,
     borderRadius: RAIO.controle,

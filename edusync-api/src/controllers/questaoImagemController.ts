@@ -5,33 +5,15 @@ import { caminhoEmDisco, caminhoPublico } from '../middlewares/uploadImagemQuest
 
 const prisma = new PrismaClient();
 
-// O multer põe o arquivo em req.file. O tipo do Express só conhece essa
-// propriedade quando os tipos do multer estão carregados no projeto inteiro —
-// declarar o formato aqui deixa o controller compilando sozinho. É a mesma
-// solução que o correcaoController já usa.
 type ArquivoEnviado = { filename: string; path: string };
 
-// ---------------------------------------------------------------------------
-// A imagem da questão — a charge, o gráfico, a figura do problema.
-//
-// Fica num controller próprio, e não dentro do questaoController, por dois
-// motivos: aqui entra multipart em vez de JSON, e aqui se mexe em arquivo no
-// disco. Misturar isso com o CRUD normal da questão deixaria as duas coisas
-// mais difíceis de ler.
-// ---------------------------------------------------------------------------
 
-// A questão é do professor? Não existe id_professor na questao — o dono vem
-// pela atividade. Sem esta conferência, qualquer professor logado poderia
-// trocar a imagem de uma questão de outro se descobrisse o id.
 async function questaoDoProfessor(id_questao: number, id_professor: number) {
   return prisma.questao.findFirst({
     where: { id_questao, atividade: { id_professor } },
   });
 }
 
-// Apagar o arquivo nunca derruba a requisição: o que importa é o banco estar
-// certo. Um arquivo órfão no disco é sujeira; um caminho no banco apontando
-// para arquivo que não existe é uma imagem quebrada na tela do professor.
 function apagarDoDisco(caminho: string | null | undefined) {
   const emDisco = caminhoEmDisco(caminho);
   if (!emDisco) return;
@@ -63,8 +45,6 @@ export async function anexarImagem(req: Request, res: Response) {
   const questao = await questaoDoProfessor(id_questao, id_professor);
 
   if (!questao) {
-    // O arquivo já subiu antes desta conferência — o multer roda primeiro.
-    // Se a questão não é desta pessoa, o arquivo não pode ficar no disco.
     apagarDoDisco(caminhoPublico(arquivo.filename));
     return res.status(404).json({ erro: 'Questão não encontrada.' });
   }
@@ -77,8 +57,6 @@ export async function anexarImagem(req: Request, res: Response) {
       data: { imagem: novo },
     });
 
-    // Trocou a imagem: a antiga vira lixo. Só apaga depois do banco confirmar,
-    // senão um erro na gravação deixaria a questão sem imagem nenhuma.
     if (questao.imagem && questao.imagem !== novo) {
       apagarDoDisco(questao.imagem);
     }

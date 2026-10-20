@@ -125,25 +125,7 @@ export async function excluirAluno(req: Request, res: Response) {
   return res.status(204).send();
 }
 
-// ===========================================================================
-// IMPORTAR A LISTA DE CHAMADA
-//
-// Acontece em dois tempos, pelo mesmo motivo da correção de folha:
-//
-//   POST /alunos/importar/ler   lê o arquivo e devolve quem encontrou,
-//                               marcando quem já está na turma. NÃO GRAVA.
-//   POST /alunos/importar       recebe a lista que o professor confirmou
-//                               e grava.
-//
-// Gravar direto seria cadastrar lixo: lista de chamada de escola tem aluno
-// transferido riscado, cabeçalho repetido a cada página, rodapé com total.
-// A IA e o leitor de planilha filtram o que conseguem — o professor filtra o
-// resto, que é a parte que só quem conhece a turma sabe.
-// ===========================================================================
 
-// A coluna matricula é VARCHAR(50) e tem índice único GLOBAL, não por turma.
-// Base 36 encurta o tempo de 13 dígitos para 8; as seis letras de sorteio
-// evitam colisão quando dois alunos entram no mesmo milissegundo.
 function matriculaProvisoria() {
   const tempo = Date.now().toString(36);
   const sorteio = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
@@ -200,10 +182,6 @@ export async function lerListaDeChamada(req: Request, res: Response) {
     select: { id_aluno: true, nome: true },
   });
 
-  // Cada aluno lido vem com a resposta pronta de "este já está na turma?".
-  // A conta é feita aqui, e não na tela, porque é a mesma regra que o gravar
-  // vai aplicar — se a tela decidisse por conta própria, as duas poderiam
-  // discordar.
   const alunos = lidos.map((aluno) => ({
     ...aluno,
     ja_existe: jaEstaNaTurma(aluno.nome, jaCadastrados),
@@ -240,9 +218,6 @@ export async function importarAlunos(req: Request, res: Response) {
     select: { id_aluno: true, nome: true, numero_chamada: true },
   });
 
-  // Os números já ocupados nesta turma. A lista do arquivo costuma trazer o
-  // número de chamada, e ele é melhor que um sequencial inventado — mas só
-  // vale se estiver livre.
   const numerosUsados = new Set(jaCadastrados.map((a) => a.numero_chamada));
   let proximoLivre =
     jaCadastrados.reduce((maior, a) => Math.max(maior, a.numero_chamada || 0), 0) + 1;
@@ -258,8 +233,6 @@ export async function importarAlunos(req: Request, res: Response) {
     return proximoLivre;
   }
 
-  // Nomes que já estão na turma, mais os que forem entrando agora: sem isto,
-  // um arquivo com o mesmo nome duas vezes cadastraria duas vezes.
   const nomesDaTurma = jaCadastrados.map((a) => ({
     id_aluno: a.id_aluno,
     nome: a.nome,
@@ -281,10 +254,6 @@ export async function importarAlunos(req: Request, res: Response) {
     const pedida = String(bruto?.matricula ?? "").trim().slice(0, 50);
     let matricula = pedida || matriculaProvisoria();
 
-    // A matrícula é única no banco inteiro, não por turma. O RA do arquivo
-    // pode já pertencer a um aluno de outra turma — e, nesse caso, insistir
-    // nele derrubaria a importação toda. Entra uma provisória e o professor
-    // é avisado no resumo.
     let matriculaTrocada = false;
 
     if (pedida) {
@@ -311,11 +280,8 @@ export async function importarAlunos(req: Request, res: Response) {
         matriculaTrocada ? { ...aluno, matricula_trocada: true } : aluno,
       );
 
-      // Entra na lista de comparação para o próximo do arquivo.
       nomesDaTurma.push({ id_aluno: aluno.id_aluno, nome: aluno.nome });
     } catch (e: any) {
-      // Um aluno que falha não derruba os outros. Importar 28 de 30 e saber
-      // quais dois faltaram é muito melhor do que não importar nada.
       console.error("[chamada] não gravou", nome, e.code, e.message);
       ignorados.push({
         nome,

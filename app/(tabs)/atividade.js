@@ -21,7 +21,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-// Mesma regra de ícone do Scanner, Atividades e Correções: sai da disciplina.
 const VISUAL_PADRAO = {
   icone: "file-document-outline",
   corFundo: "#EEF2F4",
@@ -167,7 +166,6 @@ export default function AtividadeDetalhe() {
     setErro("");
 
     try {
-      // O servidor manda a turma como objeto; o gerador da prova quer o nome.
       const problema = await imprimirProvaDaAtividade({
         ...atividade,
         turma: atividade.turma?.nome || "",
@@ -270,7 +268,7 @@ export default function AtividadeDetalhe() {
             </Text>
           </TouchableOpacity>
 
-          {/* --------------------------------------------------------- topo */}
+          {                                                                    }
           <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
             <View style={styles.topoLinha}>
               <View
@@ -424,7 +422,7 @@ export default function AtividadeDetalhe() {
 
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
-          {/* ------------------------------------------------------- ações */}
+          {                                                                   }
           <View style={[styles.acoes, ehDesktop && styles.acoesDesktop]}>
             <TouchableOpacity
               style={[styles.botaoAcao, ehDesktop && styles.botaoAcaoDesktop]}
@@ -504,7 +502,7 @@ export default function AtividadeDetalhe() {
             </TouchableOpacity>
           </View>
 
-          {/* ----------------------------------------------------- questões */}
+          {                                                                    }
           <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
             <Text
               style={[
@@ -566,9 +564,8 @@ export default function AtividadeDetalhe() {
                   {NOME_DO_TIPO[q.tipo] || q.tipo}
                 </Text>
 
-                {/* A figura fica alinhada com o resto do conteúdo da questão,
-                    na mesma margem das alternativas e do gabarito — é o que a
-                    faz parecer parte da questão, e não um anexo solto. */}
+                {
+                                                                          }
                 {!!q.imagem && (
                   <Image
                     source={{ uri: urlDaImagem(q.imagem) }}
@@ -583,8 +580,6 @@ export default function AtividadeDetalhe() {
                 {q.tipo === "alternativa" ? (
                   <View style={styles.alternativas}>
                     {(q.alternativa || []).map((a) => {
-                      // Compara sem depender de maiúscula/minúscula: o gabarito
-                      // pode ter entrado pelo app ou direto pelo banco.
                       const certa =
                         String(a.letra ?? "")
                           .trim()
@@ -817,17 +812,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.pergunta, ehDesktop && styles.perguntaDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
-  // bloco.
-  // -------------------------------------------------------------------------
   tituloPaginaDesktop: { fontSize: 24 },
   cartaoDesktop: { padding: 22, borderRadius: 18, gap: 12 },
   cartaoTituloDesktop: { fontSize: 16.5 },
@@ -865,10 +849,6 @@ const styles = StyleSheet.create({
   modalTituloDesktop: { fontSize: 17 },
   modalTextoDesktop: { fontSize: 14, lineHeight: 20 },
 
-  // No celular os quatro números viram uma grade 2x2, com as colunas
-  // alinhadas. Antes eles eram uma linha que só quebrava quando faltava
-  // espaço, e o último caía sozinho numa segunda linha, desencontrado dos
-  // outros — dava a impressão de coisa mal encaixada.
   numerosLinha: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -963,8 +943,6 @@ const styles = StyleSheet.create({
     marginLeft: 33,
   },
 
-  // A figura da questão. Altura fixa e contain: a imagem inteira aparece, sem
-  // corte, e a linha da questão não muda de altura conforme o formato da foto.
   questaoImagem: {
     marginLeft: 33,
     marginTop: 2,

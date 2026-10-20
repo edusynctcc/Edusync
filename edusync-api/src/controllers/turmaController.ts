@@ -15,22 +15,9 @@ export async function criarTurma(req: Request, res: Response) {
     data: { nome, escola, id_professor },
   });
 
-  // Turma recém-criada não tem ninguém dentro, mas devolve os campos mesmo
-  // assim — a tela não precisa saber que este caso é diferente.
   return res.status(201).json({ ...turma, alunos: 0, atividades: 0 });
 }
 
-// ---------------------------------------------------------------------------
-// A lista de turmas vem com quantos alunos e quantas atividades cada uma tem.
-//
-// O _count do Prisma faz isso em UMA consulta, com COUNT no banco. A
-// alternativa seria trazer todos os alunos e todas as atividades de todas as
-// turmas só para contar o tamanho das listas — o que fica lento assim que a
-// professora tiver umas dez turmas cheias.
-//
-// Os nomes dentro do select são os das RELAÇÕES do schema (aluno, atividade),
-// no singular, e não os das tabelas no plural.
-// ---------------------------------------------------------------------------
 export async function listarTurmas(req: Request, res: Response) {
   const id_professor = req.professor!.id;
 
@@ -110,9 +97,6 @@ export async function excluirTurma(req: Request, res: Response) {
     return res.status(404).json({ erro: 'Turma não encontrada' });
   }
 
-  // Apagar uma turma com gente dentro levaria junto alunos, atividades e as
-  // notas que já foram lançadas. O banco barraria pela chave estrangeira, mas
-  // com um erro que não explica nada — esta mensagem explica.
   const { aluno, atividade } = turmaExiste._count;
 
   if (aluno > 0 || atividade > 0) {

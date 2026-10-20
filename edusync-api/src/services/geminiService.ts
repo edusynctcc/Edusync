@@ -1,63 +1,23 @@
-// ---------------------------------------------------------------------------
-// A leitura da folha pela IA.
-//
-// ATENÇÃO AO QUE ESTA CAMADA FAZ E AO QUE ELA NÃO FAZ:
-//   faz  -> lê o que está escrito na folha e devolve em JSON
-//   NÃO  -> não calcula nota, não decide certo/errado, não dá pontuação
-// A nota é calculada em notaService.ts, em código auditável. Isso é o que
-// permite responder "como vocês garantem que a nota está certa?".
-//
-// Endpoint: o oficial e documentado do Gemini,
-//   POST /v1beta/models/{modelo}:generateContent
-//
-// A chave vai no cabeçalho 'x-goog-api-key', e NÃO como ?key= na URL. As
-// chaves novas do Google (as que começam com "AQ.") só são aceitas no
-// cabeçalho — no parâmetro da URL elas respondem 401/404.
-// ---------------------------------------------------------------------------
 
-// O modelo pode ser trocado pelo .env sem mexer no código:
-//   GEMINI_MODEL="gemini-2.5-flash"
-//
-// Lido dentro da função, e não no topo do arquivo, de propósito: se fosse no
-// topo, ele seria lido no instante em que o arquivo é importado — que pode ser
-// ANTES do dotenv.config() rodar. Aí a variável do .env não valeria nada e
-// ninguém entenderia por quê.
 const MODELO_PADRAO = 'gemini-3.8-flash';
 
 function modeloAtual() {
   return process.env.GEMINI_MODEL || MODELO_PADRAO;
 }
 
-// Quantas vezes insistir quando a culpa é do servidor do Google, e quanto
-// esperar entre uma tentativa e outra.
-//
-// O 503 ("high demand") é frequente nos modelos mais novos e some sozinho em
-// segundos. Desistir na primeira recusa seria transformar um soluço do Google
-// numa falha da apresentação.
 const TENTATIVAS = 3;
 const ESPERA_MS = [1200, 3500];
 
-// -----------------------------------------------------------------------
-// TEMPO LIMITE DESTA CHAMADA
-//
-// O fetch do Node não tem tempo limite próprio. Se a conexão for aceita mas o
-// Google nunca responder (rede instável, proxy engasgado, sem erro nenhum de
-// volta), o fetch fica pendurado PARA SEMPRE — nenhuma das defesas abaixo
-// (TENTATIVAS, ESPERA_MS, ehTemporario) entra em ação, porque elas só tratam
-// uma resposta de erro, e aqui não chega resposta nenhuma.
-//
-// É esse o motivo da imagem travar na leitura: o app tem timeout no envio,
-// mas o servidor esperava pelo Gemini sem prazo nenhum.
-// -----------------------------------------------------------------------
 const TEMPO_LIMITE_MS = 45000;
+const TEMPO_POR_PAGINA_EXTRA_MS = 20000;
+const TEMPO_LIMITE_MAX_MS = 120000;
 
-// Erros que valem uma segunda chance: são do servidor, não do nosso pedido.
-// Chave errada, modelo inexistente ou corpo malformado não melhoram com
-// insistência — esses falham de primeira, para a mensagem chegar rápido.
-//
-// status 0 é o nosso próprio código para "não veio resposta nenhuma" (caiu no
-// tempo limite ou a conexão falhou) — tratado como temporário pelo mesmo
-// motivo que um 503: pode ser um soluço passageiro de rede.
+function tempoLimite(paginas: number) {
+  const calculado =
+    TEMPO_LIMITE_MS + Math.max(0, paginas - 1) * TEMPO_POR_PAGINA_EXTRA_MS;
+  return Math.min(calculado, TEMPO_LIMITE_MAX_MS);
+}
+
 function ehTemporario(status: number) {
   return (
     status === 0 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504
@@ -81,6 +41,11 @@ export type QuestaoGabarito = {
   alternativas: { letra: string; texto: string }[];
 };
 
+export type PaginaDaFolha = {
+  base64: string;
+  mimeType: string;
+};
+
 export type LeituraQuestao = {
   numero: number;
   letra_marcada: string | null;
@@ -97,9 +62,6 @@ export type LeituraFolha = {
   questoes: LeituraQuestao[];
 };
 
-// O desenho exato do JSON, escrito no próprio prompt. Junto com o
-// responseMimeType "application/json" lá embaixo, é o que faz a resposta vir
-// sempre no mesmo formato em vez de texto corrido.
 const FORMATO_JSON = `{
   "nome_aluno": "texto",
   "questoes": [
@@ -116,7 +78,30 @@ const FORMATO_JSON = `{
   ]
 }`;
 
-function montarPrompt(gabarito: QuestaoGabarito[]) {
+function instrucaoDePaginas(total: number) {
+  if (total <= 1) return '';
+
+  return `
+==================== ATENÇÃO: SÃO ${total} PÁGINAS ====================
+
+As ${total} imagens acima são páginas DA MESMA folha, do MESMO aluno, na ordem
+em que aparecem. Não são provas diferentes.
+
+- A numeração das questões CONTINUA de uma página para a outra. A questão 6
+  que aparece na segunda imagem é a questão 6 da prova, e não a primeira dela.
+  Use sempre o número impresso ao lado do enunciado.
+- O nome do aluno costuma estar só na primeira página. Leia de lá.
+- Todas as páginas levam no alto o mesmo código (EDU-…) e o mesmo número de
+  chamada escrito à mão. Se uma página trouxer um código ou um número
+  DIFERENTE das outras, diga isso na "observacao" da primeira questão dela —
+  é sinal de que uma folha de outro aluno entrou no meio.
+- Uma questão pode começar numa página e terminar na seguinte. Junte as duas
+  partes numa resposta só.
+
+`;
+}
+
+function montarPrompt(gabarito: QuestaoGabarito[], totalPaginas = 1) {
   const questoes = gabarito
     .map((q) => {
       const cabecalho = `QUESTÃO ${q.numero} (tipo: ${q.tipo})\nEnunciado: ${q.pergunta}`;
@@ -142,11 +127,16 @@ function montarPrompt(gabarito: QuestaoGabarito[]) {
     })
     .join('\n\n');
 
-  return `Você está lendo a foto de uma folha de respostas manuscrita de um aluno.
+  const abertura =
+    totalPaginas > 1
+      ? `Você está lendo as ${totalPaginas} páginas da folha de respostas manuscrita de um aluno.`
+      : 'Você está lendo a foto de uma folha de respostas manuscrita de um aluno.';
+
+  return `${abertura}
 
 Sua tarefa é APENAS LER o que está escrito. Você NÃO calcula nota, NÃO decide
 se está certo ou errado, NÃO dá pontuação. Quem faz a conta é o sistema.
-
+${instrucaoDePaginas(totalPaginas)}
 Leia o nome do aluno no topo da folha.
 
 Para cada questão abaixo, registre o que o aluno respondeu:
@@ -180,7 +170,11 @@ contrário, deixe vazio.
 NUNCA invente uma resposta. Se não conseguir ler, use confianca "baixa" e
 deixe resposta_aluno vazio. Um erro de leitura vale menos que um "não consegui".
 
-Devolva uma entrada para CADA questão listada, mesmo as em branco.
+Devolva uma entrada para CADA questão listada, mesmo as em branco${
+    totalPaginas > 1
+      ? ' e mesmo as que ficaram numa página que você não conseguiu ler'
+      : ''
+  }.
 
 Responda SOMENTE com um JSON neste formato, sem texto antes ou depois:
 
@@ -191,8 +185,6 @@ ${FORMATO_JSON}
 ${questoes}`;
 }
 
-// Às vezes o modelo devolve o JSON embrulhado em ```json ... ```. Em vez de
-// quebrar por causa de três crases, limpamos antes de fazer o parse.
 function limparCercaDeCodigo(texto: string) {
   const limpo = texto.trim();
   if (!limpo.startsWith('```')) return limpo;
@@ -202,25 +194,10 @@ function limparCercaDeCodigo(texto: string) {
     .trim();
 }
 
-// ---------------------------------------------------------------------------
-// Descobrir outros modelos quando o escolhido não atende.
-//
-// Os nomes dos modelos do Gemini mudam: uns são aposentados, outros entram, e
-// os mais novos vivem congestionados. Deixar um nome fixo no código significa
-// que um dia, sem aviso, a correção para de funcionar.
-//
-// Então, quando o modelo configurado falha por motivo que trocar resolve, o
-// próprio servidor pergunta ao Google quais existem para esta chave e tenta
-// outro. Nada aqui é chute: a lista vem da API.
-// ---------------------------------------------------------------------------
 const URL_LISTA = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=100';
 
-// Modelos que existem mas não servem para ler uma folha: geram imagem, falam,
-// ou só viram vetor. O nome basta para descartar.
 const NAO_SERVE = /image|tts|embedding|veo|imagen|nano-banana|customtools|live/i;
 
-// Quantos alternativos tentar antes de desistir. Cada um custa uma chamada e
-// alguns segundos — e alguém está esperando na frente da tela.
 const MAX_ALTERNATIVOS = 3;
 
 let listaEmCache: string[] | null = null;
@@ -243,14 +220,10 @@ async function listarModelos(chave: string): Promise<string[]> {
 
     return listaEmCache!;
   } catch {
-    // Se nem a lista deu, o erro original é o que interessa — não este.
     return [];
   }
 }
 
-// Ordem de preferência: primeiro os "lite" (menores, fila bem menor), depois
-// os "flash" (rápidos e bons de leitura), e o resto por último. Modelo "pro"
-// aqui seria caro e lento para uma tarefa que é, no fundo, transcrição.
 function prioridade(nome: string) {
   if (/lite/i.test(nome)) return 0;
   if (/flash/i.test(nome)) return 1;
@@ -266,27 +239,22 @@ async function modelosAlternativos(chave: string, jaTentado: string) {
     .slice(0, MAX_ALTERNATIVOS);
 }
 
-// Vale trocar de modelo? Só quando a recusa é do modelo: ele não existe mais,
-// está lotado, ou estourou a cota dele. Chave errada e pedido malformado
-// falhariam igual em qualquer outro.
 function trocarDeModeloAjuda(status: number) {
   return status === 0 || status === 404 || status === 429 || status >= 500;
 }
 
-// Uma rodada de tentativas contra UM modelo.
 async function pedirAoGemini(
   modelo: string,
   corpo: string,
   chave: string,
-  tentativas: number
+  tentativas: number,
+  limiteMs: number
 ): Promise<{ resposta: any; falha: { status: number; texto: string } | null }> {
   let falha: { status: number; texto: string } | null = null;
 
   for (let tentativa = 0; tentativa < tentativas; tentativa++) {
-    // Um controlador novo a cada tentativa: o sinal de um abort() não pode
-    // vazar para a tentativa seguinte.
     const controlador = new AbortController();
-    const relogio = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS);
+    const relogio = setTimeout(() => controlador.abort(), limiteMs);
 
     let tentada: Response;
 
@@ -301,16 +269,12 @@ async function pedirAoGemini(
         signal: controlador.signal,
       });
     } catch (e: any) {
-      // Cai aqui em duas situações: o abort() disparou (nome 'AbortError'),
-      // ou a conexão falhou antes disso (DNS, rede caiu). Nos dois casos não
-      // existe status HTTP — usamos 0 para os dois entrarem no mesmo fluxo de
-      // nova tentativa / troca de modelo que um 503 entraria.
       const foiTempoLimite = e?.name === 'AbortError';
 
       falha = {
         status: 0,
         texto: foiTempoLimite
-          ? `o Gemini não respondeu em ${TEMPO_LIMITE_MS / 1000}s`
+          ? `o Gemini não respondeu em ${limiteMs / 1000}s`
           : String(e?.message || e),
       };
 
@@ -331,7 +295,6 @@ async function pedirAoGemini(
 
     falha = { status: tentada.status, texto: await tentada.text() };
 
-    // Erro que não é do servidor não melhora insistindo: sai agora.
     if (!ehTemporario(tentada.status)) break;
 
     const espera = ESPERA_MS[tentativa];
@@ -347,13 +310,15 @@ async function pedirAoGemini(
   return { resposta: null, falha };
 }
 
-// Mensagem de erro que diz o que fazer, não só o que aconteceu. Quando algo
-// falha no meio de uma apresentação, "401" não ajuda ninguém.
-function explicarErro(status: number, corpo: string, modelo = modeloAtual()) {
-
+function explicarErro(
+  status: number,
+  corpo: string,
+  modelo = modeloAtual(),
+  limiteMs = TEMPO_LIMITE_MS
+) {
   if (status === 0) {
     return (
-      `O Gemini não respondeu em ${TEMPO_LIMITE_MS / 1000}s com o modelo "${modelo}" ` +
+      `O Gemini não respondeu em ${limiteMs / 1000}s com o modelo "${modelo}" ` +
       `(sem erro, sem resposta) nas ${TENTATIVAS} tentativas. Costuma ser instabilidade ` +
       'de rede ou o servidor do Google engasgado — tente de novo. ' +
       `Detalhe: ${corpo.slice(0, 200)}`
@@ -376,6 +341,14 @@ function explicarErro(status: number, corpo: string, modelo = modeloAtual()) {
       'https://generativelanguage.googleapis.com/v1beta/models ' +
       'e ponha um deles em GEMINI_MODEL no .env. ' +
       `Resposta do Google: ${corpo.slice(0, 200)}`
+    );
+  }
+
+  if (status === 413 || /too large|payload/i.test(corpo)) {
+    return (
+      'As páginas somadas ficaram grandes demais para uma chamada só. ' +
+      'Mande menos páginas por folha, ou fotografe com qualidade um pouco ' +
+      'menor. Resposta do Google: ' + corpo.slice(0, 200)
     );
   }
 
@@ -409,17 +382,12 @@ function explicarErro(status: number, corpo: string, modelo = modeloAtual()) {
 }
 
 export async function lerFolha(
-  imagemBase64: string,
-  mimeType: string,
+  paginas: PaginaDaFolha[],
   gabarito: QuestaoGabarito[]
 ): Promise<LeituraFolha> {
   const chave = process.env.GEMINI_API_KEY;
 
   if (!chave) {
-    // Esta mensagem já custou horas uma vez. A chave pode estar escrita no
-    // .env e mesmo assim não chegar aqui: basta ninguém ter chamado o
-    // dotenv.config() antes, ou a API não ter sido reiniciada depois da
-    // edição. Por isso a mensagem diz onde procurar, não só o que faltou.
     throw new Error(
       'O servidor não enxergou a GEMINI_API_KEY. Três coisas para conferir, ' +
         'nesta ordem: (1) a linha GEMINI_API_KEY está no edusync-api/.env; ' +
@@ -429,36 +397,46 @@ export async function lerFolha(
     );
   }
 
-  const escolhido = modeloAtual();
+  if (!paginas || paginas.length === 0) {
+    throw new Error('Nenhuma página foi enviada para leitura.');
+  }
 
-  // Diz no terminal qual modelo está em uso, a cada folha. Parece bobo, mas
-  // sem isso não dá para saber se a API releu o .env depois de uma troca —
-  // e "reiniciei e não mudou nada" é fácil de confundir com "não reiniciei".
-  console.log(`[gemini] lendo a folha com o modelo "${escolhido}"`);
+  const escolhido = modeloAtual();
+  const limiteMs = tempoLimite(paginas.length);
+
+  const pesoTotal = paginas.reduce((soma, p) => soma + p.base64.length, 0);
+  console.log(
+    `[gemini] lendo ${paginas.length} ${paginas.length === 1 ? 'página' : 'páginas'} ` +
+      `(~${Math.round((pesoTotal * 3) / 4 / 1024)} KB) com o modelo "${escolhido}", ` +
+      `limite de ${limiteMs / 1000}s`
+  );
 
   const corpo = JSON.stringify({
     contents: [
       {
         parts: [
-          { inline_data: { mime_type: mimeType, data: imagemBase64 } },
-          { text: montarPrompt(gabarito) },
+          ...paginas.map((p) => ({
+            inline_data: { mime_type: p.mimeType, data: p.base64 },
+          })),
+          { text: montarPrompt(gabarito, paginas.length) },
         ],
       },
     ],
     generationConfig: {
-      // temperatura 0: a mesma folha dá sempre a mesma leitura. Importante
-      // para o TCC — resultado que muda a cada rodada não se defende.
       temperature: 0,
       responseMimeType: 'application/json',
     },
   });
 
-  let { resposta, falha } = await pedirAoGemini(escolhido, corpo, chave, TENTATIVAS);
+  let { resposta, falha } = await pedirAoGemini(
+    escolhido,
+    corpo,
+    chave,
+    TENTATIVAS,
+    limiteMs
+  );
   let modeloQueFalhou = escolhido;
 
-  // O modelo configurado não atendeu por um motivo que trocar resolve. Em vez
-  // de devolver erro e deixar a pessoa procurar nome de modelo na internet, o
-  // servidor pergunta ao Google o que existe e tenta outro.
   if (!resposta && falha && trocarDeModeloAjuda(falha.status)) {
     for (const alternativo of await modelosAlternativos(chave, escolhido)) {
       console.warn(
@@ -466,9 +444,7 @@ export async function lerFolha(
           `Tentando "${alternativo}".`
       );
 
-      // Uma tentativa por alternativo: se este também estiver lotado, é mais
-      // rápido passar para o próximo do que insistir neste.
-      const outra = await pedirAoGemini(alternativo, corpo, chave, 1);
+      const outra = await pedirAoGemini(alternativo, corpo, chave, 1, limiteMs);
 
       if (outra.resposta) {
         resposta = outra.resposta;
@@ -485,13 +461,13 @@ export async function lerFolha(
   }
 
   if (!resposta) {
-    throw new Error(explicarErro(falha!.status, falha!.texto, modeloQueFalhou));
+    throw new Error(
+      explicarErro(falha!.status, falha!.texto, modeloQueFalhou, limiteMs)
+    );
   }
 
   const dados: any = await resposta.json();
 
-  // O texto vem em candidates[0].content.parts[]. Pode vir dividido em mais de
-  // uma parte, então juntamos todas em vez de assumir que só existe a [0].
   const partes = dados?.candidates?.[0]?.content?.parts || [];
   const texto = partes
     .map((p: any) => p?.text || '')
@@ -503,7 +479,10 @@ export async function lerFolha(
     const bloqueio = dados?.promptFeedback?.blockReason;
 
     if (bloqueio) {
-      throw new Error(`O Gemini recusou a imagem (${bloqueio}). Tente outra foto da folha.`);
+      throw new Error(
+        `O Gemini recusou ${paginas.length === 1 ? 'a imagem' : 'as imagens'} ` +
+          `(${bloqueio}). Tente outra foto da folha.`
+      );
     }
 
     throw new Error(

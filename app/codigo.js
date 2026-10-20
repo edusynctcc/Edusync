@@ -13,22 +13,20 @@ import {
   reenviarCodigo,
   verificarEmail,
 } from "../constants/api";
- 
+
 const ESPERA_REENVIO = 60;
- 
-// modo: "cadastro" (confirmar e-mail), "login" (segunda etapa) ou "senha"
-// (esqueci a senha: código + nova senha).
+
 const TEXTOS = {
   cadastro: { titulo: "Confirme seu e-mail", botao: "Confirmar e entrar" },
   login: { titulo: "Verificação em duas etapas", botao: "Entrar" },
   senha: { titulo: "Redefinir senha", botao: "Salvar nova senha" },
 };
- 
+
 export default function Codigo() {
   const params = useLocalSearchParams();
   const email = String(params.email || "");
   const modo = TEXTOS[params.modo] ? String(params.modo) : "cadastro";
- 
+
   const [codigo, setCodigo] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmar, setConfirmar] = useState("");
@@ -37,23 +35,22 @@ export default function Codigo() {
   const [erro, setErro] = useState("");
   const [info, setInfo] = useState("");
   const [segundos, setSegundos] = useState(ESPERA_REENVIO);
- 
-  // O servidor acabou de mandar o código: o botão de reenviar espera 60 s.
+
   useEffect(() => {
     if (segundos <= 0) return undefined;
     const t = setTimeout(() => setSegundos((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [segundos]);
- 
+
   async function confirmarCodigo() {
     setErro("");
     setInfo("");
- 
+
     if (!/^\d{6}$/.test(codigo.trim())) {
       setErro("Digite os 6 números do código.");
       return;
     }
- 
+
     if (modo === "senha") {
       if (novaSenha.length < 6) {
         setErro("A nova senha deve ter pelo menos 6 caracteres.");
@@ -64,7 +61,7 @@ export default function Codigo() {
         return;
       }
     }
- 
+
     setCarregando(true);
     try {
       if (modo === "cadastro") {
@@ -83,7 +80,7 @@ export default function Codigo() {
       setCarregando(false);
     }
   }
- 
+
   async function reenviar() {
     if (segundos > 0) return;
     setErro("");
@@ -96,7 +93,7 @@ export default function Codigo() {
       setErro(e.message);
     }
   }
- 
+
   return (
     <CartaoAuth
       titulo={TEXTOS[modo].titulo}
@@ -113,7 +110,7 @@ export default function Codigo() {
         autoFocus
         onSubmitEditing={modo === "senha" ? undefined : confirmarCodigo}
       />
- 
+
       {modo === "senha" && (
         <>
           <Text style={estilosAuth.rotulo}>Nova senha</Text>
@@ -127,7 +124,7 @@ export default function Codigo() {
             olhoAberto={mostrarSenha}
             aoAlternarOlho={() => setMostrarSenha((v) => !v)}
           />
- 
+
           <Text style={estilosAuth.rotulo}>Confirmar nova senha</Text>
           <Campo
             icone="lock-closed-outline"
@@ -139,17 +136,17 @@ export default function Codigo() {
           />
         </>
       )}
- 
+
       <CaixaMensagem texto={erro} />
       <CaixaMensagem texto={info} tipo="ok" />
- 
+
       <BotaoAzul
         texto={TEXTOS[modo].botao}
         carregando={carregando}
         textoCarregando="Verificando..."
         onPress={confirmarCodigo}
       />
- 
+
       <TouchableOpacity
         style={estilosAuth.linkCentro}
         onPress={reenviar}
@@ -161,7 +158,7 @@ export default function Codigo() {
           {segundos > 0 ? `Reenviar código em ${segundos}s` : "Reenviar código"}
         </Text>
       </TouchableOpacity>
- 
+
       <TouchableOpacity
         style={estilosAuth.linkCentro}
         onPress={() => router.replace("/login")}

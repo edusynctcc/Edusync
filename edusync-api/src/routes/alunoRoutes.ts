@@ -15,13 +15,6 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// ---------------------------------------------------------------------------
-// As rotas da importação vêm ANTES de /:id.
-//
-// O Express compara na ordem em que foram registradas. Com /:id primeiro,
-// um POST para /alunos/importar casaria com ele, e o controller receberia
-// "importar" como id de aluno — erro confuso e difícil de achar.
-// ---------------------------------------------------------------------------
 router.post(
   '/importar/ler',
   (req, res, seguir) => {

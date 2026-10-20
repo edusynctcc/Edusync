@@ -1,42 +1,9 @@
-// ---------------------------------------------------------------------------
-// GERADOR DE QR CODE — sem biblioteca nenhuma
-//
-// Por que à mão: o QR precisa entrar no PDF da prova, e o expo-print não
-// espera imagem remota carregar (foi o que quebrou a figura da questão na
-// primeira versão). Gerando aqui, o código sai como SVG escrito direto no
-// HTML — não tem download, não tem espera, não tem o que falhar.
-//
-// E porque a API já parou duas vezes por dependência que não instalou.
-//
-// O ESCOPO É DE PROPÓSITO PEQUENO: modo byte, nível de correção Q, versões 1
-// e 2 (até 20 bytes). Isso cobre com folga o "EDU-12-47-K" que a folha usa.
-//
-// Nível Q (recupera 25%) e não M (15%): esta folha vai ser impressa, dobrada,
-// levada na mochila e fotografada de lado com a luz da sala. Redundância é o
-// que compra leitura nessas condições, e aqui ela é de graça — o código é
-// curto, então sobra espaço de qualquer jeito.
-// Mandar mais que isso devolve erro em vez de gerar um código quebrado — um
-// QR que não lê é pior do que QR nenhum, porque ninguém desconfia dele.
-//
-// Versões 1 a 3 têm UM bloco de correção cada. Isso evita o intercalamento de
-// blocos, que é onde a maioria dos geradores escritos à mão erra.
-//
-// Testado gerando e decodificando com o leitor do OpenCV, que é um leitor de
-// verdade e não sabe nada deste código.
-// ---------------------------------------------------------------------------
 
-// Dados e correção por versão, no nível Q. As duas têm UM bloco de correção,
-// o que evita o intercalamento — a partir da versão 3 o nível Q usa dois
-// blocos, e é por isso que o gerador para na 2.
 const VERSOES = {
   1: { tamanho: 21, dados: 13, ec: 13, alinhamento: [] },
   2: { tamanho: 25, dados: 22, ec: 22, alinhamento: [6, 18] },
 };
 
-// ---------------------------------------------------------------------------
-// Aritmética de Galois GF(256), que é onde a correção de erro acontece.
-// O polinômio 0x11D é o que a norma do QR manda usar.
-// ---------------------------------------------------------------------------
 const EXP = new Array(512);
 const LOG = new Array(256);
 
@@ -56,7 +23,6 @@ function multiplicar(a, b) {
   return EXP[LOG[a] + LOG[b]];
 }
 
-// Polinômio gerador para `quantos` códigos de correção.
 function polinomioGerador(quantos) {
   let g = [1];
   for (let i = 0; i < quantos; i++) {
@@ -88,10 +54,6 @@ function codigosDeCorrecao(dados, quantos) {
   return resto;
 }
 
-// ---------------------------------------------------------------------------
-// Texto -> bytes. Só ASCII: o conteúdo é um código que nós mesmos montamos
-// (EDU-12-47-K), e acento ali só serviria para confundir leitor.
-// ---------------------------------------------------------------------------
 function emBytes(texto) {
   const bytes = [];
   for (let i = 0; i < texto.length; i++) {
@@ -106,8 +68,6 @@ function emBytes(texto) {
 
 function escolherVersao(quantosBytes) {
   for (const n of [1, 2]) {
-    // 1 byte de cabeçalho (4 bits de modo + 8 bits de contagem = 12 bits,
-    // que com o terminador cabem em 2 bytes de folga).
     if (quantosBytes + 2 <= VERSOES[n].dados) return n;
   }
   throw new Error(
@@ -125,15 +85,13 @@ function montarCodewords(texto, versao) {
     for (let i = quantos - 1; i >= 0; i--) bits.push((valor >> i) & 1);
   };
 
-  empurrar(0b0100, 4); // modo byte
-  empurrar(bytes.length, 8); // contagem (8 bits nas versões 1 a 9)
+  empurrar(0b0100, 4);
+  empurrar(bytes.length, 8);
   bytes.forEach((b) => empurrar(b, 8));
 
-  // Terminador: até 4 zeros, ou menos se já encheu.
   const sobra = capacidade * 8 - bits.length;
   empurrar(0, Math.min(4, sobra));
 
-  // Completa o byte.
   while (bits.length % 8 !== 0) bits.push(0);
 
   const codewords = [];
@@ -143,7 +101,6 @@ function montarCodewords(texto, versao) {
     codewords.push(b);
   }
 
-  // Enchimento alternado, como manda a norma.
   const ENCHIMENTO = [0xec, 0x11];
   let k = 0;
   while (codewords.length < capacidade) {
@@ -154,13 +111,10 @@ function montarCodewords(texto, versao) {
   return codewords.concat(codigosDeCorrecao(codewords, VERSOES[versao].ec));
 }
 
-// ---------------------------------------------------------------------------
-// O desenho
-// ---------------------------------------------------------------------------
 function matrizVazia(tamanho) {
   const m = [];
   for (let i = 0; i < tamanho; i++) {
-    m.push(new Array(tamanho).fill(null)); // null = ainda não ocupado
+    m.push(new Array(tamanho).fill(null));
   }
   return m;
 }
@@ -172,10 +126,6 @@ function porFinder(m, linha, coluna) {
       const x = coluna + j;
       if (y < 0 || y >= m.length || x < 0 || x >= m.length) continue;
 
-      // O anel de fora (i ou j valendo -1 ou 7) é o SEPARADOR, e ele é sempre
-      // claro. Sem essa linha, a borda do finder encosta no que vem depois e
-      // a proporção 1:1:3:1:1 que o leitor procura some — foi o que fez
-      // nenhum dos sete códigos de teste decodificar na primeira rodada.
       if (i < 0 || i > 6 || j < 0 || j > 6) {
         m[y][x] = 0;
         continue;
@@ -194,7 +144,6 @@ function porAlinhamento(m, versao) {
 
   coords.forEach((linha) => {
     coords.forEach((coluna) => {
-      // Os cantos onde já existe um finder ficam de fora.
       if (m[linha][coluna] !== null) return;
 
       for (let i = -2; i <= 2; i++) {
@@ -216,7 +165,6 @@ function porTemporizacao(m) {
   }
 }
 
-// Guarda lugar para os bits de formato, que são escritos depois da máscara.
 function reservarFormato(m) {
   const n = m.length;
   for (let i = 0; i < 9; i++) {
@@ -227,10 +175,9 @@ function reservarFormato(m) {
     if (m[8][n - 1 - i] === null) m[8][n - 1 - i] = 0;
     if (m[n - 1 - i][8] === null) m[n - 1 - i][8] = 0;
   }
-  m[n - 8][8] = 1; // o módulo escuro, que é sempre 1
+  m[n - 8][8] = 1;
 }
 
-// Marca quais posições são padrão fixo (não recebem dado nem máscara).
 function mapaDeFuncao(versao) {
   const n = VERSOES[versao].tamanho;
   const m = matrizVazia(n);
@@ -254,7 +201,6 @@ function colocarDados(m, codewords) {
   let subindo = true;
 
   for (let coluna = n - 1; coluna > 0; coluna -= 2) {
-    // A coluna 6 é a de temporização e não entra na contagem das duplas.
     if (coluna === 6) coluna--;
 
     for (let passo = 0; passo < n; passo++) {
@@ -288,7 +234,7 @@ function aplicarMascara(m, funcao, mapa) {
 
   for (let l = 0; l < n; l++) {
     for (let c = 0; c < n; c++) {
-      if (mapa[l][c] !== null) continue; // padrão fixo não recebe máscara
+      if (mapa[l][c] !== null) continue;
       if (funcao(l, c)) saida[l][c] ^= 1;
     }
   }
@@ -296,16 +242,10 @@ function aplicarMascara(m, funcao, mapa) {
   return saida;
 }
 
-// ---------------------------------------------------------------------------
-// As quatro regras de penalidade da norma. Servem para escolher a máscara que
-// deixa o desenho mais fácil de ler: menos listras longas, menos blocos
-// sólidos, nada parecido com um finder no meio dos dados.
-// ---------------------------------------------------------------------------
 function penalidade(m) {
   const n = m.length;
   let total = 0;
 
-  // Regra 1: cinco ou mais iguais em sequência.
   const contarFila = (pegar) => {
     for (let a = 0; a < n; a++) {
       let igual = 1;
@@ -323,7 +263,6 @@ function penalidade(m) {
   contarFila((l, c) => m[l][c]);
   contarFila((c, l) => m[l][c]);
 
-  // Regra 2: blocos 2x2 da mesma cor.
   for (let l = 0; l < n - 1; l++) {
     for (let c = 0; c < n - 1; c++) {
       const v = m[l][c];
@@ -333,7 +272,6 @@ function penalidade(m) {
     }
   }
 
-  // Regra 3: sequência parecida com finder (1:1:3:1:1 com área clara).
   const ALVO_A = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0];
   const ALVO_B = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
   const bate = (pegar, a, b, alvo) => {
@@ -349,7 +287,6 @@ function penalidade(m) {
     }
   }
 
-  // Regra 4: desequilíbrio entre claro e escuro.
   let escuros = 0;
   m.forEach((linha) => linha.forEach((v) => (escuros += v)));
   const porcento = (escuros * 100) / (n * n);
@@ -358,7 +295,6 @@ function penalidade(m) {
   return total;
 }
 
-// Bits de formato: nível de correção + máscara, protegidos por BCH(15,5).
 function bitsDeFormato(mascara) {
   const NIVEL_Q = 0b11;
   const dados = (NIVEL_Q << 3) | mascara;
@@ -376,35 +312,19 @@ function escreverFormato(m, mascara) {
   const bits = bitsDeFormato(mascara);
   const pegar = (i) => (bits >> i) & 1;
 
-  // A ORDEM DOS BITS AQUI É O DETALHE QUE DERRUBA GERADOR ESCRITO À MÃO.
-  //
-  // A norma numera os 15 bits do formato de 14 (o mais significativo) até 0, e
-  // o primeiro módulo de cada cópia recebe o bit 14 — não o bit 0. Escrever na
-  // ordem natural do laço espelha os quinze bits, e o leitor lê um nível de
-  // correção e uma máscara que não são os usados. O desenho fica perfeito e
-  // não decodifica, que é o pior jeito de errar.
-  //
-  // Conferido módulo a módulo contra o segno, que é uma implementação
-  // independente da norma.
 
-  // Primeira cópia: em volta do finder de cima à esquerda.
-  for (let i = 0; i <= 5; i++) m[8][i] = pegar(14 - i); // (8,0)..(8,5) = 14..9
+  for (let i = 0; i <= 5; i++) m[8][i] = pegar(14 - i);
   m[8][7] = pegar(8);
   m[8][8] = pegar(7);
   m[7][8] = pegar(6);
-  for (let r = 0; r <= 5; r++) m[r][8] = pegar(r); // (5,8)..(0,8) = 5..0
+  for (let r = 0; r <= 5; r++) m[r][8] = pegar(r);
 
-  // Segunda cópia: desce pela coluna 8 à esquerda do finder de baixo, e segue
-  // pela linha 8 à esquerda do finder da direita.
   for (let i = 0; i <= 6; i++) m[n - 1 - i][8] = pegar(14 - i);
   for (let i = 0; i <= 7; i++) m[8][n - 8 + i] = pegar(7 - i);
 
-  // O módulo escuro fica em (n-8, 8) e não é bit de formato — o laço de cima
-  // para em n-7 justamente para não passar por cima dele.
   m[n - 8][8] = 1;
 }
 
-/** Devolve a matriz de módulos (1 = escuro) do QR para este texto. */
 export function matrizDoQr(texto, mascaraForcada) {
   const versao = escolherVersao(emBytes(texto).length);
   const codewords = montarCodewords(texto, versao);
@@ -431,23 +351,10 @@ export function matrizDoQr(texto, mascaraForcada) {
   return melhor;
 }
 
-/**
- * Devolve o QR como SVG escrito direto no HTML.
- *
- * SVG em vez de imagem porque o expo-print não espera imagem carregar: SVG
- * dentro do HTML já está lá quando a página é montada, não tem o que esperar.
- *
- * `lado` é o tamanho final em pixels de CSS.
- */
 export function qrSvg(texto, lado = 86) {
   const m = matrizDoQr(texto);
   const n = m.length;
 
-  // A "zona quieta" em volta. A norma exige 4 módulos; aqui vão 6.
-  //
-  // Não é exagero: testando com o leitor do OpenCV, com 4 módulos algumas
-  // máscaras não eram lidas de jeito nenhum, e as mesmas eram lidas na hora
-  // com 6. Em papel, dois módulos a mais de branco não custam nada.
   const margem = 6;
   const total = n + margem * 2;
 

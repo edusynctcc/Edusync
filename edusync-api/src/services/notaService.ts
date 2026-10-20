@@ -22,7 +22,6 @@ export type ResultadoCorrecao = {
   questoes_para_revisar: number;
 };
 
-// Tira acento, espaço sobrando e caixa. "  ÁGUA " e "agua" viram a mesma coisa.
 function normalizar(texto: string | null | undefined) {
   return String(texto ?? '')
     .normalize('NFD')
@@ -39,13 +38,6 @@ export function separarPalavrasChave(resposta_correta: string) {
     .filter(Boolean);
 }
 
-// ---------------------------------------------------------------------------
-// A NOTA É CALCULADA AQUI, NÃO PELA IA.
-//
-// A IA só diz o que o aluno escreveu. A conta é feita por este código, que é
-// sempre o mesmo para a mesma entrada. É o que torna o resultado defensável:
-// dá para mostrar a fórmula para a banca, e rodar duas vezes dá igual.
-// ---------------------------------------------------------------------------
 export function calcularQuestao(
   questao: QuestaoGabarito,
   leitura: LeituraQuestao | undefined
@@ -99,8 +91,6 @@ export function calcularQuestao(
       };
     }
 
-    // Só conta o que realmente está na lista do gabarito. Se a IA inventar um
-    // conceito que o professor não pediu, é descartado aqui.
     const encontradas = esperadas.filter((esperada) =>
       (leitura.palavras_encontradas || []).some(
         (achada) => normalizar(achada) === normalizar(esperada)
@@ -116,12 +106,10 @@ export function calcularQuestao(
       detalhe:
         `${encontradas.length} de ${esperadas.length} conceitos` +
         (faltaram.length ? ` · faltou: ${faltaram.join(', ')}` : ''),
-      // Nota parcial quase sempre merece o olho do professor.
       precisa_revisao: revisar || (encontradas.length > 0 && faltaram.length > 0),
     };
   }
 
-  // calculo
   const resultado = normalizar(leitura.resultado_encontrado);
   const esperado = normalizar(questao.resposta_correta);
 
@@ -134,7 +122,6 @@ export function calcularQuestao(
     };
   }
 
-  // Errou o resultado mas o caminho estava certo: metade do peso.
   if (leitura.caminho_correto) {
     return {
       ...base,

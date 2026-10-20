@@ -49,10 +49,6 @@ export default function Turmas() {
   const [novaTurma, setNovaTurma] = useState({ nome: "", escola: "" });
   const [salvando, setSalvando] = useState(false);
 
-  // useFocusEffect e não useEffect: esta é uma tela de aba e não é desmontada
-  // ao navegar. Com useEffect([]) as contagens ficariam congeladas no valor de
-  // quando o app abriu — voltar da tela da turma depois de cadastrar um aluno
-  // não mudaria nada aqui.
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
@@ -113,8 +109,6 @@ export default function Turmas() {
       );
       setModalAberto(false);
 
-      // Abre a turma recém-criada: o passo seguinte quase sempre é cadastrar
-      // os alunos dela, e é lá dentro que isso acontece.
       router.push({
         pathname: "/turma",
         params: { id: criada.id_turma },
@@ -513,17 +507,6 @@ const styles = StyleSheet.create({
     color: COR.tintaMedia,
   },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.turmaNome, ehDesktop && styles.turmaNomeDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
-  // bloco.
-  // -------------------------------------------------------------------------
   buscaBoxDesktop: { paddingHorizontal: 14, paddingVertical: 13 },
   buscaInputDesktop: { fontSize: 14.5 },
 

@@ -24,32 +24,7 @@ import {
 } from "../../constants/disciplinas";
 import { imprimirProvaDaAtividade } from "../../constants/provaPdf";
 
-// ---------------------------------------------------------------------------
-// Os filtros "Todas / Em aberto / Concluídas" saíram daqui.
-//
-// Eles nunca funcionaram, e não dava para consertar sem inventar dado: a
-// tabela `atividade` não tem coluna de status. O que o banco guarda é o
-// status de cada CORREÇÃO ("pendente" por padrão), que é outra coisa — quem
-// tem estado é a folha de cada aluno, não a atividade.
-//
-// Com isso, "Em aberto" mostrava tudo e "Concluídas" não mostrava nada. Três
-// botões que o professor clica e nada acontece leem como defeito, não como
-// funcionalidade pela metade.
-//
-// Para fazer de verdade, a regra honesta seria derivar das correções:
-// "em aberto" = ainda tem aluno sem folha fechada; "concluída" = todas
-// fechadas. Isso pede uma contagem por atividade vinda da API, e fica para
-// quando valer a pena.
-// ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// O banco não guarda ícone. Em vez de sortear pela posição na lista, deduzimos
-// da disciplina que o professor já preenche — assim a mesma atividade tem
-// sempre o mesmo ícone, mesmo quando a ordem da lista muda.
-//
-// As cores aqui são de IDENTIDADE da matéria, não de status: verde quer dizer
-// "Ciências", não "concluído".
-// ---------------------------------------------------------------------------
 
 
 
@@ -88,8 +63,6 @@ export default function Atividades() {
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
   const [gerandoProva, setGerandoProva] = useState(false);
 
-  // Gera a folha em branco da atividade, para imprimir e entregar aos alunos.
-  // As questões vêm do banco; o gabarito não entra no documento.
   async function salvarProvaEmPdf(atividade) {
     if (gerandoProva) return;
 
@@ -165,10 +138,6 @@ export default function Atividades() {
     }
   }
 
-  // Com os filtros fora, a busca é o único jeito de encurtar a lista — então
-  // ela passou a ignorar acento. O semAcento já estava aqui para escolher o
-  // ícone da disciplina; agora serve aos dois. Sem isso, procurar "ciencias"
-  // não acha "Ciências", e o professor conclui que a atividade sumiu.
   const procurado = semAcento(busca);
 
   const atividadesFiltradas = atividades.filter((item) =>
@@ -248,11 +217,8 @@ export default function Atividades() {
           ) : null}
 
           <View style={[styles.lista, ehDesktop && styles.listaDesktop]}>
-            {/* O cartão INTEIRO abre a atividade, como em Turmas. Antes era
-                um botão "Ver atividade" dentro do cartão: quem tocasse em
-                qualquer outro lugar não acontecia nada, e o alvo de toque era
-                um retângulo pequeno no meio de um cartão grande. A setinha no
-                fim é o que diz que o cartão todo é clicável. */}
+            {
+                                                                }
             {atividadesFiltradas.map((item) => (
               <TouchableOpacity
                 key={item.id}
@@ -315,10 +281,8 @@ export default function Atividades() {
                     >
                       {item.descricao}
                     </Text>
-                    {/* A data desceu para cá, como a linha "40 alunos · 0
-                        atividades" dos cartões de Turmas: título, embaixo o
-                        apoio, embaixo o número. Antes ela ficava encostada no
-                        botão, do lado direito. */}
+                    {
+                                                  }
                     <Text
                       style={[
                         styles.atividadeData,
@@ -330,9 +294,8 @@ export default function Atividades() {
                     </Text>
                   </View>
 
-                  {/* COR.tintaFraca e não um cinza escrito à mão: é o mesmo
-                      cinza do subtítulo, que é com o que a setinha de Turmas
-                      é desenhada (medi no print: #8795A0 nos dois). */}
+                  {
+                                                                       }
                   <Ionicons
                     name="chevron-forward"
                     size={ehDesktop ? 20 : 18}
@@ -512,8 +475,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     width: "100%",
-    // Era 14 quando havia a fila de filtros logo abaixo. Sem ela, a busca
-    // ficaria colada na lista.
     marginBottom: 16,
   },
   buscaBox: {
@@ -551,30 +512,10 @@ const styles = StyleSheet.create({
     color: COR.branco,
   },
 
-  // -------------------------------------------------------------------------
-  // Tamanhos só do computador.
-  //
-  // Esta tela desenha o mesmo JSX nas duas larguras, então cada estilo daqui
-  // entra empilhado por cima do compartilhado:
-  // [styles.atividadeTitulo, ehDesktop && styles.atividadeTituloDesktop].
-  // O primeiro define, o segundo corrige, e o celular não passa por aqui.
-  //
-  // Mesmo arranjo do AUMENTO_DESKTOP da Home. Para ajustar o web, é só este
-  // bloco.
-  // -------------------------------------------------------------------------
   buscaBoxDesktop: { paddingHorizontal: 14, paddingVertical: 13 },
   buscaInputDesktop: { fontSize: 14.5 },
 
-  // Estes quatro números são os da tela de Turmas, medidos em cima dela para
-  // os dois cartões ficarem iguais de verdade. Mexer num deles aqui desencontra
-  // as duas telas de novo.
-  //
-  // A borda já era a mesma nas duas (1px de COR.linhaSuave, que é #E9EEF0) — o
-  // que fazia parecer diferente era o cartão de atividade ter 2px a menos de
-  // respiro interno e o quadradinho do ícone ser 4px menor.
   listaDesktop: { gap: 12 },
-  // Sem borderRadius: o cartão não muda de canto entre celular e computador.
-  // Só o espaçamento interno muda.
   atividadeCardDesktop: { padding: 20 },
   atividadeLinhaTopoDesktop: { gap: 16 },
   atividadeIconeCirculoDesktop: { width: 52, height: 52, borderRadius: 12 },
@@ -604,11 +545,6 @@ const styles = StyleSheet.create({
   },
   atividadeCard: {
     backgroundColor: COR.branco,
-    // RAIO.superficie, que é o raio de cartão do app, em vez do 10 escrito à
-    // mão que estava aqui. Medi no print de Turmas: 12px. Se esse número
-    // mudar um dia, muda em estilo.js e TODOS os cartões acompanham — foi
-    // justamente por estarem escritos à mão que este tinha 10 e o de
-    // Correções tinha 14 no celular e 16 no computador.
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,

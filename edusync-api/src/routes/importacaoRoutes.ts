@@ -3,16 +3,6 @@ import { authMiddleware } from '../middlewares/authMiddleware';
 import { importarAtividadeDeArquivo } from '../controllers/importacaoController';
 import { uploadDocumento } from '../middlewares/uploadDocumento';
 
-// ---------------------------------------------------------------------------
-// Rotas de importação de arquivo.
-//
-// Por que um arquivo novo em vez de uma linha no atividadeRoutes: esta rota
-// não cria, não edita e não apaga atividade nenhuma — ela lê um arquivo e
-// devolve texto. Misturar com o CRUD de atividade faria parecer que ela grava.
-//
-// Se um dia entrar a importação de outra coisa por arquivo, é aqui que ela
-// mora.
-// ---------------------------------------------------------------------------
 
 const router = Router();
 

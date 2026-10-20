@@ -43,8 +43,6 @@ export default function CabecalhoMobile({
   const router = useRouter();
   const [professor, setProfessor] = useState(null);
 
-  // Busca o professor sempre que a tela ganha foco, assim o nome e a foto
-  // editados no Perfil aparecem aqui ao navegar para outra tela.
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
@@ -53,7 +51,6 @@ export default function CabecalhoMobile({
           if (ativo) setProfessor(dados);
         })
         .catch(() => {
-          // sem perfil (ex.: token expirado), o cabeçalho só fica sem nome
         });
       return () => {
         ativo = false;

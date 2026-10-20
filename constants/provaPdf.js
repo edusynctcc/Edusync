@@ -9,55 +9,11 @@ import {
 import { LOGO_EDUSYNC } from "./logo";
 import { qrSvg } from "./qr";
 
-// ---------------------------------------------------------------------------
-// A folha de prova em branco — a que o professor imprime e entrega aos alunos.
-//
-// Este arquivo existe para a geração acontecer num lugar só. A tela de criar
-// atividade e a lista de atividades chamam daqui.
-//
-// REGRA QUE NÃO PODE SER QUEBRADA: este documento NUNCA leva o gabarito.
-// Nada de letra correta, palavras-chave ou resultado esperado sai daqui — é a
-// folha do aluno. O gabarito fica só no banco, para a correção comparar.
-//
-// Era justamente por isso que valia um arquivo compartilhado: com uma cópia em
-// cada tela, bastaria alguém mexer numa delas para o gabarito vazar só ali, e
-// ninguém perceberia até a prova estar na mão dos alunos.
-// ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// O CÓDIGO DA FOLHA
-//
-// Formato: EDU-<atividade>-<D>, onde D é um dígito verificador.
-//
-// Ele identifica A ATIVIDADE, não o aluno — e isso é consequência de como a
-// prova funciona de verdade: o professor imprime N folhas IGUAIS, distribui, e
-// o aluno escreve o nome. Na hora de imprimir ninguém sabe quem vai receber
-// qual folha, então não há aluno para colocar no código.
-//
-// (A primeira versão disto imprimia o nome de cada aluno numa folha própria.
-// Funcionava, mas criava trabalho novo: achar a folha certa para cada aluno
-// antes de começar a prova. Não vale.)
-//
-// O que o código resolve sozinho: hoje, ao escanear, o professor escolhe a
-// atividade na mão — e escolher errado corrige a prova contra o gabarito de
-// outra. Com o código na folha, o Scanner já sabe qual é.
-//
-// Quem identifica o ALUNO é o número de chamada, escrito pelo aluno na caixa
-// ao lado. Dois dígitos à mão a IA lê muito melhor do que um nome completo em
-// letra cursiva, e o número já está cadastrado em cada aluno da turma. O nome
-// continua na folha como confirmação.
-//
-// O código aparece em dois lugares: dentro do QR e impresso em texto ao lado.
-// O texto é o que funciona hoje (o modelo lê texto impresso bem melhor do que
-// decodifica QR numa foto de página inteira); o QR é para ler de perto, com a
-// câmera apontada só nele.
-// ---------------------------------------------------------------------------
 export function digitoDaFolha(id_atividade) {
   const base = String(Number(id_atividade) || 0);
   let soma = 0;
   for (let i = 0; i < base.length; i++) {
-    // O peso alternado faz a troca de dois dígitos vizinhos mudar o resultado;
-    // uma soma simples não pegaria "12" lido como "21".
     soma += base.charCodeAt(i) * (i % 2 === 0 ? 3 : 1);
   }
   return "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[soma % 36];
@@ -83,26 +39,6 @@ function comVirgula(numero) {
   return Number(numero).toFixed(1).replace(".", ",");
 }
 
-// ---------------------------------------------------------------------------
-// A IMAGEM DA QUESTÃO PRECISA IR EMBUTIDA NO HTML
-//
-// O caminho óbvio seria <img src="http://192.168.x.x:3333/uploads/...">. Não
-// funciona, por dois motivos:
-//
-//   1. O expo-print pega o HTML e gera o PDF na hora. Ele não espera imagem
-//      remota carregar — o PDF sai com um retângulo vazio no lugar.
-//   2. O PDF ficaria dependente do servidor. Abrir o arquivo amanhã, com a API
-//      desligada ou com outro IP, mostraria imagem quebrada. Uma prova
-//      impressa não pode depender de rede.
-//
-// Então a imagem é lida e vira um data: URL antes de o HTML ser montado. O PDF
-// fica maior, e é um preço justo: ele passa a ser um arquivo inteiro, que
-// funciona sozinho.
-//
-// XMLHttpRequest e não fetch porque ele lê tanto http:// quanto file:// — e o
-// criar-atividade gera a prova antes de a imagem subir, quando ela ainda é um
-// arquivo local do aparelho.
-// ---------------------------------------------------------------------------
 function lerComoDataUrl(endereco) {
   return new Promise((resolve, reject) => {
     const requisicao = new XMLHttpRequest();
@@ -124,9 +60,6 @@ function lerComoDataUrl(endereco) {
   });
 }
 
-// Troca o caminho de cada imagem pelo conteúdo dela. Uma imagem que falhar sai
-// da prova sem derrubar as outras: folha sem figura ainda é folha; erro no
-// meio da impressão não é.
 export async function embutirImagens(questoes) {
   return Promise.all(
     (questoes || []).map(async (questao) => {
@@ -144,7 +77,6 @@ export async function embutirImagens(questoes) {
   );
 }
 
-// questoes: [{ enunciado, peso, tipo, imagem, alternativas: [{letra, texto}] }]
 export function montarHtmlDaProva({
   titulo,
   disciplina,
@@ -156,18 +88,6 @@ export function montarHtmlDaProva({
   const lista = questoes || [];
   const pesoTotal = lista.reduce((soma, q) => soma + comoNumero(q.peso), 0);
 
-  // -------------------------------------------------------------------------
-  // O cabeçalho de identificação.
-  //
-  // Três coisas, em ordem de confiabilidade para a correção:
-  //   o QR + código    identificam a ATIVIDADE, impressos, sempre iguais
-  //   o nº de chamada  identifica o ALUNO — dois dígitos, que a IA lê bem
-  //   o nome           confirmação, e o que vale se o número vier em branco
-  //
-  // As duas casinhas do número existem para o aluno escrever um dígito em
-  // cada: número solto no meio de uma linha sai torto e grudado, e é aí que
-  // 13 vira 18.
-  // -------------------------------------------------------------------------
   const codigo = id_atividade ? codigoDaFolha(id_atividade) : "";
 
   const identificacao = `<div class="identidade">
@@ -218,8 +138,6 @@ export function montarHtmlDaProva({
         corpo = '<div class="linhas">' + '<div class="linha"></div>'.repeat(4) + "</div>";
       }
 
-      // A figura entra entre o enunciado e o espaço de resposta — é onde o
-      // aluno espera encontrar, e é o que mantém a leitura na ordem natural.
       const figura = questao.imagem
         ? `<figure class="figura"><img src="${questao.imagem}" alt="" /></figure>`
         : "";
@@ -348,17 +266,6 @@ export function montarHtmlDaProva({
 </html>`;
 }
 
-// ---------------------------------------------------------------------------
-// Manda o HTML para a impressão do sistema, onde "Salvar como PDF" é uma das
-// opções.
-//
-// No navegador o Print.printAsync do expo-print acaba imprimindo a própria
-// página do app em vez do HTML que passamos — sai a tela com menu lateral e
-// tudo. Por isso no web abrimos uma janela, escrevemos o documento nela e
-// mandamos imprimir dali. No celular o expo-print funciona como deveria.
-//
-// Devolve "" quando deu certo, ou a mensagem de erro para a tela mostrar.
-// ---------------------------------------------------------------------------
 export async function imprimirHtml(html) {
   try {
     if (Platform.OS === "web") {
@@ -371,9 +278,6 @@ export async function imprimirHtml(html) {
       janela.document.write(html);
       janela.document.close();
       janela.focus();
-      // Um instante para o navegador desenhar antes de abrir a impressão,
-      // senão em alguns casos ele imprime a folha ainda em branco. Com imagem
-      // embutida o desenho demora um pouco mais, por isso 450ms e não 250.
       setTimeout(() => janela.print(), 450);
       return "";
     }
@@ -381,8 +285,6 @@ export async function imprimirHtml(html) {
     await Print.printAsync({ html });
     return "";
   } catch (e) {
-    // Fechar a caixa de impressão sem imprimir também cai aqui em alguns
-    // navegadores. Não é erro que valha assustar ninguém.
     if (e?.message && !/cancel|dismiss/i.test(e.message)) {
       return "Não consegui gerar o PDF: " + e.message;
     }
@@ -390,12 +292,6 @@ export async function imprimirHtml(html) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Imprime a prova de uma atividade que já está no banco.
-//
-// Busca as questões pela API. As alternativas vêm numa chamada por questão,
-// mas só para as do tipo "alternativa" — dissertativa e cálculo não têm.
-// ---------------------------------------------------------------------------
 export async function imprimirProvaDaAtividade(atividade) {
   const id_atividade = atividade.id_atividade ?? atividade.id;
 
@@ -429,8 +325,6 @@ export async function imprimirProvaDaAtividade(atividade) {
     })
   );
 
-  // O nome da turma não vem junto da atividade, só o id. Buscamos para o
-  // cabeçalho — e se falhar, a prova sai sem a turma em vez de não sair.
   let turma = atividade.turma || "";
 
   if (!turma && atividade.id_turma) {

@@ -44,9 +44,6 @@ const TIPOS = [
 
 const LETRAS = ["A", "B", "C", "D", "E"];
 
-// Os tipos que a importação de atividade aceita. O octet-stream entra porque
-// o Android não identifica arquivo vindo do Drive e o deixaria cinza no
-// seletor; o servidor confere a extensão.
 const TIPOS_DA_ATIVIDADE = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -73,21 +70,10 @@ function novaQuestao() {
     palavrasChave: "",
     respostaEsperada: "",
 
-    // A figura da questão — charge, gráfico, o desenho do problema.
-    //
-    // Guarda { uri, mime, objetoWeb, caminho }:
-    //   uri       onde a imagem está AGORA (arquivo do aparelho ou URL da API)
-    //   caminho   o que está gravado no banco, quando já foi enviada
-    //
-    // Null quer dizer "esta questão não tem figura".
     imagem: null,
   };
 }
 
-// Uma questão "em branco" é a que o professor ainda não tocou. Serve para a
-// importação decidir entre SUBSTITUIR a questão inicial vazia e ACRESCENTAR
-// as lidas depois do que ele já digitou. Apagar trabalho dele seria pior do
-// que deixar uma questão vazia sobrando, que ele remove no lixeirinha.
 function questaoEmBranco(q) {
   return (
     !q.enunciado.trim() &&
@@ -111,14 +97,6 @@ function comoNumero(texto) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Lê um arquivo como Blob — serve tanto para file:// do aparelho quanto para
-// http:// da API.
-//
-// XMLHttpRequest e não fetch: no Expo deste projeto o fetch devolveu Blob de
-// 0 KB ao ler arquivo local. Foi o que derrubou o envio da folha no Scanner, e
-// não vale repetir o erro aqui.
-// ---------------------------------------------------------------------------
 function lerComoBlob(endereco) {
   return new Promise((resolve, reject) => {
     const requisicao = new XMLHttpRequest();
@@ -134,20 +112,9 @@ function lerComoBlob(endereco) {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Editar uma atividade apaga as questões e cria de novo (ver gravarQuestoes).
-// Isso significa que a imagem da questão antiga some junto com ela — e o
-// professor que só quis corrigir uma vírgula no enunciado perderia a figura
-// sem entender por quê.
-//
-// Então, na hora de salvar, uma imagem que veio do banco é baixada de volta e
-// reenviada para a questão nova. É trabalho extra que ninguém vê, e é o que
-// faz "editar" significar editar.
-// ---------------------------------------------------------------------------
 async function prepararParaEnvio(imagem) {
   if (!imagem) return null;
 
-  // Escolhida agora no aparelho: já está tudo pronto.
   if (imagem.objetoWeb || (imagem.uri && !imagem.caminho)) {
     return {
       uri: imagem.uri,
@@ -156,7 +123,6 @@ async function prepararParaEnvio(imagem) {
     };
   }
 
-  // Veio do banco: buscar os bytes de volta.
   const endereco = urlDaImagem(imagem.caminho || imagem.uri);
   if (!endereco) return null;
 
@@ -171,22 +137,6 @@ async function prepararParaEnvio(imagem) {
   return { uri: endereco, mime, objetoWeb };
 }
 
-// ---------------------------------------------------------------------------
-// O ALERTA
-//
-// Um componente só, usado nos dois lugares da tela, para os dois avisos serem
-// a mesma coisa aos olhos do professor. Antes isto era um <Text> vermelho
-// solto, e um texto vermelho sem nada em volta some no meio de um formulário
-// deste tamanho.
-//
-// A faixa vermelha fica só na borda ESQUERDA: borda vermelha nos quatro lados
-// em cima de fundo vermelho clarinho vira uma caixa pesada demais para uma
-// coisa que o professor resolve em dois segundos. É um aviso, não um erro
-// grave.
-//
-// `acao` é opcional e entra embaixo do texto — é por onde passa o
-// "Ver questão 3".
-// ---------------------------------------------------------------------------
 function Alerta({ titulo, texto, acao }) {
   return (
     <View style={styles.alerta}>
@@ -210,7 +160,6 @@ export default function CriarAtividade() {
   const ehDesktop = width >= 900;
   const router = useRouter();
 
-  // Vindo de "Editar atividade", os dados chegam por parâmetro.
   const { modo, id, tituloInicial, idTurmaInicial } = useLocalSearchParams();
   const emEdicao = modo === "editar";
 
@@ -228,21 +177,9 @@ export default function CriarAtividade() {
   const [salvando, setSalvando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
-  // DOIS avisos, e não um só, porque o aviso tem que aparecer perto do botão
-  // que o fez aparecer. O formulário é comprido: quem aperta "Publicar" lá
-  // embaixo não vê nada escrito no topo da tela — foi exatamente isso que fez
-  // a versão antiga parecer que o botão não funcionava.
-  //
-  //   erro      coisas que deram errado nos controles de CIMA: carregar a
-  //             tela, escolher imagem, importar arquivo.
-  //   problema  o que falta preencher e a falha ao salvar — as duas vêm de
-  //             apertar "Publicar", que fica EMBAIXO.
   const [erro, setErro] = useState("");
   const [problema, setProblema] = useState(null);
 
-  // Onde cada questão começa dentro da rolagem, para o "Ver questão 3" do
-  // aviso saber para onde levar. Guardado em ref e não em estado: muda a cada
-  // layout e não precisa redesenhar nada.
   const rolagem = useRef(null);
   const alturaDasQuestoes = useRef({});
 
@@ -267,12 +204,6 @@ export default function CriarAtividade() {
     carregarTurmas();
   }, [idTurmaInicial]);
 
-  // -------------------------------------------------------------------------
-  // Editando: traz as questões que já estão no banco para dentro do formulário.
-  //
-  // Sem isto, a tela abriria com uma questão em branco e o "salvar" apagaria o
-  // gabarito inteiro sem a professora perceber.
-  // -------------------------------------------------------------------------
   useEffect(() => {
     if (!emEdicao || !id) return;
 
@@ -289,8 +220,6 @@ export default function CriarAtividade() {
               const base = novaQuestao();
               const tipo = q.tipo || "dissertativa";
 
-              // O que já está no servidor entra como { caminho }, para a tela
-              // saber que não precisa enviar de novo — a menos que troquem.
               const imagem = q.imagem
                 ? { caminho: q.imagem, uri: urlDaImagem(q.imagem), mime: "", objetoWeb: null }
                 : null;
@@ -353,21 +282,12 @@ export default function CriarAtividade() {
     setQuestoes((atuais) => atuais.filter((q) => q.id !== id));
   }
 
-  // -------------------------------------------------------------------------
-  // A imagem só sobe quando a atividade for publicada.
-  //
-  // Antes disso a questão nem existe no banco, então não há a que anexar. Aqui
-  // a tela só guarda o arquivo escolhido e mostra a prévia — o envio acontece
-  // dentro do gravarQuestoes, depois de cada questão ganhar o seu id.
-  // -------------------------------------------------------------------------
   async function escolherImagem(idQuestao) {
     setErro("");
 
     try {
       const resultado = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        // 0.7 é o meio-termo: a figura continua legível impressa e o arquivo
-        // não estoura o limite de 5 MB do servidor.
         quality: 0.7,
       });
 
@@ -436,23 +356,6 @@ export default function CriarAtividade() {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // O gabarito de cada tipo mora num campo diferente da tela, mas no banco é
-  // sempre a coluna resposta_correta. É aqui que essa tradução acontece.
-  //
-  // Na dissertativa as palavras-chave vão separadas por ponto-e-vírgula porque
-  // é exatamente assim que o notaService separa depois, para contar quantos
-  // conceitos o aluno expressou.
-  // ---------------------------------------------------------------------------
-  // -------------------------------------------------------------------------
-  // IMPORTAR UMA ATIVIDADE PRONTA
-  //
-  // O professor manda a prova que já digitou e o servidor devolve as questões
-  // separadas. O que chega é só o que foi PERGUNTADO: enunciado, alternativas
-  // e tipo. O gabarito nunca vem junto, e isso é proposital — se a IA errasse
-  // qual alternativa é a certa, a turma inteira seria corrigida contra uma
-  // resposta inventada e ninguém descobriria. Quem define o certo é você.
-  // -------------------------------------------------------------------------
   async function importarAtividade() {
     if (importando || salvando) return;
 
@@ -491,8 +394,6 @@ export default function CriarAtividade() {
     try {
       const lida = await lerAtividadeDeArquivo(arquivo);
 
-      // Título e disciplina só entram se estiverem vazios. Sobrescrever o que
-      // o professor digitou seria desfazer trabalho dele sem avisar.
       if (lida.titulo && !titulo.trim()) setTitulo(lida.titulo);
       if (lida.disciplina && !disciplina.trim()) setDisciplina(lida.disciplina);
 
@@ -509,8 +410,6 @@ export default function CriarAtividade() {
           tipo: q.tipo || "alternativa",
           peso: String(q.peso ?? 1).replace(".", ","),
           alternativas,
-          // letraCorreta, palavrasChave e respostaEsperada ficam como o
-          // novaQuestao() deixou: vazios. É você que preenche.
         };
       });
 
@@ -536,9 +435,6 @@ export default function CriarAtividade() {
     }
   }
 
-  // Uma questão sem gabarito não bloqueia a digitação, mas bloqueia o publicar
-  // (ver primeiroProblema). O selo no cabeçalho existe para você achar quais
-  // são sem descer a tela inteira procurando.
   function faltaGabarito(questao) {
     if (!questao.enunciado.trim()) return false;
     if (questao.tipo === "alternativa") return !questao.letraCorreta;
@@ -546,20 +442,6 @@ export default function CriarAtividade() {
     return contarPalavrasChave(questao.palavrasChave) === 0;
   }
 
-  // -------------------------------------------------------------------------
-  // Para onde a seta de voltar leva.
-  //
-  // Editando, volta para a própria atividade: foi de lá que você veio, e é lá
-  // que dá para conferir se a mudança pegou. O router.back() devolvia para o
-  // que estivesse antes no histórico, que depois de uma navegação ou outra
-  // podia ser qualquer tela.
-  //
-  // Criando, não existe atividade para onde voltar ainda, então vai para a
-  // lista — o mesmo lugar para onde o "publicar" leva quando dá certo.
-  //
-  // replace e não push: troca esta tela em vez de empilhar, senão o botão de
-  // voltar do aparelho traria o formulário de volta.
-  // -------------------------------------------------------------------------
   function voltar() {
     if (emEdicao && id) {
       router.replace({ pathname: "/atividade", params: { id } });
@@ -574,13 +456,6 @@ export default function CriarAtividade() {
     return questao.palavrasChave.trim();
   }
 
-  // Confere antes de mandar. Gabarito vazio não dá erro no banco — ele salva
-  // e só aparece na hora da correção, com a nota saindo zero sem explicação.
-  //
-  // Devolve null quando está tudo certo, ou { texto, idQuestao, numero } — o
-  // id vai junto para a tela poder marcar o cartão da questão de vermelho e
-  // levar o professor até ela. Só dizer "questão 7" numa prova de dez
-  // questões é mandar a pessoa procurar.
   function primeiroProblema() {
     const noTopo = (texto) => ({ texto, idQuestao: null, numero: null });
 
@@ -621,35 +496,16 @@ export default function CriarAtividade() {
     return null;
   }
 
-  // Enquanto um aviso está na tela, ele se refaz a cada tecla: assim que o
-  // campo é preenchido o aviso some sozinho, ou pula para o que falta agora.
-  // Sem isto, o professor arruma o campo e continua olhando para um aviso
-  // vermelho que já não vale.
-  //
-  // O `problema` NÃO entra nas dependências de propósito — entraria em laço,
-  // porque o próprio efeito o reescreve.
   useEffect(() => {
     if (problema) setProblema(primeiroProblema());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titulo, disciplina, turmaSelecionada, questoes]);
 
   function irParaQuestao(idQuestao) {
     const y = alturaDasQuestoes.current[idQuestao];
     if (y === undefined || !rolagem.current) return;
-    // -12 para o cartão não encostar na borda de cima da tela.
     rolagem.current.scrollTo({ y: Math.max(y - 12, 0), animated: true });
   }
 
-  // ---------------------------------------------------------------------------
-  // Grava as questões da atividade.
-  //
-  // Editando, apaga as antigas antes: comparar uma a uma para descobrir o que
-  // mudou daria muito mais código e mais chance de erro do que refazer.
-  //
-  // O banco não deixa apagar uma questão que já tem resposta de aluno — e isso
-  // é proposital. Se a atividade já foi corrigida, mudar o gabarito por baixo
-  // invalidaria notas já dadas. Quando isso acontece, a mensagem explica.
-  // ---------------------------------------------------------------------------
   async function gravarQuestoes(id_atividade) {
     if (emEdicao) {
       const antigas = await listarQuestoes(id_atividade);
@@ -672,10 +528,6 @@ export default function CriarAtividade() {
 
       const id_questao = criada?.id_questao ?? criada?.id;
 
-      // A imagem vai depois da questão existir, porque é nela que se anexa.
-      // Falhar aqui não derruba a atividade: o enunciado, o gabarito e o peso
-      // já estão salvos, e perder isso por causa de uma figura seria pior do
-      // que a figura faltar. O aviso conta o que aconteceu.
       if (id_questao && questao.imagem) {
         try {
           const arquivo = await prepararParaEnvio(questao.imagem);
@@ -701,15 +553,6 @@ export default function CriarAtividade() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Exporta a folha em branco para imprimir. Não precisa ter publicado ainda:
-  // sai do que está escrito na tela agora.
-  //
-  // O HTML vem do constants/provaPdf.js. Esta tela tinha uma cópia própria da
-  // montagem, e as duas geravam a mesma prova — o que é exatamente o risco que
-  // o comentário no topo daquele arquivo descreve: mexer numa e esquecer da
-  // outra. Agora é uma só.
-  // ---------------------------------------------------------------------------
   async function salvarProvaEmPdf() {
     if (gerandoPdf) return;
 
@@ -724,8 +567,6 @@ export default function CriarAtividade() {
     setErro("");
 
     try {
-      // As imagens entram embutidas no documento. Aqui elas ainda podem ser
-      // arquivos do aparelho, e o embutirImagens lê os dois casos.
       const paraProva = await embutirImagens(
         questoes.map((q) => ({
           enunciado: q.enunciado,
@@ -798,8 +639,6 @@ export default function CriarAtividade() {
     } catch (e) {
       const texto = String(e.message || "");
 
-      // Erro de chave estrangeira ao apagar questão já respondida.
-      // Vai no aviso de baixo, junto do botão que a pessoa acabou de apertar.
       if (/foreign key|constraint|referenc/i.test(texto)) {
         setProblema({
           titulo: "Não dá para trocar as questões",
@@ -854,10 +693,8 @@ export default function CriarAtividade() {
 
           {erro ? <Alerta titulo="Não deu certo" texto={erro} /> : null}
 
-          {/* Importar fica no topo porque é o atalho: quem tem a prova pronta
-              resolve tudo daqui, e os campos de baixo já chegam preenchidos.
-              Só aparece ao criar — editando, isso sobrescreveria o título e a
-              disciplina de uma atividade que já existe. */}
+          {
+                                                           }
           {!emEdicao && (
             <View
               style={[
@@ -989,8 +826,6 @@ export default function CriarAtividade() {
           {questoes.map((questao, indice) => (
             <View
               key={questao.id}
-              // Guarda onde este cartão começa, para o "Ver questão N" do
-              // aviso conseguir rolar até aqui.
               onLayout={(e) => {
                 alturaDasQuestoes.current[questao.id] = e.nativeEvent.layout.y;
               }}
@@ -1005,14 +840,12 @@ export default function CriarAtividade() {
                   <Text style={styles.numeroQuestao}>
                     QUESTÃO {indice + 1}
                   </Text>
-                  {/* O selo do que falta substitui o "falta o gabarito"
-                      enquanto o aviso aponta para esta questão: dois selos ao
-                      mesmo tempo no mesmo cartão competem pela atenção, e o
-                      que o professor precisa ler é o mais específico. */}
+                  {
+                                                                         }
                   {problema?.idQuestao === questao.id ? (
                     <View style={[styles.selo, styles.seloFalta]}>
-                      {/* Sem o ponto final: dentro de uma pastilha, ponto de
-                          frase fica com cara de erro de digitação. */}
+                      {
+                                                                      }
                       <Text style={[styles.seloTexto, styles.seloFaltaTexto]}>
                         {problema.texto.replace(/\.$/, "").toLowerCase()}
                       </Text>
@@ -1051,7 +884,7 @@ export default function CriarAtividade() {
                 multiline
               />
 
-              {/* ------------------------------------------------- imagem */}
+              {                                                              }
               <Text style={styles.rotulo}>
                 Imagem <Text style={styles.rotuloApoio}>— opcional</Text>
               </Text>
@@ -1294,8 +1127,8 @@ export default function CriarAtividade() {
             </Text>
           </TouchableOpacity>
 
-          {/* Logo acima do botão, porque é ele que faz este aviso aparecer.
-              No topo da tela ninguém veria — o formulário é comprido. */}
+          {
+                                                                         }
           {problema ? (
             <Alerta
               titulo={problema.titulo || "Falta preencher"}
@@ -1421,15 +1254,6 @@ const styles = StyleSheet.create({
   },
   miolo: { width: "92%", maxWidth: 1100 },
 
-  // ESTE era o bug do celular.
-  //
-  // Aqui estava `null`. Sem largura, e com o pai centralizando os filhos, esta
-  // View encolhia até o tamanho do conteúdo — e os cards de dentro, que pedem
-  // width: "100%", passavam a medir 100% de uma largura indefinida. O resultado
-  // é o que você viu: a tela montada fora de lugar.
-  //
-  // As outras telas do app já usavam { width: "100%" } aqui. Esta ficou de
-  // fora.
   mioloMobile: { width: "100%" },
 
   cabecalhoDesktopLinha: {
@@ -1457,7 +1281,6 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
   },
 
-  // ------------------------------------------------- importar atividade
   cartaoImportar: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -1493,8 +1316,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: RAIO.controle,
     borderWidth: 1.5,
-    // Tracejado de propósito: diz "solte um arquivo aqui" sem precisar de
-    // texto explicando, e separa visualmente do botão sólido de publicar.
     borderStyle: "dashed",
     borderColor: COR.marcador,
   },
@@ -1535,9 +1356,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexShrink: 1,
-    // Quebra em duas linhas no celular: o selo do que falta pode ser uma
-    // frase ("preencha o texto de todas as alternativas") e, sem isto, ela
-    // empurraria a lixeira para fora do cartão.
     flexWrap: "wrap",
   },
   selo: {
@@ -1603,7 +1421,6 @@ const styles = StyleSheet.create({
   },
   obrigatorio: { color: COR.perigo },
 
-  // ------------------------------------------------------------ o alerta
   alerta: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1616,8 +1433,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 14,
   },
-  // 1px de folga para o ícone alinhar com a LETRA do título, e não com o topo
-  // da caixa de texto dele.
   alertaIcone: { marginTop: 1 },
   alertaTextos: { flex: 1, gap: 2 },
   alertaTitulo: {
@@ -1647,8 +1462,6 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 
-  // A borda do cartão da questão que está faltando preencher. Só a cor muda:
-  // mudar a espessura junto empurraria o conteúdo e a tela daria um pulo.
   secaoCardComFalta: { borderColor: COR.perigo },
   seloFalta: { backgroundColor: COR.perigoFundo },
   seloFaltaTexto: { color: COR.perigo },
@@ -1681,14 +1494,6 @@ const styles = StyleSheet.create({
   campoSelectPlaceholder: { fontSize: 13, color: "#94A3B8" },
   campoSelectValor: { fontSize: 13, color: "#0B1E3D", fontWeight: "600" },
 
-  // -------------------------------------------------------------------------
-  // A imagem da questão.
-  //
-  // O botão vazio é tracejado, como o de adicionar questão: os dois dizem
-  // "aqui cabe mais uma coisa, se você quiser". A prévia tem altura fixa para
-  // a questão não mudar de tamanho conforme a foto escolhida — uma figura em
-  // retrato empurraria o resto da questão para fora da tela.
-  // -------------------------------------------------------------------------
   imagemVazia: {
     flexDirection: "row",
     alignItems: "center",
@@ -1845,11 +1650,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // No celular os dois botões ficam um embaixo do outro.
-  //
-  // Lado a lado não cabem: "Salvar prova em PDF" não encolhe (é uma View, e
-  // View no React Native não encolhe sozinha), então sobrava um pedaço pequeno
-  // para o "Publicar atividade", que saía cortado com reticências.
   acoesFinais: { width: "100%", gap: 12 },
   acoesFinaisMobile: { flexDirection: "column" },
   acoesFinaisDesktop: {
