@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import AvisoCorrecao from "../../components/AvisoCorrecao";
 import {
   Image,
   Platform,
@@ -132,7 +134,8 @@ function LateralDesktop() {
     }
   }
 
-  function sair() {
+  async function sair() {
+    await AsyncStorage.removeItem("token");
     router.replace("/login");
   }
 
@@ -405,6 +408,7 @@ export default function TabsLayout() {
           <Tabs.Screen name="processando" />
           <Tabs.Screen name="revisar" />
         </Tabs>
+        <AvisoCorrecao/>
       </View>
     </View>
   );

@@ -16,9 +16,9 @@ import {
 } from "react-native";
 import { COR, FONTE } from "../components/estilo";
 import { registrar } from "../constants/api";
-
+ 
 const LARGURA_DESKTOP = 900;
-
+ 
 // ---------------------------------------------------------------------------
 // A imagem de fundo aparece em tudo: navegador e celular.
 //
@@ -32,7 +32,7 @@ const LARGURA_DESKTOP = 900;
 // diferencia — e o sintoma de errar é tela branca, sem erro no navegador.
 // ---------------------------------------------------------------------------
 const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
-
+ 
 // O véu escuro por cima da imagem está DESLIGADO: a arte da marca aparece
 // como ela é, sem filtro.
 //
@@ -41,21 +41,21 @@ const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
 // algum dia a arte mudar e o cartão sumir dentro dela, ligue o véu aqui.
 const MOSTRAR_VEU = false;
 const COR_SOBREPOSICAO = "rgba(7, 22, 46, 0.45)";
-
+ 
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
 const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
-
+ 
 const AZUL = "#2E6FB0";
-
+ 
 // O amarelo da marca, o mesmo dos botões de ação do app.
 const AMARELO = "#EAB308";
-
+ 
 // Tira o contorno padrão do navegador nos campos. Em celular é null.
 const SEM_CONTORNO_WEB =
   Platform.OS === "web" ? { outlineStyle: "none" } : null;
-
+ 
 // ---------------------------------------------------------------------------
 // Mesma injeção que existe no login: esconde o olho de "mostrar senha" que o
 // Chrome e o Edge desenham sozinhos dentro de todo input de senha (era ele o
@@ -79,7 +79,7 @@ if (
   `;
   document.head.appendChild(folha);
 }
-
+ 
 const RECURSOS = [
   {
     icone: "camera-outline",
@@ -100,12 +100,12 @@ const RECURSOS = [
       "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
-
+ 
 // Campo com estado de foco próprio: a borda e o ícone ficam azuis enquanto a
 // pessoa está digitando ali. É o que substitui a borda preta do navegador.
 function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
   const [focado, setFocado] = useState(false);
-
+ 
   return (
     <View style={[styles.campoLinha, focado && styles.campoLinhaFocado]}>
       <Ionicons
@@ -133,11 +133,11 @@ function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
     </View>
   );
 }
-
+ 
 function lerErroDoCadastro(e) {
   const status = e?.status ?? e?.response?.status ?? e?.codigo;
   const texto = String(e?.message || "").toLowerCase();
-
+ 
   const jaExiste =
     status === 409 ||
     texto.includes("já existe") ||
@@ -149,7 +149,7 @@ function lerErroDoCadastro(e) {
     texto.includes("unique") ||
     texto.includes("er_dup_entry") ||
     texto.includes("em uso");
-
+ 
   if (jaExiste) {
     return {
       mensagem: "Esse e-mail já tem uma conta.",
@@ -158,7 +158,7 @@ function lerErroDoCadastro(e) {
       textoDoLink: "Ir para o login",
     };
   }
-
+ 
   const dadoInvalido =
     status === 400 ||
     status === 422 ||
@@ -171,13 +171,13 @@ function lerErroDoCadastro(e) {
       levaPara: null,
     };
   }
-
+ 
   const semRede =
     texto.includes("network") ||
     texto.includes("failed to fetch") ||
     texto.includes("timeout") ||
     texto.includes("econnrefused");
-
+ 
   if (semRede) {
     return {
       mensagem: "Não consegui falar com o servidor.",
@@ -185,18 +185,18 @@ function lerErroDoCadastro(e) {
       levaPara: null,
     };
   }
-
+ 
   return {
     mensagem: e?.message || "Não foi possível criar a conta. Tente de novo.",
     convite: "",
     levaPara: null,
   };
 }
-
+ 
 export default function Cadastro() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
-
+ 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -204,13 +204,13 @@ export default function Cadastro() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
-
+ 
   async function handleCadastro() {
     setErro(null);
-
+ 
     const nomeLimpo = nome.trim();
     const emailLimpo = email.trim().toLowerCase();
-
+ 
     if (!nomeLimpo || !emailLimpo || !senha || !confirmarSenha) {
       setErro({
         mensagem: "Preencha todos os campos.",
@@ -243,18 +243,21 @@ export default function Cadastro() {
       });
       return;
     }
-
+ 
     setCarregando(true);
     try {
       await registrar(nomeLimpo, emailLimpo, senha);
-      router.replace({ pathname: "/login", params: { email: emailLimpo } });
+      router.replace({
+        pathname: "/codigo",
+        params: { email: emailLimpo, modo: "cadastro" },
+      });
     } catch (e) {
       setErro(lerErroDoCadastro(e));
     } finally {
       setCarregando(false);
     }
   }
-
+ 
   const caixaDeErro = erro ? (
     <View style={styles.avisoErro}>
       <Ionicons
@@ -276,7 +279,7 @@ export default function Cadastro() {
       </View>
     </View>
   ) : null;
-
+ 
   const conteudoFormulario = (
     <>
       <Image
@@ -288,7 +291,7 @@ export default function Cadastro() {
       <Text style={styles.subtitulo}>
         Cadastre-se como professor no Edusync
       </Text>
-
+ 
       <Text style={styles.rotulo}>Nome</Text>
       <Campo
         icone="person-outline"
@@ -296,7 +299,7 @@ export default function Cadastro() {
         value={nome}
         onChangeText={setNome}
       />
-
+ 
       <Text style={styles.rotulo}>E-mail</Text>
       <Campo
         icone="mail-outline"
@@ -307,7 +310,7 @@ export default function Cadastro() {
         autoCorrect={false}
         keyboardType="email-address"
       />
-
+ 
       <Text style={styles.rotulo}>Senha</Text>
       <Campo
         icone="lock-closed-outline"
@@ -319,7 +322,7 @@ export default function Cadastro() {
         olhoAberto={mostrarSenha}
         aoAlternarOlho={() => setMostrarSenha((v) => !v)}
       />
-
+ 
       <Text style={styles.rotulo}>Confirmar senha</Text>
       <Campo
         icone="lock-closed-outline"
@@ -329,9 +332,9 @@ export default function Cadastro() {
         secureTextEntry={!mostrarSenha}
         onSubmitEditing={handleCadastro}
       />
-
+ 
       {caixaDeErro}
-
+ 
       <TouchableOpacity
         style={[styles.botao, carregando && styles.botaoDesabilitado]}
         onPress={handleCadastro}
@@ -345,7 +348,7 @@ export default function Cadastro() {
           <Ionicons name="arrow-forward" size={18} color={COR.branco} />
         )}
       </TouchableOpacity>
-
+ 
       <View style={styles.rodape}>
         <Text style={styles.rodapeTexto}>Já tem uma conta? </Text>
         <Link href="/login" style={styles.rodapeLink}>
@@ -354,21 +357,21 @@ export default function Cadastro() {
       </View>
     </>
   );
-
+ 
   if (isDesktop) {
     return (
       <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
-
+ 
         {IMAGEM_FUNDO && MOSTRAR_VEU && (
           <View style={styles.sobreposicao} pointerEvents="none" />
         )}
-
+ 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
-
+ 
           <View style={styles.divisorVertical} />
-
+ 
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
@@ -376,15 +379,15 @@ export default function Cadastro() {
                 menos tempo para corrigir.
               </Text>
             </Text>
-
+ 
             <Text style={styles.promoTexto}>
               O Edusync automatiza a correção de atividades e organiza suas
               notas de forma inteligente, para que você foque no que realmente
               importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
-
+ 
             <View style={styles.promoDivisor} />
-
+ 
             {RECURSOS.map((r) => (
               <View style={styles.promoItem} key={r.titulo}>
                 <View style={styles.promoIconeBox}>
@@ -396,7 +399,7 @@ export default function Cadastro() {
                 </View>
               </View>
             ))}
-
+ 
             <View style={styles.promoCta}>
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color={COR.branco} />
@@ -413,15 +416,15 @@ export default function Cadastro() {
       </Fundo>
     );
   }
-
+ 
   return (
     <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
-
+ 
       {IMAGEM_FUNDO && MOSTRAR_VEU && (
         <View style={styles.sobreposicao} pointerEvents="none" />
       )}
-
+ 
       <KeyboardAvoidingView
         style={styles.areaTeclado}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -437,13 +440,13 @@ export default function Cadastro() {
     </Fundo>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   sobreposicao: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COR_SOBREPOSICAO,
   },
-
+ 
   tela: { flex: 1, backgroundColor: COR.marinho },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-
+ 
   telaDesktop: {
     flex: 1,
     minHeight: "100%",
@@ -573,7 +576,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: "700",
   },
-
+ 
   cartao: {
     width: "100%",
     maxWidth: 380,
@@ -669,7 +672,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     marginTop: 6,
   },
-
+ 
   botao: {
     flexDirection: "row",
     gap: 8,

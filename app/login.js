@@ -16,9 +16,9 @@ import {
 } from "react-native";
 import { COR, FONTE } from "../components/estilo";
 import { login } from "../constants/api";
-
+ 
 const LARGURA_DESKTOP = 900;
-
+ 
 // ---------------------------------------------------------------------------
 // A imagem de fundo aparece em tudo: navegador e celular.
 //
@@ -32,7 +32,7 @@ const LARGURA_DESKTOP = 900;
 // diferencia — e o sintoma de errar é tela branca, sem erro no navegador.
 // ---------------------------------------------------------------------------
 const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
-
+ 
 // O véu escuro por cima da imagem está DESLIGADO: a arte da marca aparece
 // como ela é, sem filtro.
 //
@@ -41,22 +41,22 @@ const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
 // algum dia a arte mudar e o cartão sumir dentro dela, ligue o véu aqui.
 const MOSTRAR_VEU = false;
 const COR_SOBREPOSICAO = "rgba(7, 22, 46, 0.45)";
-
+ 
 const Fundo = IMAGEM_FUNDO ? ImageBackground : View;
 const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
-
+ 
 const AZUL = "#2E6FB0";
-
+ 
 // O mesmo amarelo dos botões de ação do app (home.js, scanner.js). Aqui ele
 // marca os números dos passos e a segunda linha do título, sobre o marinho.
 const AMARELO = "#EAB308";
-
+ 
 // Tira o contorno padrão do navegador nos campos. Em celular é null.
 const SEM_CONTORNO_WEB =
   Platform.OS === "web" ? { outlineStyle: "none" } : null;
-
+ 
 // ---------------------------------------------------------------------------
 // Dois ajustes que só existem no navegador e não dá para fazer pelo React
 // Native, porque são partes internas do campo desenhadas pelo próprio Chrome
@@ -86,7 +86,7 @@ if (
   `;
   document.head.appendChild(folha);
 }
-
+ 
 const RECURSOS = [
   {
     icone: "camera-outline",
@@ -107,12 +107,12 @@ const RECURSOS = [
       "Reduza o tempo gasto com correções e tenha mais tempo para o que realmente transforma.",
   },
 ];
-
+ 
 // Campo com estado de foco próprio: a borda e o ícone ficam azuis enquanto a
 // pessoa está digitando ali. É o que substitui a borda preta do navegador.
 function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
   const [focado, setFocado] = useState(false);
-
+ 
   return (
     <View style={[styles.campoLinha, focado && styles.campoLinhaFocado]}>
       <Ionicons
@@ -140,11 +140,11 @@ function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
     </View>
   );
 }
-
+ 
 function lerErroDoLogin(e) {
   const status = e?.status ?? e?.response?.status ?? e?.codigo;
   const texto = String(e?.message || "").toLowerCase();
-
+ 
   const contaNaoExiste =
     status === 404 ||
     texto.includes("não encontr") ||
@@ -154,7 +154,7 @@ function lerErroDoLogin(e) {
     texto.includes("nao existe") ||
     texto.includes("não cadastrad") ||
     texto.includes("nao cadastrad");
-
+ 
   if (contaNaoExiste) {
     return {
       mensagem: "Não encontramos uma conta com esse e-mail.",
@@ -163,7 +163,7 @@ function lerErroDoLogin(e) {
       textoDoLink: "Criar conta",
     };
   }
-
+ 
   const senhaErrada =
     status === 401 ||
     status === 403 ||
@@ -171,7 +171,7 @@ function lerErroDoLogin(e) {
     texto.includes("credenc") ||
     texto.includes("invalid") ||
     texto.includes("unauthorized");
-
+ 
   if (senhaErrada) {
     return {
       mensagem: "E-mail ou senha incorretos.",
@@ -179,13 +179,13 @@ function lerErroDoLogin(e) {
       levaPara: null,
     };
   }
-
+ 
   const semRede =
     texto.includes("network") ||
     texto.includes("failed to fetch") ||
     texto.includes("timeout") ||
     texto.includes("econnrefused");
-
+ 
   if (semRede) {
     return {
       mensagem: "Não consegui falar com o servidor.",
@@ -193,19 +193,19 @@ function lerErroDoLogin(e) {
       levaPara: null,
     };
   }
-
+ 
   return {
     mensagem: e?.message || "Não foi possível entrar. Tente de novo.",
     convite: "",
     levaPara: null,
   };
 }
-
+ 
 export default function Login() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
   const { email: emailVindoDoCadastro } = useLocalSearchParams();
-
+ 
   const [email, setEmail] = useState(
     emailVindoDoCadastro ? String(emailVindoDoCadastro) : "",
   );
@@ -213,12 +213,12 @@ export default function Login() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
-
+ 
   async function handleLogin() {
     setErro(null);
-
+ 
     const emailLimpo = email.trim().toLowerCase();
-
+ 
     if (!emailLimpo || !senha) {
       setErro({
         mensagem: "Preencha e-mail e senha.",
@@ -227,18 +227,36 @@ export default function Login() {
       });
       return;
     }
-
+ 
     setCarregando(true);
     try {
-      await login(emailLimpo, senha);
+      const dados = await login(emailLimpo, senha);
+ 
+      // Verificação em duas etapas ligada: falta digitar o código do e-mail.
+      if (dados?.precisa_codigo) {
+        router.push({
+          pathname: "/codigo",
+          params: { email: emailLimpo, modo: "login" },
+        });
+        return;
+      }
+ 
       router.replace("/home");
     } catch (e) {
+      // E-mail ainda não confirmado: o servidor já mandou um código novo.
+      if (e?.dados?.precisa_verificar) {
+        router.push({
+          pathname: "/codigo",
+          params: { email: emailLimpo, modo: "cadastro" },
+        });
+        return;
+      }
       setErro(lerErroDoLogin(e));
     } finally {
       setCarregando(false);
     }
   }
-
+ 
   const caixaDeErro = erro ? (
     <View style={styles.avisoErro}>
       <Ionicons
@@ -260,7 +278,7 @@ export default function Login() {
       </View>
     </View>
   ) : null;
-
+ 
   const conteudoFormulario = (
     <>
       <Image
@@ -270,7 +288,7 @@ export default function Login() {
       />
       <Text style={styles.titulo}>Bem-vindo de volta</Text>
       <Text style={styles.subtitulo}>Entre com sua conta de professor</Text>
-
+ 
       <Text style={styles.rotulo}>E-mail</Text>
       <Campo
         icone="mail-outline"
@@ -281,7 +299,7 @@ export default function Login() {
         autoCorrect={false}
         keyboardType="email-address"
       />
-
+ 
       <Text style={styles.rotulo}>Senha</Text>
       <Campo
         icone="lock-closed-outline"
@@ -294,14 +312,24 @@ export default function Login() {
         olhoAberto={mostrarSenha}
         aoAlternarOlho={() => setMostrarSenha((v) => !v)}
       />
-
+ 
       <View style={styles.linhaOpcoes}>
         <Text style={styles.linkPequeno}>Lembrar senha</Text>
-        <Text style={styles.linkPequenoDestaque}>Esqueceu sua senha?</Text>
+        <TouchableOpacity
+          hitSlop={8}
+          onPress={() =>
+            router.push({
+              pathname: "/esqueci-senha",
+              params: { email: email.trim() },
+            })
+          }
+        >
+          <Text style={styles.linkPequenoDestaque}>Esqueceu sua senha?</Text>
+        </TouchableOpacity>
       </View>
-
+ 
       {caixaDeErro}
-
+ 
       <TouchableOpacity
         style={[styles.botao, carregando && styles.botaoDesabilitado]}
         onPress={handleLogin}
@@ -315,7 +343,7 @@ export default function Login() {
           <Ionicons name="arrow-forward" size={18} color={COR.branco} />
         )}
       </TouchableOpacity>
-
+ 
       <View style={styles.rodape}>
         <Text style={styles.rodapeTexto}>Ainda não tem uma conta? </Text>
         <Link href="/cadastro" style={styles.rodapeLink}>
@@ -324,19 +352,19 @@ export default function Login() {
       </View>
     </>
   );
-
+ 
   if (isDesktop) {
     return (
       <Fundo {...propsFundo} style={styles.telaDesktop}>
         <Stack.Screen options={{ headerShown: false }} />
-
+ 
         {IMAGEM_FUNDO && MOSTRAR_VEU && (
           <View style={styles.sobreposicao} pointerEvents="none" />
         )}
-
+ 
         <View style={styles.cartaoGrande}>
           <View style={styles.colunaForm}>{conteudoFormulario}</View>
-
+ 
           <View style={styles.colunaPromo}>
             <Text style={styles.promoTitulo}>
               Mais tempo para ensinar,{"\n"}
@@ -344,15 +372,15 @@ export default function Login() {
                 menos tempo para corrigir.
               </Text>
             </Text>
-
+ 
             <Text style={styles.promoTexto}>
               O Edusync automatiza a correção de atividades e organiza suas
               notas de forma inteligente, para que você foque no que realmente
               importa: <Text style={styles.promoLink}>seus alunos</Text>.
             </Text>
-
+ 
             <View style={styles.promoDivisor} />
-
+ 
             {RECURSOS.map((r) => (
               <View style={styles.promoItem} key={r.titulo}>
                 <View style={styles.promoIconeBox}>
@@ -364,7 +392,7 @@ export default function Login() {
                 </View>
               </View>
             ))}
-
+ 
             <View style={styles.promoCta}>
               <View style={styles.promoCtaIcone}>
                 <Ionicons name="school" size={16} color={COR.branco} />
@@ -384,15 +412,15 @@ export default function Login() {
       </Fundo>
     );
   }
-
+ 
   return (
     <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
-
+ 
       {IMAGEM_FUNDO && MOSTRAR_VEU && (
         <View style={styles.sobreposicao} pointerEvents="none" />
       )}
-
+ 
       <KeyboardAvoidingView
         style={styles.areaTeclado}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -408,13 +436,13 @@ export default function Login() {
     </Fundo>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   sobreposicao: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COR_SOBREPOSICAO,
   },
-
+ 
   tela: { flex: 1, backgroundColor: COR.marinho },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
@@ -430,7 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-
+ 
   telaDesktop: {
     flex: 1,
     minHeight: "100%",
@@ -488,7 +516,7 @@ const styles = StyleSheet.create({
   },
   promoDivisor: { height: 1, backgroundColor: "#E9ECF2", marginBottom: 20 },
   promoLink: { color: AZUL, fontWeight: "600" },
-
+ 
   promoItem: {
     flexDirection: "row",
     gap: 13,
@@ -517,7 +545,7 @@ const styles = StyleSheet.create({
     color: "#7A8393",
     lineHeight: 18,
   },
-
+ 
   promoCta: {
     flexDirection: "row",
     alignItems: "center",
@@ -554,7 +582,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: "700",
   },
-
+ 
   cartao: {
     width: "100%",
     maxWidth: 380,
@@ -637,7 +665,7 @@ const styles = StyleSheet.create({
     color: AZUL,
     fontWeight: "600",
   },
-
+ 
   avisoErro: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -668,7 +696,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     marginTop: 6,
   },
-
+ 
   botao: {
     flexDirection: "row",
     gap: 8,

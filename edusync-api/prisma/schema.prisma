@@ -80,6 +80,14 @@ model professor {
   pref_peso_padrao Float    @default(1)
   pref_tipo_padrao String   @default("multipla_escolha") @db.VarChar(20)
   pref_nota_minima Float    @default(6)
+
+  email_verificado  Boolean   @default(false)
+  login_2fa         Boolean   @default(false)
+  codigo_hash       String?   @db.VarChar(100)
+  codigo_tipo       String?   @db.VarChar(20)
+  codigo_expira     DateTime?
+  codigo_tentativas Int       @default(0)
+  codigo_enviado_em DateTime?
 }
 
 model questao {

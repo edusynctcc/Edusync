@@ -25,14 +25,15 @@ import {
   atualizarNotificacoes,
   atualizarFoto,
   atualizarPreferencias,
+  atualizarSeguranca,
 } from "../../constants/api";
-
+ 
 const TIPOS_PREF = [
   { valor: "multipla_escolha", rotulo: "Alternativa" },
   { valor: "dissertativa", rotulo: "Dissertativa" },
   { valor: "calculo", rotulo: "Cálculo" },
 ];
-
+ 
 function iniciaisProfessor(nome) {
   if (!nome) return "?";
   const partes = String(nome).trim().split(/\s+/);
@@ -40,12 +41,12 @@ function iniciaisProfessor(nome) {
   const segunda = partes[1]?.[0] || "";
   return (primeira + segunda).toUpperCase();
 }
-
+ 
 function comoNumero(texto) {
   const n = parseFloat(String(texto).replace(",", "."));
   return Number.isFinite(n) ? n : NaN;
 }
-
+ 
 function Avatar({ nome, foto, tamanho = 56 }) {
   const raio = tamanho / 2;
   if (foto) {
@@ -80,11 +81,11 @@ function Avatar({ nome, foto, tamanho = 56 }) {
     </View>
   );
 }
-
+ 
 function ItemLista({ item, ultimo }) {
   const clicavel = !!item.onPress;
   const emBreve = !clicavel && !item.somenteLeitura;
-
+ 
   return (
     <TouchableOpacity
       style={[styles.itemLista, !ultimo && styles.itemListaBorda]}
@@ -109,7 +110,7 @@ function ItemLista({ item, ultimo }) {
     </TouchableOpacity>
   );
 }
-
+ 
 function ModalBase({ visivel, titulo, onFechar, children }) {
   return (
     <Modal visible={visivel} transparent animationType="fade" onRequestClose={onFechar}>
@@ -127,27 +128,27 @@ function ModalBase({ visivel, titulo, onFechar, children }) {
     </Modal>
   );
 }
-
+ 
 export default function Perfil() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
   const ehTelaLarga = width >= 1300;
   const router = useRouter();
-
+ 
   const [professor, setProfessor] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-
+ 
   // "dados" | "senha" | "notificacoes" | "foto" | "preferencias" | null
   const [modal, setModal] = useState(null);
   const [erroModal, setErroModal] = useState("");
   const [salvando, setSalvando] = useState(false);
-
+ 
   const [formDados, setFormDados] = useState({ nome: "", email: "", telefone: "", endereco: "" });
   const [formSenha, setFormSenha] = useState({ atual: "", nova: "", confirmar: "" });
   const [formPref, setFormPref] = useState({ peso: "1", tipo: "multipla_escolha", nota: "6" });
-
+ 
   useFocusEffect(
     useCallback(() => {
       async function carregar() {
@@ -165,17 +166,17 @@ export default function Perfil() {
       carregar();
     }, [])
   );
-
+ 
   async function sair() {
     await AsyncStorage.removeItem("token");
     router.replace("/login");
   }
-
+ 
   function fecharModal() {
     setModal(null);
     setErroModal("");
   }
-
+ 
   function abrirDados() {
     setFormDados({
       nome: professor?.nome || "",
@@ -187,26 +188,44 @@ export default function Perfil() {
     setAviso("");
     setModal("dados");
   }
-
+ 
   function abrirSenha() {
     setFormSenha({ atual: "", nova: "", confirmar: "" });
     setErroModal("");
     setAviso("");
     setModal("senha");
   }
-
+ 
   function abrirNotificacoes() {
     setErroModal("");
     setAviso("");
     setModal("notificacoes");
   }
-
+ 
+  function abrirSeguranca() {
+    setErroModal("");
+    setAviso("");
+    setModal("seguranca");
+  }
+ 
+  async function alternarSeguranca(valor) {
+    setErroModal("");
+    const anterior = professor.login_2fa;
+    setProfessor((atual) => ({ ...atual, login_2fa: valor }));
+    try {
+      await atualizarSeguranca(valor);
+    } catch (e) {
+      setProfessor((atual) => ({ ...atual, login_2fa: anterior }));
+      setErroModal(e.message);
+    }
+  }
+ 
   function abrirFoto() {
     setErroModal("");
     setAviso("");
     setModal("foto");
   }
-
+ 
   function abrirPreferencias() {
     setFormPref({
       peso: String(professor?.pref_peso_padrao ?? 1).replace(".", ","),
@@ -217,7 +236,7 @@ export default function Perfil() {
     setAviso("");
     setModal("preferencias");
   }
-
+ 
   async function salvarDados() {
     if (!formDados.nome.trim() || !formDados.email.trim()) {
       setErroModal("Nome e e-mail são obrigatórios.");
@@ -241,7 +260,7 @@ export default function Perfil() {
       setSalvando(false);
     }
   }
-
+ 
   async function salvarSenha() {
     if (!formSenha.atual || !formSenha.nova || !formSenha.confirmar) {
       setErroModal("Preencha todos os campos.");
@@ -267,7 +286,7 @@ export default function Perfil() {
       setSalvando(false);
     }
   }
-
+ 
   async function alternarNotificacao(valor) {
     setErroModal("");
     const anterior = professor.notif_correcao;
@@ -279,7 +298,7 @@ export default function Perfil() {
       setErroModal(e.message);
     }
   }
-
+ 
   async function escolherFoto() {
     setErroModal("");
     try {
@@ -288,23 +307,23 @@ export default function Perfil() {
         setErroModal("Permita o acesso às fotos para escolher uma imagem.");
         return;
       }
-
+ 
       const resultado = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
       if (resultado.canceled) return;
-
+ 
       setSalvando(true);
-
+ 
       // Reduz a imagem antes de enviar (fotos de celular têm vários MB)
       const imagem = await ImageManipulator.manipulateAsync(
         resultado.assets[0].uri,
         [{ resize: { width: 400 } }],
         { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
-
+ 
       const atualizado = await atualizarFoto(`data:image/jpeg;base64,${imagem.base64}`);
       setProfessor((atual) => ({ ...atual, foto: atualizado.foto }));
       setModal(null);
@@ -315,7 +334,7 @@ export default function Perfil() {
       setSalvando(false);
     }
   }
-
+ 
   async function removerFoto() {
     setSalvando(true);
     setErroModal("");
@@ -330,11 +349,11 @@ export default function Perfil() {
       setSalvando(false);
     }
   }
-
+ 
   async function salvarPreferencias() {
     const peso = comoNumero(formPref.peso);
     const nota = comoNumero(formPref.nota);
-
+ 
     if (!(peso > 0 && peso <= 10)) {
       setErroModal("O peso padrão deve ser maior que 0 e no máximo 10.");
       return;
@@ -343,7 +362,7 @@ export default function Perfil() {
       setErroModal("A nota mínima deve estar entre 0 e 10.");
       return;
     }
-
+ 
     setSalvando(true);
     setErroModal("");
     try {
@@ -357,7 +376,7 @@ export default function Perfil() {
       setSalvando(false);
     }
   }
-
+ 
   const resumoConta = professor
     ? [
         { valor: String(professor.total_turmas), rotulo: "Turmas", icone: "people-outline", corFundo: COR.emAndamentoFundo, corIcone: COR.marcador },
@@ -372,7 +391,7 @@ export default function Perfil() {
         },
       ]
     : [];
-
+ 
   const contaSeguranca = [
     {
       chave: "dados",
@@ -391,8 +410,11 @@ export default function Perfil() {
     {
       chave: "seguranca",
       titulo: "Segurança da conta",
-      descricao: "Autenticação em duas etapas",
+      descricao: professor?.login_2fa
+        ? "Código por e-mail ao entrar: ativado"
+        : "Código por e-mail ao entrar: desativado",
       icone: "shield-checkmark-outline",
+      onPress: abrirSeguranca,
     },
     {
       chave: "notificacoes",
@@ -402,7 +424,7 @@ export default function Perfil() {
       onPress: abrirNotificacoes,
     },
   ];
-
+ 
   const preferencias = [
     {
       chave: "correcao",
@@ -411,25 +433,12 @@ export default function Perfil() {
       icone: "options-outline",
       onPress: abrirPreferencias,
     },
-    {
-      chave: "aparencia",
-      titulo: "Aparência",
-      descricao: "Tema claro, escuro ou automático",
-      icone: "contrast-outline",
-    },
-    {
-      chave: "idioma",
-      titulo: "Idioma",
-      descricao: "Português (Brasil)",
-      icone: "language-outline",
-      somenteLeitura: true,
-    },
   ];
-
+ 
   return (
     <View style={[styles.tela]}>
       {!ehDesktop && <CabecalhoMobile comSino linkPerfil={false} />}
-
+ 
       <ScrollView
         style={styles.conteudo}
         contentContainerStyle={[
@@ -449,13 +458,13 @@ export default function Perfil() {
               </TouchableOpacity>
             </View>
           )}
-
+ 
           {erro ? <Text style={styles.textoErro}>{erro}</Text> : null}
           {aviso ? <Text style={styles.textoSucesso}>{aviso}</Text> : null}
           {carregando && !professor ? (
             <Text style={{ color: COR.tintaFraca, marginBottom: 12 }}>Carregando...</Text>
           ) : null}
-
+ 
           {professor && (
             <>
               <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
@@ -465,11 +474,11 @@ export default function Perfil() {
                     <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
                   </View>
                 </TouchableOpacity>
-
+ 
                 <View style={styles.perfilTextos}>
                   <Text style={styles.perfilNome}>{professor.nome}</Text>
                   <Text style={styles.perfilCargo}>Professor(a)</Text>
-
+ 
                   <View style={styles.perfilContatoLinha}>
                     <Ionicons name="mail-outline" size={13} color={COR.tintaFraca} />
                     <Text style={styles.perfilContatoTexto}>{professor.email}</Text>
@@ -487,12 +496,12 @@ export default function Perfil() {
                     </View>
                   ) : null}
                 </View>
-
+ 
                 <TouchableOpacity onPress={abrirDados} hitSlop={8}>
                   <Ionicons name="create-outline" size={18} color={COR.chevron} />
                 </TouchableOpacity>
               </View>
-
+ 
               <Text style={styles.secaoTitulo}>Resumo da conta</Text>
               <View
                 style={[
@@ -512,7 +521,7 @@ export default function Perfil() {
               </View>
             </>
           )}
-
+ 
           <Text style={styles.secaoTitulo}>Conta e segurança</Text>
           <View style={styles.listaCard}>
             {contaSeguranca.map((item, indice) => (
@@ -523,7 +532,7 @@ export default function Perfil() {
               />
             ))}
           </View>
-
+ 
           <Text style={styles.secaoTitulo}>Preferências</Text>
           <View style={styles.listaCard}>
             {preferencias.map((item, indice) => (
@@ -534,13 +543,13 @@ export default function Perfil() {
               />
             ))}
           </View>
-
+ 
           <TouchableOpacity style={styles.botaoSair} activeOpacity={0.8} onPress={sair}>
             <Text style={styles.botaoSairTexto}>Sair da conta</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
+ 
       <ModalBase visivel={modal === "dados"} titulo="Dados pessoais" onFechar={fecharModal}>
         <Text style={styles.rotulo}>
           Nome <Text style={styles.obrigatorio}>*</Text>
@@ -551,7 +560,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         <Text style={styles.rotulo}>
           E-mail <Text style={styles.obrigatorio}>*</Text>
         </Text>
@@ -563,7 +572,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         <Text style={styles.rotulo}>Telefone</Text>
         <TextInput
           value={formDados.telefone}
@@ -573,7 +582,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         <Text style={styles.rotulo}>Endereço</Text>
         <TextInput
           value={formDados.endereco}
@@ -582,9 +591,9 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
+ 
         <View style={styles.modalAcoes}>
           <TouchableOpacity style={styles.botaoCancelar} onPress={fecharModal}>
             <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
@@ -594,7 +603,7 @@ export default function Perfil() {
           </TouchableOpacity>
         </View>
       </ModalBase>
-
+ 
       <ModalBase visivel={modal === "senha"} titulo="Alterar senha" onFechar={fecharModal}>
         <Text style={styles.rotulo}>Senha atual</Text>
         <TextInput
@@ -604,7 +613,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         <Text style={styles.rotulo}>Nova senha</Text>
         <TextInput
           value={formSenha.nova}
@@ -614,7 +623,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         <Text style={styles.rotulo}>Confirmar nova senha</Text>
         <TextInput
           value={formSenha.confirmar}
@@ -623,9 +632,9 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={styles.campoTexto}
         />
-
+ 
         {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
+ 
         <View style={styles.modalAcoes}>
           <TouchableOpacity style={styles.botaoCancelar} onPress={fecharModal}>
             <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
@@ -635,7 +644,7 @@ export default function Perfil() {
           </TouchableOpacity>
         </View>
       </ModalBase>
-
+ 
       <ModalBase visivel={modal === "notificacoes"} titulo="Notificações" onFechar={fecharModal}>
         <View style={styles.switchLinha}>
           <View style={{ flex: 1 }}>
@@ -649,16 +658,39 @@ export default function Perfil() {
             onValueChange={alternarNotificacao}
           />
         </View>
-
+ 
         {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
+ 
         <View style={styles.modalAcoes}>
           <TouchableOpacity style={styles.botaoSalvar} onPress={fecharModal}>
             <Text style={styles.botaoSalvarTexto}>Fechar</Text>
           </TouchableOpacity>
         </View>
       </ModalBase>
-
+ 
+      <ModalBase visivel={modal === "seguranca"} titulo="Segurança da conta" onFechar={fecharModal}>
+        <View style={styles.switchLinha}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.itemTitulo}>Pedir código por e-mail ao entrar</Text>
+            <Text style={styles.itemDescricao}>
+              A cada login, enviamos um código de 6 dígitos para {professor?.email}.
+            </Text>
+          </View>
+          <Switch
+            value={!!professor?.login_2fa}
+            onValueChange={alternarSeguranca}
+          />
+        </View>
+ 
+        {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
+ 
+        <View style={styles.modalAcoes}>
+          <TouchableOpacity style={styles.botaoSalvar} onPress={fecharModal}>
+            <Text style={styles.botaoSalvarTexto}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      </ModalBase>
+ 
       <ModalBase visivel={modal === "foto"} titulo="Foto de perfil" onFechar={fecharModal}>
         <View style={styles.fotoPreviaLinha}>
           <Avatar nome={professor?.nome} foto={professor?.foto} tamanho={96} />
@@ -666,9 +698,9 @@ export default function Perfil() {
         <Text style={styles.dica}>
           A imagem é reduzida automaticamente antes de ser enviada.
         </Text>
-
+ 
         {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
+ 
         <View style={styles.modalAcoes}>
           {professor?.foto ? (
             <TouchableOpacity style={styles.botaoCancelar} onPress={removerFoto} disabled={salvando}>
@@ -680,7 +712,7 @@ export default function Perfil() {
           </TouchableOpacity>
         </View>
       </ModalBase>
-
+ 
       <ModalBase visivel={modal === "preferencias"} titulo="Preferências de correção" onFechar={fecharModal}>
         <Text style={styles.rotulo}>Peso padrão das questões</Text>
         <TextInput
@@ -691,7 +723,7 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={[styles.campoTexto, styles.campoCurto]}
         />
-
+ 
         <Text style={styles.rotulo}>Tipo de questão padrão</Text>
         <View style={styles.pillsLinha}>
           {TIPOS_PREF.map((tipo) => {
@@ -712,7 +744,7 @@ export default function Perfil() {
         <Text style={styles.dica}>
           O peso e o tipo já vêm preenchidos ao criar uma nova questão.
         </Text>
-
+ 
         <Text style={styles.rotulo}>Nota mínima para aprovação</Text>
         <TextInput
           value={formPref.nota}
@@ -722,9 +754,9 @@ export default function Perfil() {
           placeholderTextColor={COR.tintaFraca}
           style={[styles.campoTexto, styles.campoCurto]}
         />
-
+ 
         {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
+ 
         <View style={styles.modalAcoes}>
           <TouchableOpacity style={styles.botaoCancelar} onPress={fecharModal}>
             <Text style={styles.botaoCancelarTexto}>Cancelar</Text>
@@ -737,15 +769,15 @@ export default function Perfil() {
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.fundo },
-
+ 
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
   conteudoInternoDesktop: { alignItems: "center" },
   miolo: { width: "92%", maxWidth: 900 },
-
+ 
   cabecalhoDesktopLinha: {
     flexDirection: "row",
     alignItems: "center",
@@ -756,10 +788,10 @@ const styles = StyleSheet.create({
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
   tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
-
+ 
   textoErro: { color: "#EF4444", fontSize: 12.5, marginTop: 12, marginBottom: 4 },
   textoSucesso: { color: COR.ok, fontSize: 12.5, fontWeight: "600", marginBottom: 12, width: "100%" },
-
+ 
   perfilCard: {
     width: "100%",
     flexDirection: "row",
@@ -798,7 +830,7 @@ const styles = StyleSheet.create({
   perfilCargo: { fontFamily: FONTE.semi, fontSize: 12, color: COR.marcador, fontWeight: "600", marginBottom: 8 },
   perfilContatoLinha: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
   perfilContatoTexto: { fontFamily: FONTE.regular, fontSize: 11.5, color: COR.tintaMedia },
-
+ 
   secaoTitulo: {
     width: "100%",
     fontFamily: FONTE.bold,
@@ -807,7 +839,7 @@ const styles = StyleSheet.create({
     color: COR.tintaForte,
     marginBottom: 10,
   },
-
+ 
   resumoCard: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -837,7 +869,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 2,
   },
-
+ 
   listaCard: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -861,7 +893,7 @@ const styles = StyleSheet.create({
   itemTextos: { flex: 1, minWidth: 0 },
   itemTitulo: { fontFamily: FONTE.semi, fontSize: 13, fontWeight: "600", color: COR.tintaForte },
   itemDescricao: { fontFamily: FONTE.regular, fontSize: 11, color: COR.tintaFraca, marginTop: 2 },
-
+ 
   emBreveTag: {
     backgroundColor: COR.avisoFundo,
     borderRadius: RAIO.etiqueta,
@@ -869,7 +901,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   emBreveTexto: { fontFamily: FONTE.semi, fontSize: 10.5, fontWeight: "600", color: COR.avisoTexto },
-
+ 
   botaoSair: {
     width: "100%",
     backgroundColor: COR.branco,
@@ -880,7 +912,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   botaoSairTexto: { fontFamily: FONTE.bold, fontSize: 13.5, fontWeight: "700", color: COR.marcador },
-
+ 
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.45)",
@@ -902,7 +934,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   modalTitulo: { fontFamily: FONTE.bold, fontSize: 16, fontWeight: "700", color: COR.tintaForte },
-
+ 
   rotulo: {
     fontFamily: FONTE.semi,
     fontSize: 12.5,
@@ -924,7 +956,7 @@ const styles = StyleSheet.create({
     backgroundColor: COR.branco,
   },
   campoCurto: { width: 120 },
-
+ 
   dica: {
     fontFamily: FONTE.regular,
     fontSize: 11.5,
@@ -932,9 +964,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 16,
   },
-
+ 
   fotoPreviaLinha: { alignItems: "center", marginTop: 18 },
-
+ 
   pillsLinha: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tipoPill: {
     paddingHorizontal: 14,
@@ -947,14 +979,14 @@ const styles = StyleSheet.create({
   tipoPillAtivo: { backgroundColor: COR.marinho, borderColor: COR.marinho },
   tipoPillTexto: { fontFamily: FONTE.semi, fontSize: 12.5, fontWeight: "600", color: COR.tintaMedia },
   tipoPillTextoAtivo: { color: COR.branco },
-
+ 
   switchLinha: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     marginTop: 16,
   },
-
+ 
   modalAcoes: { flexDirection: "row", gap: 10, marginTop: 22 },
   botaoCancelar: {
     flex: 1,
