@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE } from "../../components/estilo";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ENDPOINTS,
@@ -1495,13 +1495,13 @@ const styles = StyleSheet.create({
   cardCentral: {
     width: "100%",
     backgroundColor: COR.branco,
-    borderRadius: 18,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 24,
     alignItems: "center",
   },
-  cardCentralDesktop: { padding: 48, borderRadius: 24 },
+  cardCentralDesktop: { padding: 48, borderRadius: RAIO.superficie },
 
   tituloCardDesktop: { fontSize: 20 },
   subtituloCardDesktop: { fontSize: 14, lineHeight: 20, marginTop: 8 },
@@ -1544,7 +1544,7 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 3,
     maxHeight: 220,
     backgroundColor: COR.emAndamentoFundo,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
     borderWidth: 1.5,
     borderColor: COR.linha,
     borderStyle: "dashed",
@@ -1569,7 +1569,7 @@ const styles = StyleSheet.create({
   previewFoto: {
     width: "100%",
     height: 300,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
     backgroundColor: COR.linhaSuave,
     marginBottom: 18,
   },
@@ -1577,7 +1577,7 @@ const styles = StyleSheet.create({
   previewPdf: {
     width: "100%",
     backgroundColor: COR.perigoFundo,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linha,
     paddingVertical: 24,
@@ -1657,7 +1657,7 @@ const styles = StyleSheet.create({
   paginaMiniatura: {
     width: 58,
     height: 76,
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     backgroundColor: COR.linhaSuave,
     borderWidth: 1,
     borderColor: COR.linha,
@@ -1674,7 +1674,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COR.branco,
     backgroundColor: "rgba(11,30,61,0.75)",
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 5,
     paddingVertical: 1,
     overflow: "hidden",
@@ -1693,7 +1693,7 @@ const styles = StyleSheet.create({
   paginaAdicionar: {
     width: 58,
     height: 76,
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: COR.marcador,
@@ -1717,7 +1717,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1.5,
     borderColor: COR.marcador,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 13,
   },
   botaoSecundarioLargo: {
@@ -1726,7 +1726,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: COR.marcador,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 13,
     marginTop: 16,
   },
@@ -1742,7 +1742,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     backgroundColor: COR.marinho,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 13,
   },
   botaoPrimarioTexto: {
@@ -1797,7 +1797,7 @@ const styles = StyleSheet.create({
   marcaEtapa: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     borderWidth: 1.5,
     borderColor: COR.linha,
     alignItems: "center",
@@ -1916,7 +1916,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 16,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: RAIO.superficie,
     borderWidth: 1.5,
     borderColor: COR.ok,
     backgroundColor: COR.okFundo,
@@ -1944,7 +1944,7 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 16,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linha,
     backgroundColor: COR.branco,
@@ -1959,7 +1959,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderWidth: 1,
     borderColor: COR.linha,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: FONTE.regular,
@@ -1977,7 +1977,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     paddingVertical: 12,
     backgroundColor: COR.marinho,
   },
@@ -1991,7 +1991,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    borderRadius: 12,
+    borderRadius: RAIO.superficie,
     overflow: "hidden",
   },
   linhaAluno: {

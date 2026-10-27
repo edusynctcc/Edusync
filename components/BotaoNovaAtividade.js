@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { COR, FONTE, RAIO } from "./estilo";
 
 export default function BotaoNovaAtividade({
   texto = "Nova atividade",
@@ -14,7 +15,7 @@ export default function BotaoNovaAtividade({
       activeOpacity={0.85}
       onPress={() => router.push("/atividades")}
     >
-      <Ionicons name="add" size={20} color="#FFFFFF" />
+      <Ionicons name="add" size={20} color={COR.branco} />
       <Text style={styles.textos}>
         <Text style={styles.titulo}>{texto}</Text>
         {descricao ? `\n${descricao}` : ""}
@@ -27,21 +28,23 @@ const styles = StyleSheet.create({
   botao: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2563EB",
-    borderRadius: 12,
+    backgroundColor: COR.marcador,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 16,
     paddingVertical: 13,
     gap: 9,
     width: "100%",
   },
   textos: {
-    color: "#DBEAFE",
+    color: COR.branco,
     fontSize: 12,
     lineHeight: 18,
+    fontFamily: FONTE.regular,
   },
   titulo: {
-    color: "#FFFFFF",
+    color: COR.branco,
     fontSize: 15,
     fontWeight: "700",
+    fontFamily: FONTE.bold,
   },
 });

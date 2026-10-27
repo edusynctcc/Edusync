@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
   botaoAcaoTextoDesktop: { fontSize: 15 },
 
   historicoDesktop: {
-    borderRadius: 18,
+    borderRadius: RAIO.superficie,
     paddingHorizontal: 22,
     paddingTop: 20,
     paddingBottom: 6,
@@ -783,7 +783,7 @@ const styles = StyleSheet.create({
   viewfinder: {
     width: 96,
     height: 96,
-    borderRadius: 16,
+    borderRadius: RAIO.controle,
     backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
@@ -903,8 +903,8 @@ const styles = StyleSheet.create({
   },
   modalFolha: {
     backgroundColor: COR.branco,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: RAIO.superficie,
+    borderTopRightRadius: RAIO.superficie,
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 24,
@@ -914,7 +914,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: "100%",
     maxWidth: 560,
-    borderRadius: 24,
+    borderRadius: RAIO.superficie,
     paddingHorizontal: 28,
     paddingTop: 28,
     paddingBottom: 24,
@@ -929,7 +929,11 @@ const styles = StyleSheet.create({
   },
   modalBuscaInputDesktop: { fontSize: 14.5 },
   modalAtividadeItemDesktop: { paddingVertical: 14, gap: 14 },
-  modalAtividadeIconeDesktop: { width: 44, height: 44, borderRadius: 13 },
+  modalAtividadeIconeDesktop: {
+    width: 44,
+    height: 44,
+    borderRadius: RAIO.controle,
+  },
   modalAtividadeTituloDesktop: { fontSize: 15 },
   modalAtividadeTurmaDesktop: { fontSize: 12.5, marginTop: 3 },
   modalNovaAtividadeDesktop: { paddingVertical: 15, marginTop: 16 },
@@ -937,7 +941,7 @@ const styles = StyleSheet.create({
   historico: {
     width: "100%",
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     paddingHorizontal: 16,
@@ -1048,7 +1052,7 @@ const styles = StyleSheet.create({
   modalAtividadeIcone: {
     width: 38,
     height: 38,
-    borderRadius: 11,
+    borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,

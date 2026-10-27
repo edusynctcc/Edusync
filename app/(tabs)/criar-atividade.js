@@ -673,7 +673,7 @@ export default function CriarAtividade() {
                 onPress={voltar}
                 style={styles.voltarLinha}
               >
-                <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+                <Ionicons name="arrow-back" size={18} color="#0F172A" />
                 <Text style={styles.tituloPaginaDesktop}>
                   {emEdicao ? "Editar atividade" : "Criar atividade"}
                 </Text>
@@ -684,7 +684,7 @@ export default function CriarAtividade() {
               onPress={voltar}
               style={styles.voltarLinha}
             >
-              <Ionicons name="arrow-back" size={18} color="#0B1E3D" />
+              <Ionicons name="arrow-back" size={18} color="#0F172A" />
               <Text style={styles.tituloPagina}>
                 {emEdicao ? "Editar atividade" : "Criar atividade"}
               </Text>
@@ -693,8 +693,6 @@ export default function CriarAtividade() {
 
           {erro ? <Alerta titulo="Não deu certo" texto={erro} /> : null}
 
-          {
-                                                           }
           {!emEdicao && (
             <View
               style={[
@@ -724,7 +722,7 @@ export default function CriarAtividade() {
                 ) : (
                   <Ionicons
                     name="document-attach-outline"
-                    size={ehDesktop ? 19 : 17}
+                    size={ehDesktop ? 18 : 16}
                     color={COR.marcador}
                   />
                 )}
@@ -810,7 +808,7 @@ export default function CriarAtividade() {
 
           <View style={styles.avisoBox}>
             <Ionicons
-              name="information-circle"
+              name="information-circle-outline"
               size={18}
               color={COR.marcador}
             />
@@ -840,12 +838,8 @@ export default function CriarAtividade() {
                   <Text style={styles.numeroQuestao}>
                     QUESTÃO {indice + 1}
                   </Text>
-                  {
-                                                                         }
                   {problema?.idQuestao === questao.id ? (
                     <View style={[styles.selo, styles.seloFalta]}>
-                      {
-                                                                      }
                       <Text style={[styles.seloTexto, styles.seloFaltaTexto]}>
                         {problema.texto.replace(/\.$/, "").toLowerCase()}
                       </Text>
@@ -884,7 +878,6 @@ export default function CriarAtividade() {
                 multiline
               />
 
-              {                                                              }
               <Text style={styles.rotulo}>
                 Imagem <Text style={styles.rotuloApoio}>— opcional</Text>
               </Text>
@@ -938,7 +931,7 @@ export default function CriarAtividade() {
                   activeOpacity={0.8}
                   onPress={() => escolherImagem(questao.id)}
                 >
-                  <Ionicons name="image-outline" size={20} color={COR.marcador} />
+                  <Ionicons name="image-outline" size={18} color={COR.marcador} />
                   <Text style={styles.imagemVaziaTexto}>Adicionar imagem</Text>
                 </TouchableOpacity>
               )}
@@ -1012,7 +1005,9 @@ export default function CriarAtividade() {
                           }
                           hitSlop={6}
                           style={[styles.radio, correta && styles.radioAtivo]}
-                        />
+                        >
+                          {correta && <View style={styles.radioInner} />}
+                        </TouchableOpacity>
                         <Text style={styles.alternativaLetra}>
                           {alternativa.letra})
                         </Text>
@@ -1038,8 +1033,8 @@ export default function CriarAtividade() {
                           >
                             <Ionicons
                               name="close"
-                              size={15}
-                              color={COR.chevron}
+                              size={16}
+                              color={COR.tintaFraca}
                             />
                           </TouchableOpacity>
                         )}
@@ -1127,8 +1122,6 @@ export default function CriarAtividade() {
             </Text>
           </TouchableOpacity>
 
-          {
-                                                                         }
           {problema ? (
             <Alerta
               titulo={problema.titulo || "Falta preencher"}
@@ -1243,17 +1236,16 @@ export default function CriarAtividade() {
 }
 
 const styles = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: "#F4F6FA" },
+  tela: { flex: 1, backgroundColor: "#F8FAFC" },
 
   conteudo: { flex: 1 },
-  conteudoInterno: { padding: 20, paddingBottom: 60, alignItems: "center" },
+  conteudoInterno: { padding: 16, paddingBottom: 60, alignItems: "center" },
   conteudoInternoDesktop: {
     alignItems: "center",
-    paddingTop: 32,
+    paddingTop: 28,
     paddingBottom: 60,
   },
-  miolo: { width: "92%", maxWidth: 1100 },
-
+  miolo: { width: "100%", maxWidth: 860 },
   mioloMobile: { width: "100%" },
 
   cabecalhoDesktopLinha: {
@@ -1265,44 +1257,52 @@ const styles = StyleSheet.create({
   voltarLinha: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 22,
+    gap: 8,
+    marginBottom: 20,
   },
   tituloPagina: {
     fontFamily: FONTE.bold,
     fontSize: 18,
-    fontWeight: "700",
-    color: COR.tintaForte,
+    fontWeight: "600",
+    color: "#0F172A",
+    letterSpacing: -0.3,
   },
   tituloPaginaDesktop: {
     fontFamily: FONTE.bold,
-    fontSize: 24,
-    fontWeight: "700",
-    color: COR.tintaForte,
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#0F172A",
+    letterSpacing: -0.4,
   },
 
   cartaoImportar: {
     width: "100%",
-    backgroundColor: COR.branco,
+    backgroundColor: "#FFFFFF",
     borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: COR.linhaSuave,
+    borderColor: "#E2E8F0",
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 16,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   cartaoImportarDesktop: {
-    padding: 22,
-    marginBottom: 18,
+    padding: 20,
+    marginBottom: 20,
   },
   importarTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 14.5,
-    color: COR.marinho,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
   },
   importarTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
-    color: COR.tintaMedia,
+    fontSize: 13,
+    color: "#475569",
     marginTop: 4,
     lineHeight: 18,
   },
@@ -1312,12 +1312,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginTop: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: RAIO.controle,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: COR.marcador,
+    borderColor: "#2563EB",
+    backgroundColor: "#F8FAFC",
   },
   botaoImportarDesativado: {
     opacity: 0.5,
@@ -1325,12 +1326,13 @@ const styles = StyleSheet.create({
   botaoImportarTexto: {
     fontFamily: FONTE.semi,
     fontSize: 13,
-    color: COR.marcador,
+    fontWeight: "500",
+    color: "#2563EB",
   },
   importarDica: {
     fontFamily: FONTE.regular,
     fontSize: 11.5,
-    color: COR.tintaFraca,
+    color: "#94A3B8",
     marginTop: 8,
     lineHeight: 16,
   },
@@ -1339,16 +1341,18 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 8,
     width: "100%",
-    backgroundColor: COR.emAndamentoFundo,
-    borderRadius: RAIO.superficie,
+    backgroundColor: "#EFF6FF",
+    borderRadius: RAIO.controle,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
   },
   resumoImportTexto: {
     flex: 1,
     fontFamily: FONTE.regular,
     fontSize: 12.5,
-    color: COR.tintaForte,
+    color: "#1E40AF",
     lineHeight: 18,
   },
   questaoCabecalhoEsquerda: {
@@ -1360,92 +1364,103 @@ const styles = StyleSheet.create({
   },
   selo: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: COR.emAndamentoFundo,
+    paddingVertical: 2,
+    borderRadius: RAIO.etiqueta,
+    backgroundColor: "#EFF6FF",
   },
   seloTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 10,
-    color: COR.marcador,
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#2563EB",
   },
 
   secaoCard: {
     width: "100%",
-    backgroundColor: COR.branco,
+    backgroundColor: "#FFFFFF",
     borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: COR.linhaSuave,
-    padding: 16,
+    borderColor: "#E2E8F0",
+    padding: 18,
     marginBottom: 16,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  secaoCardDesktop: { padding: 24, marginBottom: 18 },
+  secaoCardDesktop: { padding: 22, marginBottom: 20 },
   secaoCabecalho: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   secaoTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 14.5,
-    fontWeight: "700",
-    color: COR.tintaForte,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#0F172A",
+    letterSpacing: -0.2,
   },
 
   questaoCabecalho: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   numeroQuestao: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "700",
-    color: COR.marcador,
+    color: "#2563EB",
+    letterSpacing: 0.5,
   },
 
   rotulo: {
     fontFamily: FONTE.semi,
     fontSize: 12.5,
-    fontWeight: "600",
-    color: COR.tintaMedia,
+    fontWeight: "500",
+    color: "#334155",
     marginTop: 14,
     marginBottom: 6,
   },
   rotuloApoio: {
     fontFamily: FONTE.regular,
     fontWeight: "400",
-    color: COR.tintaFraca,
+    color: "#94A3B8",
   },
-  obrigatorio: { color: COR.perigo },
+  obrigatorio: { color: "#DC2626" },
 
   alerta: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: COR.perigoFundo,
+    backgroundColor: "#FEF2F2",
     borderLeftWidth: 3,
-    borderLeftColor: COR.perigo,
+    borderLeftColor: "#DC2626",
     borderRadius: RAIO.controle,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   alertaIcone: { marginTop: 1 },
   alertaTextos: { flex: 1, gap: 2 },
   alertaTitulo: {
     fontFamily: FONTE.bold,
     fontSize: 13,
-    fontWeight: "700",
-    color: COR.perigo,
+    fontWeight: "600",
+    color: "#991B1B",
   },
   alertaTexto: {
     fontFamily: FONTE.regular,
     fontSize: 12.5,
-    color: COR.tintaMedia,
-    lineHeight: 18,
+    color: "#7F1D1D",
+    lineHeight: 17,
   },
   alertaAcao: {
     flexDirection: "row",
@@ -1456,71 +1471,71 @@ const styles = StyleSheet.create({
   },
   alertaAcaoTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "600",
-    color: COR.perigo,
-    textDecorationLine: "underline",
+    color: "#DC2626",
   },
 
-  secaoCardComFalta: { borderColor: COR.perigo },
-  seloFalta: { backgroundColor: COR.perigoFundo },
-  seloFaltaTexto: { color: COR.perigo },
+  secaoCardComFalta: { borderColor: "#FCA5A5" },
+  seloFalta: { backgroundColor: "#FEF2F2" },
+  seloFaltaTexto: { color: "#DC2626" },
 
   campoTexto: {
     borderWidth: 1,
-    borderColor: COR.linha,
+    borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
     fontFamily: FONTE.regular,
-    fontSize: 13,
-    color: COR.tintaForte,
-    backgroundColor: COR.branco,
+    fontSize: 13.5,
+    color: "#0F172A",
+    backgroundColor: "#FFFFFF",
   },
-  campoTextoArea: { minHeight: 72, textAlignVertical: "top" },
-  campoPeso: { width: 110 },
+  campoTextoArea: { minHeight: 80, textAlignVertical: "top", lineHeight: 19 },
+  campoPeso: { width: 100 },
 
   campoSelect: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: COR.linha,
+    borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
     paddingHorizontal: 12,
-    paddingVertical: 11,
-    backgroundColor: COR.branco,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
   },
-  campoSelectPlaceholder: { fontSize: 13, color: "#94A3B8" },
-  campoSelectValor: { fontSize: 13, color: "#0B1E3D", fontWeight: "600" },
+  campoSelectPlaceholder: { fontSize: 13.5, color: "#94A3B8" },
+  campoSelectValor: { fontSize: 13.5, color: "#0F172A", fontWeight: "500" },
 
   imagemVazia: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderWidth: 1.5,
-    borderColor: COR.linha,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderStyle: "dashed",
     borderRadius: RAIO.controle,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    backgroundColor: "#F8FAFC",
   },
   imagemVaziaTexto: {
     fontFamily: FONTE.semi,
     fontSize: 13,
-    fontWeight: "600",
-    color: COR.marcador,
+    fontWeight: "500",
+    color: "#2563EB",
   },
   imagemBloco: { gap: 8 },
   imagemPrevia: {
     width: "100%",
-    height: 170,
+    height: 180,
     borderRadius: RAIO.controle,
     borderWidth: 1,
-    borderColor: COR.linhaSuave,
-    backgroundColor: COR.fundo,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F8FAFC",
   },
-  imagemPreviaDesktop: { height: 230 },
+  imagemPreviaDesktop: { height: 220 },
   imagemAcoes: { flexDirection: "row", gap: 8 },
   imagemBotao: {
     flex: 1,
@@ -1529,15 +1544,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     borderWidth: 1,
-    borderColor: COR.linha,
+    borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingVertical: 10,
+    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
   },
   imagemBotaoTexto: {
     fontFamily: FONTE.semi,
     fontSize: 12.5,
-    fontWeight: "600",
-    color: COR.marcador,
+    fontWeight: "500",
+    color: "#2563EB",
   },
 
   avisoBox: {
@@ -1545,43 +1561,45 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
     width: "100%",
-    backgroundColor: COR.emAndamentoFundo,
-    borderRadius: RAIO.superficie,
-    padding: 14,
-    marginBottom: 20,
+    backgroundColor: "#F8FAFC",
+    borderRadius: RAIO.controle,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    marginBottom: 18,
   },
   avisoTextos: { flex: 1 },
   avisoTitulo: {
     fontFamily: FONTE.bold,
     fontSize: 12.5,
-    fontWeight: "700",
-    color: COR.marinho,
+    fontWeight: "600",
+    color: "#0F172A",
   },
   avisoDescricao: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
-    color: COR.tintaMedia,
+    fontSize: 12,
+    color: "#64748B",
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 16,
   },
 
-  tiposGrade: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tiposGrade: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tipoPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: RAIO.controle,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: RAIO.etiqueta,
     borderWidth: 1,
-    borderColor: COR.linha,
-    backgroundColor: COR.branco,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
   },
-  tipoPillAtivo: { backgroundColor: COR.marinho, borderColor: COR.marinho },
+  tipoPillAtivo: { backgroundColor: "#0F172A", borderColor: "#0F172A" },
   tipoPillTexto: {
     fontFamily: FONTE.semi,
     fontSize: 12.5,
-    fontWeight: "600",
-    color: COR.tintaMedia,
+    fontWeight: "500",
+    color: "#475569",
   },
-  tipoPillTextoAtivo: { color: COR.branco },
+  tipoPillTextoAtivo: { color: "#FFFFFF" },
 
   alternativaLinha: {
     flexDirection: "row",
@@ -1590,35 +1608,43 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: COR.linha,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
-  radioAtivo: { borderWidth: 6, borderColor: COR.ok },
+  radioAtivo: { borderColor: "#16A34A" },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#16A34A",
+  },
   alternativaLetra: {
     fontFamily: FONTE.bold,
     fontSize: 13,
-    fontWeight: "700",
-    color: COR.tintaMedia,
-    width: 22,
+    fontWeight: "600",
+    color: "#475569",
+    width: 18,
     flexShrink: 0,
   },
   alternativaCampo: { flex: 1, minWidth: 0 },
   linkPequeno: {
     fontFamily: FONTE.semi,
     fontSize: 12,
-    fontWeight: "600",
-    color: COR.marcador,
+    fontWeight: "500",
+    color: "#2563EB",
     marginTop: 4,
   },
 
   dica: {
     fontFamily: FONTE.regular,
     fontSize: 11.5,
-    color: COR.tintaFraca,
+    color: "#64748B",
     marginTop: 6,
     lineHeight: 16,
   },
@@ -1626,7 +1652,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.semi,
     fontSize: 11.5,
     fontWeight: "600",
-    color: COR.tintaMedia,
+    color: "#334155",
     marginTop: 4,
   },
 
@@ -1636,67 +1662,69 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     width: "100%",
-    borderWidth: 1.5,
-    borderColor: COR.marcador,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderStyle: "dashed",
-    borderRadius: RAIO.superficie,
-    paddingVertical: 14,
+    borderRadius: RAIO.controle,
+    paddingVertical: 12,
     marginBottom: 16,
+    backgroundColor: "#FFFFFF",
   },
   botaoAdicionarQuestaoTexto: {
-    color: COR.marcador,
+    color: "#2563EB",
     fontFamily: FONTE.bold,
-    fontSize: 13.5,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
   },
 
-  acoesFinais: { width: "100%", gap: 12 },
+  acoesFinais: { width: "100%", gap: 10 },
   acoesFinaisMobile: { flexDirection: "column" },
   acoesFinaisDesktop: {
     flexDirection: "row",
     justifyContent: "flex-end",
     borderTopWidth: 1,
-    borderTopColor: COR.linha,
-    paddingTop: 22,
+    borderTopColor: "#E2E8F0",
+    paddingTop: 20,
   },
   botaoProva: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    borderWidth: 1.5,
-    borderColor: COR.marcador,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingVertical: 13,
+    paddingVertical: 11,
     paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
   },
-  botaoProvaDesktop: { paddingHorizontal: 20 },
+  botaoProvaDesktop: { paddingHorizontal: 18 },
   botaoProvaTexto: {
     fontFamily: FONTE.bold,
     fontSize: 13,
-    fontWeight: "700",
-    color: COR.marcador,
+    fontWeight: "600",
+    color: "#0F172A",
   },
 
   botaoPublicar: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: RAIO.superficie,
-    backgroundColor: COR.marinho,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: RAIO.controle,
+    backgroundColor: "#0F172A",
   },
   botaoPublicarDesktop: {
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
   },
-  botaoPublicarTexto: { fontSize: 13.5, fontWeight: "700", color: "#FFFFFF" },
+  botaoPublicarTexto: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
 
   modalTurmaFundo: {
     flex: 1,
-    backgroundColor: "rgba(11,30,61,0.45)",
+    backgroundColor: "rgba(15, 23, 42, 0.4)",
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -1705,31 +1733,33 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     padding: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   modalTurmaTitulo: {
     fontSize: 15,
-    fontWeight: "700",
-    color: "#0B1E3D",
+    fontWeight: "600",
+    color: "#0F172A",
     marginBottom: 10,
   },
   modalTurmaItem: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
-  modalTurmaItemTexto: { fontSize: 14, fontWeight: "600", color: "#0B1E3D" },
+  modalTurmaItemTexto: { fontSize: 13.5, fontWeight: "500", color: "#0F172A" },
   modalTurmaItemEscola: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
   modalTurmaFechar: {
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 10,
     marginTop: 8,
   },
   modalTurmaFecharTexto: {
-    fontSize: 13.5,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: "#64748B",
   },
 });

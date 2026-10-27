@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE } from "../../components/estilo";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   ajustarResposta,
   buscarCorrecao,
@@ -713,14 +713,18 @@ const AUMENTO_DESKTOP = {
 
   voltarTextoDesktop: { fontSize: 15 },
 
-  cartaoDesktop: { padding: 24, borderRadius: 18, gap: 16 },
+  cartaoDesktop: { padding: 24, borderRadius: RAIO.superficie, gap: 16 },
 
   nomeAlunoDesktop: { fontSize: 22 },
   subtituloDesktop: { fontSize: 14 },
   notaGrandeDesktop: { fontSize: 44 },
   notaDeDesktop: { fontSize: 13 },
 
-  etiquetaDesktop: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9 },
+  etiquetaDesktop: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RAIO.etiqueta,
+  },
   etiquetaTextoDesktop: { fontSize: 12.5 },
 
   avisoTrancadoDesktop: { paddingVertical: 15, paddingHorizontal: 18, gap: 10 },
@@ -739,7 +743,7 @@ const AUMENTO_DESKTOP = {
   rotuloBlocoDesktop: { fontSize: 11.5 },
   blocoLeituraDesktop: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     borderLeftWidth: 4,
     gap: 6,
   },
@@ -752,7 +756,7 @@ const AUMENTO_DESKTOP = {
     minWidth: 68,
     paddingVertical: 11,
     paddingHorizontal: 13,
-    borderRadius: 11,
+    borderRadius: RAIO.controle,
   },
   botaoFracaoTextoDesktop: { fontSize: 14.5 },
   botaoFracaoRotuloDesktop: { fontSize: 11, marginTop: 2 },
@@ -763,11 +767,18 @@ const AUMENTO_DESKTOP = {
     fontSize: 14.5,
     padding: 14,
     minHeight: 92,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
   },
-  botaoConcluirDesktop: { paddingVertical: 17, borderRadius: 14, gap: 10 },
+  botaoConcluirDesktop: {
+    paddingVertical: 17,
+    borderRadius: RAIO.controle,
+    gap: 10,
+  },
   botaoConcluirTextoDesktop: { fontSize: 16 },
-  botaoSecundarioLargoDesktop: { paddingVertical: 16, borderRadius: 14 },
+  botaoSecundarioLargoDesktop: {
+    paddingVertical: 16,
+    borderRadius: RAIO.controle,
+  },
   botaoSecundarioTextoDesktop: { fontSize: 15 },
   linkCorrecoesTextoDesktop: { fontSize: 14.5 },
 };
@@ -804,7 +815,7 @@ const styles = StyleSheet.create({
 
   cartaoTopo: {
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 18,
@@ -825,7 +836,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 7,
+    borderRadius: RAIO.etiqueta,
   },
   etiquetaAberta: { backgroundColor: COR.emAndamentoFundo },
   etiquetaOk: { backgroundColor: COR.okFundo },
@@ -838,7 +849,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: "wrap",
     backgroundColor: COR.avisoFundo,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
@@ -851,7 +862,7 @@ const styles = StyleSheet.create({
   },
   avisoTrancadoBotao: {
     backgroundColor: COR.branco,
-    borderRadius: 9,
+    borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: COR.avisoTexto,
     paddingVertical: 7,
@@ -868,13 +879,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COR.perigo,
     backgroundColor: COR.perigoFundo,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     padding: 12,
   },
 
   cartaoQuestao: {
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 18,
@@ -914,7 +925,7 @@ const styles = StyleSheet.create({
   blocoLeitura: {
     gap: 5,
     backgroundColor: COR.fundo,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     padding: 12,
     borderLeftWidth: 3,
     borderLeftColor: COR.marcador,
@@ -954,7 +965,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 9,
     paddingHorizontal: 10,
-    borderRadius: 9,
+    borderRadius: RAIO.controle,
     borderWidth: 1.5,
     borderColor: COR.linha,
     backgroundColor: COR.branco,
@@ -983,7 +994,7 @@ const styles = StyleSheet.create({
 
   cartaoRodape: {
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     padding: 18,
@@ -994,7 +1005,7 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: COR.tintaForte,
     backgroundColor: COR.campo,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     padding: 12,
     minHeight: 70,
     textAlignVertical: "top",
@@ -1005,7 +1016,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     backgroundColor: COR.ok,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 14,
   },
   botaoConcluirTexto: {
@@ -1020,7 +1031,7 @@ const styles = StyleSheet.create({
     gap: 7,
     borderWidth: 1.5,
     borderColor: COR.marcador,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     paddingVertical: 13,
   },
   botaoSecundarioTexto: {

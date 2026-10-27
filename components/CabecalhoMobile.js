@@ -10,24 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { COR, FONTE } from "./estilo";
 import { buscarPerfil } from "../constants/api";
-
-const SISTEMA = Platform.select({
-  ios: "System",
-  android: "sans-serif",
-  default: "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
-});
-
-const FONTE = {
-  semi:
-    Platform.OS === "web"
-      ? `PublicSans_600SemiBold, ${SISTEMA}`
-      : "PublicSans_600SemiBold",
-  bold:
-    Platform.OS === "web"
-      ? `PublicSans_700Bold, ${SISTEMA}`
-      : "PublicSans_700Bold",
-};
 
 function iniciais(nome) {
   if (!nome) return "?";
@@ -80,7 +64,7 @@ export default function CabecalhoMobile({
             {professor?.nome || ""}
           </Text>
           {linkPerfil && (
-            <Ionicons name="chevron-down" size={14} color="#FFFFFF" />
+            <Ionicons name="chevron-down" size={14} color={COR.branco} />
           )}
         </View>
       )}
@@ -119,7 +103,7 @@ export default function CabecalhoMobile({
             activeOpacity={0.8}
             onPress={sair}
           >
-            <Ionicons name="log-out-outline" size={17} color="#F87171" />
+            <Ionicons name="log-out-outline" size={17} color={COR.perigo} />
           </TouchableOpacity>
         </View>
       </View>
@@ -128,7 +112,7 @@ export default function CabecalhoMobile({
 }
 
 const styles = StyleSheet.create({
-  cabecalho: { paddingHorizontal: 18, backgroundColor: "#0B1E3D" },
+  cabecalho: { paddingHorizontal: 18, backgroundColor: COR.marinho },
   cabecalhoMiolo: {
     flexDirection: "row",
     alignItems: "center",
@@ -144,7 +128,7 @@ const styles = StyleSheet.create({
     width: 27,
     height: 27,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COR.branco,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -155,21 +139,21 @@ const styles = StyleSheet.create({
   },
   avatarPequenoTexto: {
     fontFamily: FONTE.bold,
-    color: "#0B1E3D",
+    color: COR.marinho,
     fontSize: 11,
   },
   usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
   usuarioNome: {
     fontFamily: FONTE.semi,
     fontSize: 12.5,
-    color: "#FFFFFF",
+    color: COR.branco,
     maxWidth: 110,
   },
   botaoSair: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "rgba(248,113,113,0.14)",
+    backgroundColor: COR.perigoFundo,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 4,

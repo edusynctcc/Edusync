@@ -1,6 +1,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity } from "react-native";
+import { COR } from "./estilo";
 
 export default function BotaoFlutuante({ onPress, icone = "add", tamanho = 46, style }) {
   return (
@@ -13,7 +14,11 @@ export default function BotaoFlutuante({ onPress, icone = "add", tamanho = 46, s
       activeOpacity={0.9}
       onPress={onPress}
     >
-      <Ionicons name={icone} size={Math.round(tamanho * 0.48)} color="#FFFFFF" />
+      <Ionicons
+        name={icone}
+        size={Math.round(tamanho * 0.48)}
+        color={COR.branco}
+      />
     </TouchableOpacity>
   );
 }
@@ -23,7 +28,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 16,
     bottom: 20,
-    backgroundColor: "#3B82F6",
+    backgroundColor: COR.marcador,
     alignItems: "center",
     justifyContent: "center",
     elevation: 4,

@@ -1,10 +1,10 @@
 import {
-  PublicSans_400Regular,
-  PublicSans_500Medium,
-  PublicSans_600SemiBold,
-  PublicSans_700Bold,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
   useFonts,
-} from "@expo-google-fonts/public-sans";
+} from "@expo-google-fonts/poppins";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
@@ -14,11 +14,12 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  // Carrega os pesos usados globalmente antes de exibir qualquer tela.
   const [fontesProntas] = useFonts({
-    PublicSans_400Regular,
-    PublicSans_500Medium,
-    PublicSans_600SemiBold,
-    PublicSans_700Bold,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
   });
 
   if (!fontesProntas) {

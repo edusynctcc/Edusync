@@ -260,7 +260,12 @@ export default function Correcoes() {
             )}
           </View>
 
-          <View style={styles.filtrosLinha}>
+          <View
+            style={[
+              styles.filtrosLinha,
+              !ehDesktop && styles.filtrosLinhaMobile,
+            ]}
+          >
             {FILTROS.map((filtro) => {
               const ativo = filtro === filtroAtivo;
               return (
@@ -269,6 +274,7 @@ export default function Correcoes() {
                   onPress={() => setFiltroAtivo(filtro)}
                   style={[
                     styles.filtroPill,
+                    !ehDesktop && styles.filtroPillMobile,
                     ehDesktop && styles.filtroPillDesktop,
                     ativo && styles.filtroPillAtivo,
                   ]}
@@ -276,9 +282,11 @@ export default function Correcoes() {
                   <Text
                     style={[
                       styles.filtroTexto,
+                      !ehDesktop && styles.filtroTextoMobile,
                       ehDesktop && styles.filtroTextoDesktop,
                       ativo && styles.filtroTextoAtivo,
                     ]}
+                    numberOfLines={1}
                   >
                     {filtro}
                   </Text>
@@ -617,7 +625,11 @@ const styles = StyleSheet.create({
   listaDesktop: { gap: 12 },
   correcaoCardDesktop: { padding: 18 },
   correcaoLinhaTopoDesktop: { gap: 16 },
-  correcaoIconeCirculoDesktop: { width: 48, height: 48, borderRadius: 16 },
+  correcaoIconeCirculoDesktop: {
+    width: 48,
+    height: 48,
+    borderRadius: RAIO.controle,
+  },
   correcaoTituloDesktop: { fontSize: 15.5 },
   correcaoTurmaDesktop: { fontSize: 13, marginTop: 3 },
   statusBadgeDesktop: { paddingHorizontal: 11, paddingVertical: 7, gap: 5 },
@@ -633,11 +645,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     flexWrap: "wrap",
   },
+  filtrosLinhaMobile: {
+    flexWrap: "nowrap",
+    gap: 6,
+  },
   filtroPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: RAIO.etiqueta,
     backgroundColor: COR.linhaSuave,
+  },
+  filtroPillMobile: {
+    flexShrink: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   filtroPillAtivo: { backgroundColor: COR.marinho },
   filtroTexto: {
@@ -645,6 +666,10 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: "600",
     color: COR.tintaMedia,
+  },
+  filtroTextoMobile: {
+    fontSize: 11.5,
+    textAlign: "center",
   },
   filtroTextoAtivo: { color: COR.branco },
 
@@ -654,7 +679,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COR.perigo,
     backgroundColor: COR.perigoFundo,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     padding: 12,
     marginBottom: 12,
   },
@@ -671,7 +696,7 @@ const styles = StyleSheet.create({
   correcaoIconeCirculo: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,

@@ -466,8 +466,16 @@ export default function Perfil() {
           {professor && (
             <>
               <View style={[styles.perfilCard, ehDesktop && styles.perfilCardDesktop]}>
-                <TouchableOpacity style={styles.avatarGrande} onPress={abrirFoto} activeOpacity={0.8}>
-                  <Avatar nome={professor.nome} foto={professor.foto} />
+                <TouchableOpacity
+                  style={[styles.avatarGrande, ehDesktop && styles.avatarGrandeDesktop]}
+                  onPress={abrirFoto}
+                  activeOpacity={0.8}
+                >
+                  <Avatar
+                    nome={professor.nome}
+                    foto={professor.foto}
+                    tamanho={ehDesktop ? 76 : 72}
+                  />
                   <View style={styles.avatarSelo}>
                     <MaterialCommunityIcons name="camera" size={12} color={COR.branco} />
                   </View>
@@ -805,18 +813,19 @@ const styles = StyleSheet.create({
   },
   perfilCardDesktop: { padding: 22 },
   avatarGrande: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
     flexShrink: 0,
     position: "relative",
   },
+  avatarGrandeDesktop: { width: 76, height: 76 },
   avatarSelo: {
     position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: COR.marinho,
     borderWidth: 2,
     borderColor: COR.branco,
@@ -882,7 +891,7 @@ const styles = StyleSheet.create({
   itemIconeCirculo: {
     width: 36,
     height: 36,
-    borderRadius: 11,
+    borderRadius: RAIO.controle,
     backgroundColor: COR.fundo,
     alignItems: "center",
     justifyContent: "center",
@@ -922,7 +931,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
     backgroundColor: COR.branco,
-    borderRadius: 16,
+    borderRadius: RAIO.superficie,
     padding: 20,
   },
   modalCabecalho: {

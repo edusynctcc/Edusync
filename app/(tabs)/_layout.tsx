@@ -14,45 +14,9 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 
 export const LARGURA_LATERAL = 272;
-
-const SISTEMA: any = Platform.select({
-  ios: "System",
-  android: "sans-serif",
-  default: "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
-});
-
-const FONTE: any = {
-  regular:
-    Platform.OS === "web"
-      ? `PublicSans_400Regular, ${SISTEMA}`
-      : "PublicSans_400Regular",
-  media:
-    Platform.OS === "web"
-      ? `PublicSans_500Medium, ${SISTEMA}`
-      : "PublicSans_500Medium",
-  semi:
-    Platform.OS === "web"
-      ? `PublicSans_600SemiBold, ${SISTEMA}`
-      : "PublicSans_600SemiBold",
-  bold:
-    Platform.OS === "web"
-      ? `PublicSans_700Bold, ${SISTEMA}`
-      : "PublicSans_700Bold",
-};
-
-const COR: any = {
-  marinho: "#0B1E3D",
-  marinhoFundo: "#081730",
-  marinhoClaro: "#9FB3D4",
-  tintaForte: "#17242E",
-  tintaMedia: "#55646F",
-  branco: "#FFFFFF",
-  marcador: "#2E6FB0",
-  fundo: "#F2F5F6",
-  perigo: "#F87171",
-};
 
 const TRANSICAO_WEB: any =
   Platform.OS === "web"
@@ -407,7 +371,7 @@ const styles = StyleSheet.create({
   area: { flex: 1, minWidth: 0 },
   areaDesktop: {
     backgroundColor: COR.fundo,
-    borderRadius: 20,
+    borderRadius: RAIO.superficie,
     overflow: "hidden",
   },
 
@@ -415,7 +379,7 @@ const styles = StyleSheet.create({
     width: LARGURA_LATERAL,
     flexShrink: 0,
     backgroundColor: COR.marinho,
-    borderRadius: 20,
+    borderRadius: RAIO.superficie,
     paddingTop: 24,
     paddingBottom: 16,
     paddingHorizontal: 16,
@@ -430,7 +394,7 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 40,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     backgroundColor: "rgba(255,255,255,0.08)",
     marginBottom: 20,
     zIndex: 30,
@@ -448,7 +412,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COR.branco,
-    borderRadius: 10,
+    borderRadius: RAIO.superficie,
     paddingVertical: 5,
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
@@ -489,7 +453,7 @@ const styles = StyleSheet.create({
     gap: 13,
     paddingVertical: 12,
     paddingHorizontal: 13,
-    borderRadius: 11,
+    borderRadius: RAIO.controle,
   },
   itemLateralHover: { backgroundColor: "rgba(255,255,255,0.07)" },
   itemLateralAtivo: { backgroundColor: COR.branco },
@@ -507,7 +471,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingVertical: 13,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.09)",
   },

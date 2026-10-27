@@ -10,27 +10,11 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { COR, FONTE, RAIO } from "./estilo";
 import { listarAvisos } from "../constants/api";
 
 const INTERVALO_MS = 8000;
 const VISIVEL_MS = 8000;
-
-const SISTEMA = Platform.select({
-  ios: "System",
-  android: "sans-serif",
-  default: "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
-});
-
-const FONTE = {
-  regular:
-    Platform.OS === "web"
-      ? `PublicSans_400Regular, ${SISTEMA}`
-      : "PublicSans_400Regular",
-  bold:
-    Platform.OS === "web"
-      ? `PublicSans_700Bold, ${SISTEMA}`
-      : "PublicSans_700Bold",
-};
 
 export default function AvisoCorrecao() {
   const router = useRouter();
@@ -121,7 +105,7 @@ export default function AvisoCorrecao() {
         }}
       >
         <View style={styles.icone}>
-          <Ionicons name="checkmark" size={18} color="#166534" />
+          <Ionicons name="checkmark" size={18} color={COR.ok} />
         </View>
         <View style={styles.textos}>
           <Text style={styles.titulo}>{titulo}</Text>
@@ -132,7 +116,7 @@ export default function AvisoCorrecao() {
           ) : null}
         </View>
         <Pressable onPress={() => setAviso(null)} hitSlop={8}>
-          <Ionicons name="close" size={16} color="#64748B" />
+          <Ionicons name="close" size={16} color={COR.tintaFraca} />
         </Pressable>
       </Pressable>
     </View>
@@ -161,9 +145,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderColor: COR.okFundo,
     paddingVertical: 10,
     paddingHorizontal: 12,
     shadowColor: "#000000",
@@ -177,7 +161,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#DCFCE7",
+    backgroundColor: COR.okFundo,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -186,12 +170,12 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.bold,
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#17242E",
+    color: COR.tintaForte,
   },
   detalhe: {
     fontFamily: FONTE.regular,
     fontSize: 12,
-    color: "#55646F",
+    color: COR.tintaMedia,
     marginTop: 2,
   },
 });

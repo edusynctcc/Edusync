@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
-import { COR, FONTE } from "../../components/estilo";
+import { COR, FONTE, RAIO } from "../../components/estilo";
 import { criarTurma, listarTurmas } from "../../constants/api";
 
 const CORES_TURMA = ["#2E6FB0", "#8B5EA6", "#DDA015", "#2F7D5C", "#B4443A"];
@@ -148,7 +148,12 @@ export default function Turmas() {
 
           {!ehDesktop && <Text style={styles.tituloPagina}>Turmas</Text>}
 
-          <View style={styles.buscaLinha}>
+          <View
+            style={[
+              styles.buscaLinha,
+              !ehDesktop && styles.buscaLinhaMobile,
+            ]}
+          >
             <View
               style={[styles.buscaBox, ehDesktop && styles.buscaBoxDesktop]}
             >
@@ -176,7 +181,10 @@ export default function Turmas() {
 
             {(ehDesktop || ehWeb) && (
               <TouchableOpacity
-                style={styles.botaoNovaTurmaDesktop}
+                style={[
+                  styles.botaoNovaTurmaDesktop,
+                  !ehDesktop && styles.botaoNovaTurmaMobile,
+                ]}
                 onPress={abrirCriar}
               >
                 <Ionicons name="add" size={19} color={COR.branco} />
@@ -408,13 +416,16 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 16,
   },
+  buscaLinhaMobile: {
+    flexDirection: "column",
+  },
   buscaBox: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: COR.branco,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: COR.linha,
     paddingHorizontal: 12,
@@ -434,9 +445,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     backgroundColor: COR.marinho,
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  botaoNovaTurmaMobile: {
+    width: "100%",
   },
   botaoNovaTurmaDesktopTexto: {
     fontFamily: FONTE.bold,
@@ -450,7 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COR.perigo,
     backgroundColor: COR.perigoFundo,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     padding: 12,
     marginBottom: 12,
     lineHeight: 17,
@@ -462,7 +476,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 13,
     backgroundColor: COR.branco,
-    borderRadius: 12,
+    borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     paddingVertical: 14,
@@ -471,7 +485,7 @@ const styles = StyleSheet.create({
   turmaSigla: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -515,9 +529,13 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingVertical: 18,
     paddingHorizontal: 20,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
   },
-  turmaSiglaDesktop: { width: 52, height: 52, borderRadius: 15 },
+  turmaSiglaDesktop: {
+    width: 52,
+    height: 52,
+    borderRadius: RAIO.controle,
+  },
   turmaSiglaTextoDesktop: { fontSize: 17 },
   turmaNomeDesktop: { fontSize: 16 },
   turmaDetalheDesktop: { fontSize: 13, marginTop: 3 },
@@ -551,14 +569,14 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     backgroundColor: COR.branco,
-    borderRadius: 18,
+    borderRadius: RAIO.superficie,
     padding: 22,
   },
   modalCardMobile: {
     maxWidth: "100%",
     borderRadius: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RAIO.superficie,
+    borderTopRightRadius: RAIO.superficie,
     paddingBottom: 34,
   },
   modalCabecalho: {
@@ -587,7 +605,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.regular,
     borderWidth: 1,
     borderColor: COR.linha,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13,
@@ -605,7 +623,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: COR.linha,
   },
@@ -619,7 +637,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     backgroundColor: COR.marinho,
   },
   botaoSalvarTexto: {

@@ -169,7 +169,14 @@ export default function Atividades() {
             </View>
           )}
 
-          <View style={styles.buscaLinha}>
+          {!ehDesktop && <Text style={styles.tituloPagina}>Atividades</Text>}
+
+          <View
+            style={[
+              styles.buscaLinha,
+              !ehDesktop && styles.buscaLinhaMobile,
+            ]}
+          >
             <View
               style={[styles.buscaBox, ehDesktop && styles.buscaBoxDesktop]}
             >
@@ -196,7 +203,10 @@ export default function Atividades() {
             </View>
 
             <TouchableOpacity
-              style={styles.botaoCriarAtividade}
+              style={[
+                styles.botaoCriarAtividade,
+                !ehDesktop && styles.botaoCriarAtividadeMobile,
+              ]}
               activeOpacity={0.85}
               onPress={() => router.push("/criar-atividade")}
             >
@@ -470,12 +480,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COR.tintaForte,
   },
+  tituloPagina: {
+    fontFamily: FONTE.bold,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    marginBottom: 14,
+    width: "100%",
+  },
 
   buscaLinha: {
     flexDirection: "row",
     gap: 10,
     width: "100%",
     marginBottom: 16,
+  },
+  buscaLinhaMobile: {
+    flexDirection: "column",
   },
   buscaBox: {
     flex: 1,
@@ -502,9 +523,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     backgroundColor: COR.marinho,
-    borderRadius: 8,
+    borderRadius: RAIO.controle,
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  botaoCriarAtividadeMobile: {
+    width: "100%",
   },
   botaoCriarAtividadeTexto: {
     fontFamily: FONTE.bold,
@@ -518,7 +542,11 @@ const styles = StyleSheet.create({
   listaDesktop: { gap: 12 },
   atividadeCardDesktop: { padding: 20 },
   atividadeLinhaTopoDesktop: { gap: 16 },
-  atividadeIconeCirculoDesktop: { width: 52, height: 52, borderRadius: 12 },
+  atividadeIconeCirculoDesktop: {
+    width: 52,
+    height: 52,
+    borderRadius: RAIO.controle,
+  },
   atividadeTituloDesktop: { fontSize: 15.5 },
   atividadeDescricaoDesktop: { fontSize: 13, marginTop: 3 },
   atividadeDataDesktop: { fontSize: 12 },
@@ -554,7 +582,7 @@ const styles = StyleSheet.create({
   atividadeIconeCirculo: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -589,7 +617,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 300,
     backgroundColor: COR.branco,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
     padding: 8,
   },
   menuTituloAtividade: {
@@ -620,7 +648,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 340,
     backgroundColor: COR.branco,
-    borderRadius: 14,
+    borderRadius: RAIO.superficie,
     padding: 22,
     alignItems: "center",
   },
