@@ -22,7 +22,6 @@ import {
   buscarPerfil,
   atualizarPerfil,
   alterarSenha,
-  atualizarNotificacoes,
   atualizarFoto,
   atualizarPreferencias,
   atualizarSeguranca,
@@ -195,12 +194,6 @@ export default function Perfil() {
     setModal("senha");
   }
 
-  function abrirNotificacoes() {
-    setErroModal("");
-    setAviso("");
-    setModal("notificacoes");
-  }
-
   function abrirSeguranca() {
     setErroModal("");
     setAviso("");
@@ -283,18 +276,6 @@ export default function Perfil() {
       setErroModal(e.message);
     } finally {
       setSalvando(false);
-    }
-  }
-
-  async function alternarNotificacao(valor) {
-    setErroModal("");
-    const anterior = professor.notif_correcao;
-    setProfessor((atual) => ({ ...atual, notif_correcao: valor }));
-    try {
-      await atualizarNotificacoes(valor);
-    } catch (e) {
-      setProfessor((atual) => ({ ...atual, notif_correcao: anterior }));
-      setErroModal(e.message);
     }
   }
 
@@ -414,13 +395,6 @@ export default function Perfil() {
       icone: "shield-checkmark-outline",
       onPress: abrirSeguranca,
     },
-    {
-      chave: "notificacoes",
-      titulo: "Notificações",
-      descricao: "Gerencie como deve ser avisado",
-      icone: "notifications-outline",
-      onPress: abrirNotificacoes,
-    },
   ];
 
   const preferencias = [
@@ -446,7 +420,7 @@ export default function Perfil() {
         ]}
       >
         <View
-          style={[ehDesktop ? styles.miolo : { width: "100%" }, ehTelaLarga && { maxWidth: 900 }]}
+          style={[ehDesktop ? styles.miolo : { width: "100%" }, ehTelaLarga && { maxWidth: 1100 }]}
         >
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
@@ -651,29 +625,6 @@ export default function Perfil() {
         </View>
       </ModalBase>
 
-      <ModalBase visivel={modal === "notificacoes"} titulo="Notificações" onFechar={fecharModal}>
-        <View style={styles.switchLinha}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.itemTitulo}>Avisar quando uma correção terminar</Text>
-            <Text style={styles.itemDescricao}>
-              Sua preferência fica salva na conta.
-            </Text>
-          </View>
-          <Switch
-            value={!!professor?.notif_correcao}
-            onValueChange={alternarNotificacao}
-          />
-        </View>
-
-        {erroModal ? <Text style={styles.textoErro}>{erroModal}</Text> : null}
-
-        <View style={styles.modalAcoes}>
-          <TouchableOpacity style={styles.botaoSalvar} onPress={fecharModal}>
-            <Text style={styles.botaoSalvarTexto}>Fechar</Text>
-          </TouchableOpacity>
-        </View>
-      </ModalBase>
-
       <ModalBase visivel={modal === "seguranca"} titulo="Segurança da conta" onFechar={fecharModal}>
         <View style={styles.switchLinha}>
           <View style={{ flex: 1 }}>
@@ -782,7 +733,11 @@ const styles = StyleSheet.create({
   conteudo: { flex: 1 },
   conteudoInterno: { padding: 20, paddingBottom: 40, alignItems: "center" },
   conteudoInternoDesktop: { alignItems: "center" },
-  miolo: { width: "92%", maxWidth: 900 },
+  // 1100 e não 900: é a mesma largura das outras telas (Scanner, Atividades,
+  // Correções). Com 900 a coluna ficava 200px mais estreita e, como tudo é
+  // centralizado, a sobra virava margem dos dois lados — era isso que fazia o
+  // Perfil parecer afastado da barra lateral.
+  miolo: { width: "92%", maxWidth: 1100 },
 
   cabecalhoDesktopLinha: {
     flexDirection: "row",
@@ -793,7 +748,9 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   voltarLinha: { flexDirection: "row", alignItems: "center", gap: 10 },
-  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 20, fontWeight: "700", color: COR.tintaForte },
+  // 24 para bater com o título das outras telas. Em 20 ele parecia um
+  // subtítulo ao lado do "Scanner" e do "Atividades".
+  tituloPaginaDesktop: { fontFamily: FONTE.bold, fontSize: 24, fontWeight: "700", color: COR.tintaForte },
 
   textoErro: { color: "#EF4444", fontSize: 12.5, marginTop: 12, marginBottom: 4 },
   textoSucesso: { color: COR.ok, fontSize: 12.5, fontWeight: "600", marginBottom: 12, width: "100%" },

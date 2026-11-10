@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     borderColor: COR.linha,
     borderRadius: 14,
     paddingHorizontal: 14,
-    backgroundColor: COR.fundo,
+    backgroundColor: COR.branco,
   },
   campoLinhaFocado: {
     borderColor: AZUL,

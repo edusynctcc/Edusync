@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     borderColor: COR.linha,
     borderRadius: 12,
     paddingHorizontal: 14,
-    backgroundColor: COR.fundo,
+    backgroundColor: COR.branco,
   },
   campoLinhaFocado: {
     borderColor: AZUL,

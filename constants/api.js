@@ -3,13 +3,20 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 function descobrirEnderecoDaApi() {
+  // Em produção o endereço vem do .env. Tem que ser escrito com ponto: o Expo
+  // só substitui `process.env.EXPO_PUBLIC_API_URL` literalmente. Com colchete
+  // ou desestruturando, ele não troca nada e vem undefined.
+  //
+  // O valor é gravado dentro do bundle na hora do export, não lido em tempo de
+  // execução: toda vez que mudar, tem que exportar e fazer deploy de novo.
+  const configurado = process.env.EXPO_PUBLIC_API_URL;
+  if (configurado) return String(configurado).trim().replace(/\/+$/, "");
+
+  // Daqui para baixo é só desenvolvimento.
   if (Platform.OS === "web") return "http://localhost:3333";
 
   const host =
-    Constants.expoConfig?.hostUri ||
-    Constants.expoGoConfig?.debuggerHost ||
-    Constants.manifest?.debuggerHost ||
-    "";
+    Constants.expoConfig?.hostUri || Constants.expoGoConfig?.debuggerHost || "";
 
   const ip = host.split(":")[0];
 

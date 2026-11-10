@@ -1,31 +1,30 @@
 {
   "expo": {
     "name": "Edusync",
-    "slug": "Edusync",
+    "slug": "edusync-api",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logoImg.png",
     "scheme": "edusync",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
     "ios": {
+      "bundleIdentifier": "com.edusynctcc.edusync",
       "supportsTablet": true
     },
-
     "android": {
+      "package": "com.edusynctcc.edusync",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B1E3D",
         "foregroundImage": "./assets/images/logoImg.png"
       },
       "predictiveBackGestureEnabled": false
     },
-
     "web": {
-      "output": "static",
+      "output": "single",
+      "bundler": "metro",
       "favicon": "./assets/images/logoImg.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -34,10 +33,7 @@
           "image": "./assets/images/logoImg.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#0B1E3D"
         }
       ],
       "expo-font",
@@ -45,10 +41,15 @@
       "expo-web-browser",
       "expo-status-bar"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4315f354-7c97-4213-a673-ad453c12563e"
+      }
+    },
+    "owner": "edusynctcc"
   }
 }
