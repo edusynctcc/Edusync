@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn src/server.ts",
     "build": "tsc --rootDir src --outDir dist",
-    "start": "prisma migrate deploy && node dist/server.js",
+    "start": "prisma db push --skip-generate && node dist/server.js",
     "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
