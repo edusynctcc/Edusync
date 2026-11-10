@@ -101,7 +101,32 @@ export async function excluirQuestao(req: Request, res: Response) {
     return res.status(404).json({ erro: 'Questão não encontrada' });
   }
 
-  await prisma.questao.delete({ where: { id_questao } });
+  // Quantas respostas de aluno dependem desta questão.
+  const respostas = await prisma.resposta.count({ where: { id_questao } });
+
+  // Apagar a questão apaga junto as notas que os alunos já tiraram nela, e
+  // isso muda a média da turma. Não pode acontecer por acidente: a exclusão
+  // só passa com ?forcar=1 na URL, depois que a pessoa foi avisada.
+  const forcar = req.query.forcar === '1' || req.query.forcar === 'true';
+  if (respostas > 0 && !forcar) {
+    return res.status(409).json({
+      erro:
+        respostas === 1
+          ? 'Esta questão já tem 1 resposta corrigida. Excluir a questão apaga essa resposta e muda a nota do aluno.'
+          : `Esta questão já tem ${respostas} respostas corrigidas. Excluir a questão apaga essas respostas e muda as notas dos alunos.`,
+      respostas,
+    });
+  }
+
+  // O banco proíbe deixar linhas apontando para uma questão que não existe
+  // mais (é o `onDelete: NoAction` do schema), então os filhos saem primeiro.
+  // Tudo dentro de uma transação: ou apaga o conjunto inteiro, ou não apaga
+  // nada. Sem isso, uma falha no meio deixaria a questão sem alternativas.
+  await prisma.$transaction([
+    prisma.resposta.deleteMany({ where: { id_questao } }),
+    prisma.alternativa.deleteMany({ where: { id_questao } }),
+    prisma.questao.delete({ where: { id_questao } }),
+  ]);
 
   return res.status(204).send();
 }
