@@ -1,23 +1,21 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+
+    "rootDir": "src",
+    "outDir": "dist",
+
     "esModuleInterop": true,
-    "module": "CommonJS",
-    "target": "esnext",
-    "types": [
-      "node"
-    ],
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "strict": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": false,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": false,
     "skipLibCheck": true
   },
-  "extends": "expo/tsconfig.base"
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
