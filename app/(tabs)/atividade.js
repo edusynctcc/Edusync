@@ -214,7 +214,7 @@ export default function AtividadeDetalhe() {
         <View style={styles.centro}>
           <Ionicons
             name="alert-circle-outline"
-            size={36}
+            size={42}
             color={COR.avisoTexto}
           />
           <Text style={styles.textoApoio}>
@@ -257,7 +257,7 @@ export default function AtividadeDetalhe() {
             activeOpacity={0.7}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
+            <Ionicons name="arrow-back" size={21} color={COR.tintaForte} />
             <Text
               style={[
                 styles.tituloPagina,
@@ -268,7 +268,7 @@ export default function AtividadeDetalhe() {
             </Text>
           </TouchableOpacity>
 
-          {                                                                    }
+          {/* Cartão de cima: identificação da atividade e os números do resumo. */}
           <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
             <View style={styles.topoLinha}>
               <View
@@ -280,7 +280,7 @@ export default function AtividadeDetalhe() {
               >
                 <MaterialCommunityIcons
                   name={visual.icone}
-                  size={ehDesktop ? 28 : 24}
+                  size={28}
                   color={visual.corIcone}
                 />
               </View>
@@ -422,7 +422,7 @@ export default function AtividadeDetalhe() {
 
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
-          {                                                                   }
+          {/* Editar, salvar a prova em PDF e excluir. */}
           <View style={[styles.acoes, ehDesktop && styles.acoesDesktop]}>
             <TouchableOpacity
               style={[styles.botaoAcao, ehDesktop && styles.botaoAcaoDesktop]}
@@ -441,7 +441,7 @@ export default function AtividadeDetalhe() {
             >
               <Ionicons
                 name="create-outline"
-                size={ehDesktop ? 19 : 17}
+                size={ehDesktop ? 19 : 20}
                 color={COR.marcador}
               />
               <Text
@@ -462,7 +462,7 @@ export default function AtividadeDetalhe() {
             >
               <Ionicons
                 name="print-outline"
-                size={ehDesktop ? 18 : 16}
+                size={ehDesktop ? 18 : 19}
                 color={COR.marcador}
               />
               <Text
@@ -487,7 +487,7 @@ export default function AtividadeDetalhe() {
             >
               <Ionicons
                 name="trash-outline"
-                size={ehDesktop ? 18 : 16}
+                size={ehDesktop ? 18 : 19}
                 color={COR.perigo}
               />
               <Text
@@ -502,7 +502,7 @@ export default function AtividadeDetalhe() {
             </TouchableOpacity>
           </View>
 
-          {                                                                    }
+          {/* Lista das questões com o gabarito logo abaixo de cada uma. */}
           <View style={[styles.cartao, ehDesktop && styles.cartaoDesktop]}>
             <Text
               style={[
@@ -564,8 +564,7 @@ export default function AtividadeDetalhe() {
                   {NOME_DO_TIPO[q.tipo] || q.tipo}
                 </Text>
 
-                {
-                                                                          }
+                {/* A imagem da questão, quando existe uma anexada. */}
                 {!!q.imagem && (
                   <Image
                     source={{ uri: urlDaImagem(q.imagem) }}
@@ -616,7 +615,7 @@ export default function AtividadeDetalhe() {
                           {certa && (
                             <Ionicons
                               name="checkmark-circle"
-                              size={ehDesktop ? 17 : 15}
+                              size={ehDesktop ? 17 : 18}
                               color={COR.ok}
                             />
                           )}
@@ -671,7 +670,7 @@ export default function AtividadeDetalhe() {
             >
               <Ionicons
                 name="people-outline"
-                size={ehDesktop ? 19 : 17}
+                size={ehDesktop ? 19 : 20}
                 color={COR.branco}
               />
               <Text
@@ -698,7 +697,7 @@ export default function AtividadeDetalhe() {
             style={[styles.modalCartao, ehDesktop && styles.modalCartaoDesktop]}
           >
             <View style={styles.modalIcone}>
-              <Ionicons name="trash-outline" size={22} color={COR.perigo} />
+              <Ionicons name="trash-outline" size={26} color={COR.perigo} />
             </View>
             <Text
               style={[
@@ -712,7 +711,7 @@ export default function AtividadeDetalhe() {
               style={[styles.modalTexto, ehDesktop && styles.modalTextoDesktop]}
             >
               {resumo.folhas > 0
-                ? `Ela tem ${resumo.folhas} ${resumo.folhas === 1 ? "folha corrigida" : "folhas corrigidas"}. O servidor vai recusar para não apagar as notas junto.`
+                ? `As questões, o gabarito e ${resumo.folhas} ${resumo.folhas === 1 ? "folha já corrigida" : "folhas já corrigidas"} vão junto. As notas somem com elas e não dá para desfazer.`
                 : "As questões e o gabarito vão junto. Não dá para desfazer."}
             </Text>
 
@@ -747,33 +746,33 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    padding: 30,
+    gap: 14,
+    padding: 35,
   },
   textoApoio: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaMedia,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 21,
   },
 
   conteudo: { flex: 1 },
   conteudoInterno: {
-    padding: 16,
-    paddingBottom: 50,
+    padding: 19,
+    paddingBottom: 59,
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
-  miolo: { width: "94%", maxWidth: 900, gap: 14 },
+  miolo: { width: "94%", maxWidth: 900, gap: 17 },
 
   voltarLinha: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
+    gap: 12,
+    paddingVertical: 7,
   },
-  tituloPagina: { fontFamily: FONTE.bold, fontSize: 18, color: COR.tintaForte },
+  tituloPagina: { fontFamily: FONTE.bold, fontSize: 21, color: COR.tintaForte },
 
   cartao: {
     width: "100%",
@@ -781,35 +780,35 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    padding: 16,
-    gap: 10,
+    padding: 19,
+    gap: 12,
   },
-  cartaoTitulo: { fontFamily: FONTE.bold, fontSize: 14, color: COR.tintaForte },
+  cartaoTitulo: { fontFamily: FONTE.bold, fontSize: 16.5, color: COR.tintaForte },
 
-  topoLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
+  topoLinha: { flexDirection: "row", alignItems: "center", gap: 14 },
   iconeCirculo: {
-    width: 48,
-    height: 48,
+    width: 57,
+    height: 57,
     borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
   },
   nomeAtividade: {
     fontFamily: FONTE.bold,
-    fontSize: 17,
+    fontSize: 20,
     color: COR.tintaForte,
   },
   subtitulo: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaFraca,
     marginTop: 2,
   },
   descricao: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaMedia,
-    lineHeight: 18,
+    lineHeight: 21,
   },
 
   tituloPaginaDesktop: { fontSize: 24 },
@@ -859,233 +858,233 @@ const styles = StyleSheet.create({
   numerosLinha: {
     flexDirection: "row",
     flexWrap: "wrap",
-    rowGap: 16,
+    rowGap: 19,
     borderTopWidth: 1,
     borderTopColor: COR.linhaSuave,
-    paddingTop: 14,
-    marginTop: 4,
+    paddingTop: 17,
+    marginTop: 5,
   },
-  numero: { gap: 3, minWidth: 0, paddingRight: 12 },
+  numero: { gap: 4, minWidth: 0, paddingRight: 14 },
   numeroMetade: { width: "50%" },
   numeroLargo: { flex: 1 },
   numeroValor: {
     fontFamily: FONTE.bold,
-    fontSize: 19,
+    fontSize: 22.5,
     color: COR.tintaForte,
-    lineHeight: 23,
+    lineHeight: 27,
   },
   numeroRotulo: {
     fontFamily: FONTE.regular,
-    fontSize: 11,
+    fontSize: 13,
     color: COR.tintaFraca,
-    lineHeight: 15,
+    lineHeight: 17.5,
   },
 
   erroFaixa: {
     width: "100%",
     fontFamily: FONTE.media,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.perigo,
     backgroundColor: COR.perigoFundo,
     borderRadius: RAIO.controle,
-    padding: 12,
+    padding: 14,
   },
 
-  acoes: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  acoes: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 9 },
   acoesDesktop: { flexWrap: "nowrap", gap: 10 },
   botaoAcao: {
     flexGrow: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     backgroundColor: COR.branco,
     borderWidth: 1.5,
     borderColor: COR.linha,
     borderRadius: RAIO.controle,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   botaoAcaoTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.marcador,
   },
   botaoPerigo: { borderColor: COR.perigoFundo },
 
   blocoQuestao: {
-    gap: 7,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: COR.linhaSuave,
-    paddingTop: 12,
+    paddingTop: 14,
   },
-  questaoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
+  questaoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 11 },
   numeroCirculo: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     borderRadius: RAIO.controle,
     backgroundColor: COR.emAndamentoFundo,
     alignItems: "center",
     justifyContent: "center",
   },
-  numeroTexto: { fontFamily: FONTE.bold, fontSize: 11, color: COR.marcador },
+  numeroTexto: { fontFamily: FONTE.bold, fontSize: 13, color: COR.marcador },
   pergunta: {
     flex: 1,
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaForte,
-    lineHeight: 17,
+    lineHeight: 20,
   },
   pesoQuestao: {
     fontFamily: FONTE.bold,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaFraca,
   },
   tipoQuestao: {
     fontFamily: FONTE.semi,
-    fontSize: 9.5,
+    fontSize: 11,
     color: COR.tintaFraca,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    marginLeft: 33,
+    marginLeft: 39,
   },
 
   questaoImagem: {
-    marginLeft: 33,
+    marginLeft: 39,
     marginTop: 2,
-    height: 180,
+    height: 212,
     borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     backgroundColor: COR.fundo,
   },
 
-  alternativas: { gap: 5, marginLeft: 33 },
+  alternativas: { gap: 6, marginLeft: 39 },
   alternativa: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    paddingVertical: 6,
-    paddingHorizontal: 9,
+    gap: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
     borderRadius: RAIO.controle,
     backgroundColor: COR.fundo,
   },
   alternativaCerta: { backgroundColor: COR.okFundo },
-  letra: { fontFamily: FONTE.bold, fontSize: 11.5, color: COR.tintaMedia },
+  letra: { fontFamily: FONTE.bold, fontSize: 13.5, color: COR.tintaMedia },
   textoAlternativa: {
     flex: 1,
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaForte,
   },
 
   gabarito: {
-    marginLeft: 33,
+    marginLeft: 39,
     backgroundColor: COR.fundo,
     borderRadius: RAIO.controle,
-    padding: 10,
-    gap: 3,
+    padding: 12,
+    gap: 4,
     borderLeftWidth: 3,
     borderLeftColor: COR.ok,
   },
   gabaritoRotulo: {
     fontFamily: FONTE.semi,
-    fontSize: 9.5,
+    fontSize: 11,
     color: COR.tintaFraca,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   gabaritoTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaForte,
-    lineHeight: 17,
+    lineHeight: 20,
   },
 
   botaoEscuro: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 8,
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 19,
+    paddingVertical: 12,
   },
   botaoEscuroLargo: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 9,
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
-    paddingVertical: 14,
+    paddingVertical: 17,
   },
-  botaoEscuroTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 13 },
+  botaoEscuroTexto: { color: COR.branco, fontFamily: FONTE.bold, fontSize: 15.5 },
 
   modalFundo: {
     flex: 1,
     backgroundColor: "rgba(11,30,61,0.45)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: 28,
   },
   modalCartao: {
     width: "100%",
     maxWidth: 380,
     backgroundColor: COR.branco,
     borderRadius: RAIO.superficie,
-    padding: 22,
+    padding: 26,
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   modalIcone: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: COR.perigoFundo,
     alignItems: "center",
     justifyContent: "center",
   },
   modalTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 15,
+    fontSize: 17.5,
     color: COR.tintaForte,
     textAlign: "center",
   },
   modalTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaMedia,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 21,
   },
-  modalBotoes: { flexDirection: "row", gap: 10, width: "100%", marginTop: 6 },
+  modalBotoes: { flexDirection: "row", gap: 12, width: "100%", marginTop: 7 },
   modalCancelar: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: RAIO.controle,
     borderWidth: 1.5,
     borderColor: COR.linha,
   },
   modalCancelarTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaMedia,
   },
   modalExcluir: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: RAIO.controle,
     backgroundColor: COR.perigo,
   },
   modalExcluirTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.branco,
   },
 });

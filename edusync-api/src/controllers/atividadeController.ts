@@ -91,108 +91,59 @@ export async function atualizarAtividade(req: Request, res: Response) {
   return res.json(atividade);
 }
 
+// ---------------------------------------------------------------------------
+// Apagar a atividade
+//
+// No schema, `questao` e `correcao` apontam para `atividade` com
+// onDelete: NoAction, e `resposta` aponta para as duas. O banco não deixa
+// apagar um pai enquanto existir filho pendurado nele -- era exatamente isso
+// que estourava em 500 aqui: `atividade.delete` sozinho, com as questões
+// ainda no lugar.
+//
+// Então a ordem é de baixo para cima: respostas, correções, alternativas,
+// questões e só então a atividade. E tudo dentro de uma transação: ou a
+// atividade inteira some, ou nada some. Sem isso, uma falha no meio deixaria
+// questões órfãs de uma atividade que não existe mais, e a listagem quebraria.
+//
+// Apagar leva as notas junto, de propósito. Quem confirma já leu no app que
+// as folhas corrigidas vão junto -- não dá para guardar a nota de uma prova
+// cujas questões não existem mais.
+// ---------------------------------------------------------------------------
 export async function excluirAtividade(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_atividade = Number(req.params.id);
 
-  const atividadeExiste = await prisma.atividade.findFirst({
-    where: { id_atividade, id_professor },
-    include: { correcao: { select: { id_correcao: true } } },
-  });
-
-  if (!atividadeExiste) {
-    return res.status(404).json({ erro: 'Atividade não encontrada' });
-  }
-
-  const folhas = atividadeExiste.correcao.length;
-
-  if (folhas > 0) {
-    return res.status(409).json({
-      erro: `Esta atividade tem ${folhas} ${folhas === 1 ? 'folha corrigida' : 'folhas corrigidas'}.`,
-      detalhe:
-        'Apagar levaria as notas dos alunos junto. Apague as correções antes, ' +
-        'se for isso mesmo.',
-    });
-  }
-
-  await prisma.atividade.delete({ where: { id_atividade } });
-
-  return res.status(204).send();
-}
-// ---------------------------------------------------------------------------
-// Apagar correções
-//
-// `resposta` aponta para `correcao` com onDelete: NoAction, ou seja, o banco
-// proíbe apagar uma correção enquanto existir resposta pendurada nela. Então
-// as respostas saem primeiro, e tudo dentro de uma transação: ou o conjunto
-// inteiro some, ou nada some. Sem isso, uma falha no meio deixaria respostas
-// órfãs apontando para uma correção que não existe mais.
-// ---------------------------------------------------------------------------
-
-/** Só devolve a correção se ela for de uma atividade deste professor. */
-async function correcaoDoProfessor(id_correcao: number, id_professor: number) {
-  return prisma.correcao.findFirst({
-    where: { id_correcao, atividade: { id_professor } },
-    include: { aluno: true },
-  });
-}
-
-export async function excluirCorrecao(req: Request, res: Response) {
-  const id_professor = req.professor!.id;
-  const id_correcao = Number(req.params.id);
-
-  if (!id_correcao) {
-    return res.status(400).json({ erro: 'Informe a correção a apagar.' });
-  }
-
-  const correcao = await correcaoDoProfessor(id_correcao, id_professor);
-
-  if (!correcao) {
-    return res.status(404).json({ erro: 'Correção não encontrada' });
-  }
-
-  await prisma.$transaction([
-    prisma.resposta.deleteMany({ where: { id_correcao } }),
-    prisma.correcao.delete({ where: { id_correcao } }),
-  ]);
-
-  return res.json({
-    apagadas: 1,
-    aluno: correcao.aluno?.nome ?? null,
-  });
-}
-
-export async function excluirCorrecoesDaAtividade(req: Request, res: Response) {
-  const id_professor = req.professor!.id;
-  const id_atividade = Number(req.params.id_atividade);
-
-  if (!id_atividade) {
-    return res.status(400).json({ erro: 'Informe a atividade.' });
-  }
-
   const atividade = await prisma.atividade.findFirst({
     where: { id_atividade, id_professor },
+    select: {
+      nome: true,
+      questao: { select: { id_questao: true } },
+      correcao: { select: { id_correcao: true } },
+    },
   });
 
   if (!atividade) {
     return res.status(404).json({ erro: 'Atividade não encontrada' });
   }
 
-  const ids = (
-    await prisma.correcao.findMany({
-      where: { id_atividade },
-      select: { id_correcao: true },
-    })
-  ).map((c) => c.id_correcao);
+  const idsQuestao = atividade.questao.map((q) => q.id_questao);
+  const idsCorrecao = atividade.correcao.map((c) => c.id_correcao);
 
-  if (ids.length === 0) {
-    return res.json({ apagadas: 0 });
-  }
-
+  // `deleteMany` com uma lista vazia não apaga nada e não dá erro, então não
+  // precisa de `if` para o caso da atividade sem questões ou sem correções.
   await prisma.$transaction([
-    prisma.resposta.deleteMany({ where: { id_correcao: { in: ids } } }),
-    prisma.correcao.deleteMany({ where: { id_correcao: { in: ids } } }),
+    prisma.resposta.deleteMany({ where: { id_correcao: { in: idsCorrecao } } }),
+    prisma.resposta.deleteMany({ where: { id_questao: { in: idsQuestao } } }),
+    prisma.correcao.deleteMany({ where: { id_atividade } }),
+    prisma.alternativa.deleteMany({ where: { id_questao: { in: idsQuestao } } }),
+    prisma.questao.deleteMany({ where: { id_atividade } }),
+    prisma.atividade.delete({ where: { id_atividade } }),
   ]);
 
-  return res.json({ apagadas: ids.length });
+  console.log(
+    `[ATIVIDADE] "${atividade.nome}" apagada: ` +
+      `${idsQuestao.length} questões, ${idsCorrecao.length} correções`
+  );
+
+  return res.status(204).send();
 }
