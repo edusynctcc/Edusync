@@ -142,7 +142,7 @@ function Alerta({ titulo, texto, acao }) {
     <View style={styles.alerta}>
       <Ionicons
         name="alert-circle"
-        size={18}
+        size={21}
         color={COR.perigo}
         style={styles.alertaIcone}
       />
@@ -673,7 +673,7 @@ export default function CriarAtividade() {
                 onPress={voltar}
                 style={styles.voltarLinha}
               >
-                <Ionicons name="arrow-back" size={18} color="#0F172A" />
+                <Ionicons name="arrow-back" size={21} color="#0F172A" />
                 <Text style={styles.tituloPaginaDesktop}>
                   {emEdicao ? "Editar atividade" : "Criar atividade"}
                 </Text>
@@ -684,7 +684,7 @@ export default function CriarAtividade() {
               onPress={voltar}
               style={styles.voltarLinha}
             >
-              <Ionicons name="arrow-back" size={18} color="#0F172A" />
+              <Ionicons name="arrow-back" size={21} color="#0F172A" />
               <Text style={styles.tituloPagina}>
                 {emEdicao ? "Editar atividade" : "Criar atividade"}
               </Text>
@@ -722,7 +722,7 @@ export default function CriarAtividade() {
                 ) : (
                   <Ionicons
                     name="document-attach-outline"
-                    size={ehDesktop ? 18 : 16}
+                    size={ehDesktop ? 18 : 19}
                     color={COR.marcador}
                   />
                 )}
@@ -742,7 +742,7 @@ export default function CriarAtividade() {
 
           {resumoImport ? (
             <View style={styles.resumoImport}>
-              <Ionicons name="checkmark-circle" size={18} color={COR.ok} />
+              <Ionicons name="checkmark-circle" size={21} color={COR.ok} />
               <Text style={styles.resumoImportTexto}>{resumoImport}</Text>
             </View>
           ) : null}
@@ -802,14 +802,14 @@ export default function CriarAtividade() {
               >
                 {turmaSelecionada ? turmaSelecionada.nome : "Selecione a turma"}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#64748B" />
+              <Ionicons name="chevron-down" size={19} color="#64748B" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.avisoBox}>
             <Ionicons
               name="information-circle-outline"
-              size={18}
+              size={21}
               color={COR.marcador}
             />
             <View style={styles.avisoTextos}>
@@ -857,7 +857,7 @@ export default function CriarAtividade() {
                   >
                     <Ionicons
                       name="trash-outline"
-                      size={16}
+                      size={19}
                       color={COR.tintaFraca}
                     />
                   </TouchableOpacity>
@@ -901,7 +901,7 @@ export default function CriarAtividade() {
                     >
                       <Ionicons
                         name="swap-horizontal"
-                        size={15}
+                        size={18}
                         color={COR.marcador}
                       />
                       <Text style={styles.imagemBotaoTexto}>Trocar</Text>
@@ -914,7 +914,7 @@ export default function CriarAtividade() {
                     >
                       <Ionicons
                         name="trash-outline"
-                        size={15}
+                        size={18}
                         color={COR.perigo}
                       />
                       <Text
@@ -931,7 +931,7 @@ export default function CriarAtividade() {
                   activeOpacity={0.8}
                   onPress={() => escolherImagem(questao.id)}
                 >
-                  <Ionicons name="image-outline" size={18} color={COR.marcador} />
+                  <Ionicons name="image-outline" size={21} color={COR.marcador} />
                   <Text style={styles.imagemVaziaTexto}>Adicionar imagem</Text>
                 </TouchableOpacity>
               )}
@@ -1033,7 +1033,7 @@ export default function CriarAtividade() {
                           >
                             <Ionicons
                               name="close"
-                              size={16}
+                              size={19}
                               color={COR.tintaFraca}
                             />
                           </TouchableOpacity>
@@ -1116,7 +1116,7 @@ export default function CriarAtividade() {
             style={styles.botaoAdicionarQuestao}
             onPress={adicionarQuestao}
           >
-            <Ionicons name="add" size={18} color={COR.marcador} />
+            <Ionicons name="add" size={21} color={COR.marcador} />
             <Text style={styles.botaoAdicionarQuestaoTexto}>
               Adicionar questão
             </Text>
@@ -1143,7 +1143,7 @@ export default function CriarAtividade() {
                     </Text>
                     <Ionicons
                       name="arrow-up"
-                      size={13}
+                      size={15}
                       color={COR.perigo}
                     />
                   </TouchableOpacity>
@@ -1164,7 +1164,7 @@ export default function CriarAtividade() {
               disabled={gerandoPdf}
               activeOpacity={0.85}
             >
-              <Ionicons name="print-outline" size={16} color={COR.marcador} />
+              <Ionicons name="print-outline" size={19} color={COR.marcador} />
               <Text style={styles.botaoProvaTexto} numberOfLines={1}>
                 {gerandoPdf ? "Gerando..." : "Salvar prova em PDF"}
               </Text>
@@ -1217,9 +1217,30 @@ export default function CriarAtividade() {
                 </TouchableOpacity>
               ))}
               {turmas.length === 0 && (
-                <Text style={{ color: "#94A3B8", padding: 12 }}>
-                  Nenhuma turma cadastrada ainda.
-                </Text>
+                <View style={styles.semTurmaBox}>
+                  <View style={styles.semTurmaIcone}>
+                    <Ionicons name="people-outline" size={24} color={COR.marcador} />
+                  </View>
+                  <Text style={styles.semTurmaTitulo}>
+                    Você ainda não tem nenhuma turma
+                  </Text>
+                  <Text style={styles.semTurmaTexto}>
+                    Toda atividade pertence a uma turma -- é ela que diz de quem
+                    são as folhas que vão ser corrigidas. Crie a primeira e
+                    volte aqui.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.semTurmaBotao}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setModalTurmaAberto(false);
+                      router.push("/turmas");
+                    }}
+                  >
+                    <Ionicons name="add" size={18} color={COR.branco} />
+                    <Text style={styles.semTurmaBotaoTexto}>Criar turma</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </ScrollView>
             <TouchableOpacity
@@ -1239,7 +1260,7 @@ const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: "#F8FAFC" },
 
   conteudo: { flex: 1 },
-  conteudoInterno: { padding: 16, paddingBottom: 60, alignItems: "center" },
+  conteudoInterno: { padding: 19, paddingBottom: 71, alignItems: "center" },
   conteudoInternoDesktop: {
     alignItems: "center",
     paddingTop: 28,
@@ -1257,12 +1278,12 @@ const styles = StyleSheet.create({
   voltarLinha: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 20,
+    gap: 9,
+    marginBottom: 24,
   },
   tituloPagina: {
     fontFamily: FONTE.bold,
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: "600",
     color: "#0F172A",
     letterSpacing: -0.3,
@@ -1281,8 +1302,8 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 16,
-    marginBottom: 16,
+    padding: 19,
+    marginBottom: 19,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -1295,25 +1316,25 @@ const styles = StyleSheet.create({
   },
   importarTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 14,
+    fontSize: 16.5,
     fontWeight: "600",
     color: "#0F172A",
   },
   importarTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 13,
+    fontSize: 15.5,
     color: "#475569",
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: 5,
+    lineHeight: 21,
   },
   botaoImportar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    gap: 9,
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 17,
     borderRadius: RAIO.controle,
     borderWidth: 1,
     borderStyle: "dashed",
@@ -1325,52 +1346,52 @@ const styles = StyleSheet.create({
   },
   botaoImportarTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "500",
     color: "#2563EB",
   },
   importarDica: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: "#94A3B8",
-    marginTop: 8,
-    lineHeight: 16,
+    marginTop: 9,
+    lineHeight: 19,
   },
   resumoImport: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 9,
     width: "100%",
     backgroundColor: "#EFF6FF",
     borderRadius: RAIO.controle,
-    padding: 12,
-    marginBottom: 16,
+    padding: 14,
+    marginBottom: 19,
     borderWidth: 1,
     borderColor: "#DBEAFE",
   },
   resumoImportTexto: {
     flex: 1,
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 15,
     color: "#1E40AF",
-    lineHeight: 18,
+    lineHeight: 21,
   },
   questaoCabecalhoEsquerda: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 9,
     flexShrink: 1,
     flexWrap: "wrap",
   },
   selo: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 2,
     borderRadius: RAIO.etiqueta,
     backgroundColor: "#EFF6FF",
   },
   seloTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "500",
     color: "#2563EB",
   },
@@ -1381,8 +1402,8 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 18,
-    marginBottom: 16,
+    padding: 21,
+    marginBottom: 19,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
@@ -1393,12 +1414,12 @@ const styles = StyleSheet.create({
   secaoCabecalho: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
   secaoTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 15,
+    fontSize: 17.5,
     fontWeight: "600",
     color: "#0F172A",
     letterSpacing: -0.2,
@@ -1408,14 +1429,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
-    paddingBottom: 8,
+    marginBottom: 14,
+    paddingBottom: 9,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
   numeroQuestao: {
     fontFamily: FONTE.bold,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     color: "#2563EB",
     letterSpacing: 0.5,
@@ -1423,11 +1444,11 @@ const styles = StyleSheet.create({
 
   rotulo: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 15,
     fontWeight: "500",
     color: "#334155",
-    marginTop: 14,
-    marginBottom: 6,
+    marginTop: 17,
+    marginBottom: 7,
   },
   rotuloApoio: {
     fontFamily: FONTE.regular,
@@ -1439,39 +1460,39 @@ const styles = StyleSheet.create({
   alerta: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 12,
     backgroundColor: "#FEF2F2",
     borderLeftWidth: 3,
     borderLeftColor: "#DC2626",
     borderRadius: RAIO.controle,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 17,
+    marginBottom: 19,
   },
   alertaIcone: { marginTop: 1 },
   alertaTextos: { flex: 1, gap: 2 },
   alertaTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "600",
     color: "#991B1B",
   },
   alertaTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 12.5,
+    fontSize: 15,
     color: "#7F1D1D",
-    lineHeight: 17,
+    lineHeight: 20,
   },
   alertaAcao: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 6,
+    gap: 5,
+    marginTop: 7,
     alignSelf: "flex-start",
   },
   alertaAcaoTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
     color: "#DC2626",
   },
@@ -1484,15 +1505,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     fontFamily: FONTE.regular,
-    fontSize: 13.5,
+    fontSize: 16,
     color: "#0F172A",
     backgroundColor: "#FFFFFF",
   },
-  campoTextoArea: { minHeight: 80, textAlignVertical: "top", lineHeight: 19 },
-  campoPeso: { width: 100 },
+  campoTextoArea: { minHeight: 94, textAlignVertical: "top", lineHeight: 22.5 },
+  campoPeso: { width: 118 },
 
   campoSelect: {
     flexDirection: "row",
@@ -1501,57 +1522,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: "#FFFFFF",
   },
-  campoSelectPlaceholder: { fontSize: 13.5, color: "#94A3B8" },
-  campoSelectValor: { fontSize: 13.5, color: "#0F172A", fontWeight: "500" },
+  campoSelectPlaceholder: { fontSize: 16, color: "#94A3B8" },
+  campoSelectValor: { fontSize: 16, color: "#0F172A", fontWeight: "500" },
 
   imagemVazia: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 9,
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderStyle: "dashed",
     borderRadius: RAIO.controle,
-    paddingVertical: 14,
+    paddingVertical: 17,
     backgroundColor: "#F8FAFC",
   },
   imagemVaziaTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "500",
     color: "#2563EB",
   },
-  imagemBloco: { gap: 8 },
+  imagemBloco: { gap: 9 },
   imagemPrevia: {
     width: "100%",
-    height: 180,
+    height: 212,
     borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     backgroundColor: "#F8FAFC",
   },
   imagemPreviaDesktop: { height: 220 },
-  imagemAcoes: { flexDirection: "row", gap: 8 },
+  imagemAcoes: { flexDirection: "row", gap: 9 },
   imagemBotao: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingVertical: 8,
+    paddingVertical: 9,
     backgroundColor: "#FFFFFF",
   },
   imagemBotaoTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 15,
     fontWeight: "500",
     color: "#2563EB",
   },
@@ -1559,34 +1580,34 @@ const styles = StyleSheet.create({
   avisoBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 12,
     width: "100%",
     backgroundColor: "#F8FAFC",
     borderRadius: RAIO.controle,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 12,
-    marginBottom: 18,
+    padding: 14,
+    marginBottom: 21,
   },
   avisoTextos: { flex: 1 },
   avisoTitulo: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     fontWeight: "600",
     color: "#0F172A",
   },
   avisoDescricao: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: "#64748B",
     marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 19,
   },
 
-  tiposGrade: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tiposGrade: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   tipoPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: RAIO.etiqueta,
     borderWidth: 1,
     borderColor: "#CBD5E1",
@@ -1595,7 +1616,7 @@ const styles = StyleSheet.create({
   tipoPillAtivo: { backgroundColor: "#0F172A", borderColor: "#0F172A" },
   tipoPillTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: 15,
     fontWeight: "500",
     color: "#475569",
   },
@@ -1604,13 +1625,13 @@ const styles = StyleSheet.create({
   alternativaLinha: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 9,
   },
   radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 21,
+    height: 21,
+    borderRadius: 11,
     borderWidth: 1.5,
     borderColor: "#CBD5E1",
     alignItems: "center",
@@ -1619,65 +1640,65 @@ const styles = StyleSheet.create({
   },
   radioAtivo: { borderColor: "#16A34A" },
   radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#16A34A",
   },
   alternativaLetra: {
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "600",
     color: "#475569",
-    width: 18,
+    width: 21,
     flexShrink: 0,
   },
   alternativaCampo: { flex: 1, minWidth: 0 },
   linkPequeno: {
     fontFamily: FONTE.semi,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
     color: "#2563EB",
-    marginTop: 4,
+    marginTop: 5,
   },
 
   dica: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: "#64748B",
-    marginTop: 6,
-    lineHeight: 16,
+    marginTop: 7,
+    lineHeight: 19,
   },
   dicaForte: {
     fontFamily: FONTE.semi,
-    fontSize: 11.5,
+    fontSize: 13.5,
     fontWeight: "600",
     color: "#334155",
-    marginTop: 4,
+    marginTop: 5,
   },
 
   botaoAdicionarQuestao: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     width: "100%",
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderStyle: "dashed",
     borderRadius: RAIO.controle,
-    paddingVertical: 12,
-    marginBottom: 16,
+    paddingVertical: 14,
+    marginBottom: 19,
     backgroundColor: "#FFFFFF",
   },
   botaoAdicionarQuestaoTexto: {
     color: "#2563EB",
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "600",
   },
 
-  acoesFinais: { width: "100%", gap: 10 },
+  acoesFinais: { width: "100%", gap: 12 },
   acoesFinaisMobile: { flexDirection: "column" },
   acoesFinaisDesktop: {
     flexDirection: "row",
@@ -1690,18 +1711,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: RAIO.controle,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 19,
     backgroundColor: "#FFFFFF",
   },
   botaoProvaDesktop: { paddingHorizontal: 18 },
   botaoProvaTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "600",
     color: "#0F172A",
   },
@@ -1709,8 +1730,8 @@ const styles = StyleSheet.create({
   botaoPublicar: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 11,
-    paddingHorizontal: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 21,
     borderRadius: RAIO.controle,
     backgroundColor: "#0F172A",
   },
@@ -1720,45 +1741,89 @@ const styles = StyleSheet.create({
     flexBasis: "auto",
     paddingHorizontal: 28,
   },
-  botaoPublicarTexto: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
+  botaoPublicarTexto: { fontSize: 15.5, fontWeight: "600", color: "#FFFFFF" },
 
   modalTurmaFundo: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.4)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: 28,
   },
   modalTurmaCard: {
     width: "100%",
     maxWidth: 360,
     backgroundColor: "#FFFFFF",
     borderRadius: RAIO.superficie,
-    padding: 18,
+    padding: 21,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   modalTurmaTitulo: {
-    fontSize: 15,
+    fontSize: 17.5,
     fontWeight: "600",
     color: "#0F172A",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   modalTurmaItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 9,
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
-  modalTurmaItemTexto: { fontSize: 13.5, fontWeight: "500", color: "#0F172A" },
-  modalTurmaItemEscola: { fontSize: 11.5, color: "#94A3B8", marginTop: 2 },
+  modalTurmaItemTexto: { fontSize: 16, fontWeight: "500", color: "#0F172A" },
+
+  // Sem turma nenhuma, escolher turma é um beco sem saída: a atividade não
+  // pode ser salva e a tela não dizia para onde ir. Agora o caminho está aqui.
+  semTurmaBox: { alignItems: "center", paddingVertical: 14, gap: 7 },
+  semTurmaIcone: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COR.emAndamentoFundo,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  semTurmaTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 15,
+    fontWeight: "700",
+    color: COR.tintaForte,
+    textAlign: "center",
+  },
+  semTurmaTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    color: COR.tintaMedia,
+    textAlign: "center",
+    lineHeight: 19,
+    marginBottom: 6,
+  },
+  semTurmaBotao: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    width: "100%",
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
+    paddingVertical: 14,
+  },
+  semTurmaBotaoTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COR.branco,
+  },
+  modalTurmaItemEscola: { fontSize: 13.5, color: "#94A3B8", marginTop: 2 },
   modalTurmaFechar: {
     alignItems: "center",
-    paddingVertical: 10,
-    marginTop: 8,
+    paddingVertical: 12,
+    marginTop: 9,
   },
   modalTurmaFecharTexto: {
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "600",
     color: "#64748B",
   },

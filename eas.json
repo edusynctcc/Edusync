@@ -1,6 +1,5 @@
 {
   "cli": {
-    "version": ">= 27.4.1",
     "appVersionSource": "remote"
   },
   "build": {
@@ -13,12 +12,18 @@
       "android": {
         "buildType": "apk"
       },
-      "ios": {
-        "simulator": true
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://edusync-production-5edc.up.railway.app"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://edusync-production-5edc.up.railway.app"
+      }
     }
   },
   "submit": {

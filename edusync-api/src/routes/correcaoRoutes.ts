@@ -1,7 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
-import { corrigirFolha, confirmarCorrecao } from '../controllers/correcaoController';
+import {
+  corrigirFolha,
+  confirmarCorrecao,
+  excluirCorrecao,
+  excluirCorrecoesDaAtividade,
+} from '../controllers/correcaoController';
 import {
   listarCorrecoes,
   buscarCorrecao,
@@ -39,11 +44,18 @@ router.get('/atividade/:id_atividade/questoes', desempenhoPorQuestao);
 
 router.put('/atividade/:id_atividade/concluir', concluirAtividade);
 
+// As rotas com caminho fixo vêm antes das que usam "/:id".
+// O Express casa na ordem em que foram declaradas, então se "/:id" viesse
+// primeiro ele engoliria "atividade" como se fosse um número de correção.
+router.delete('/atividade/:id_atividade', excluirCorrecoesDaAtividade);
+
 router.get('/:id', buscarCorrecao);
 
 router.put('/:id/respostas/:id_resposta', ajustarResposta);
 
 router.put('/:id/concluir', concluirCorrecao);
+
+router.delete('/:id', excluirCorrecao);
 
 router.use((erro: any, _req: Request, res: Response, proximo: NextFunction) => {
   if (!erro) return proximo();

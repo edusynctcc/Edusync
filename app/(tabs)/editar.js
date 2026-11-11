@@ -18,6 +18,8 @@ import {
   buscarCorrecao,
   concluirAtividade,
   desempenhoPorQuestao,
+  excluirCorrecao,
+  excluirCorrecoesDaAtividade,
   listarCorrecoes,
 } from "../../constants/api";
 import {
@@ -188,6 +190,13 @@ export default function Editar() {
   const [exportando, setExportando] = useState(false);
 
   const [questoes, setQuestoes] = useState([]);
+
+  // Apagar correção. `paraApagar` guarda a correção de um aluno; `apagarTudo`
+  // é a confirmação do conjunto. Os dois abrem janela de confirmação, porque
+  // nenhum dos dois tem volta.
+  const [paraApagar, setParaApagar] = useState(null);
+  const [apagarTudo, setApagarTudo] = useState(false);
+  const [apagando, setApagando] = useState(false);
 
   async function carregarLista() {
     setErro("");
@@ -360,6 +369,56 @@ export default function Editar() {
     }
   }
 
+  async function apagarUma() {
+    if (!paraApagar || apagando) return;
+
+    setApagando(true);
+    setErro("");
+
+    try {
+      await excluirCorrecao(paraApagar.id_correcao);
+
+      // Se o aluno apagado era o que estava aberto no painel, o painel some
+      // junto -- senão ficaria mostrando respostas de uma correção que não
+      // existe mais.
+      if (selecionada === paraApagar.id_correcao) {
+        setSelecionada(null);
+        setDetalhe(null);
+      }
+
+      setParaApagar(null);
+
+      const lista = await carregarLista();
+      await carregarQuestoes();
+
+      // Era a última folha: não sobrou nada para editar nesta tela.
+      if (lista.length === 0) router.replace("/correcoes");
+    } catch (e) {
+      setErro(e.message);
+      setParaApagar(null);
+    } finally {
+      setApagando(false);
+    }
+  }
+
+  async function apagarConjunto() {
+    if (apagando) return;
+
+    setApagando(true);
+    setErro("");
+
+    try {
+      await excluirCorrecoesDaAtividade(id_atividade);
+      setApagarTudo(false);
+      router.replace("/correcoes");
+    } catch (e) {
+      setErro(e.message);
+      setApagarTudo(false);
+    } finally {
+      setApagando(false);
+    }
+  }
+
   async function fecharAtividade(reabrir) {
     if (fechando) return;
     setFechando(true);
@@ -395,7 +454,7 @@ export default function Editar() {
         <View style={styles.centro}>
           <Ionicons
             name="document-text-outline"
-            size={36}
+            size={42}
             color={COR.tintaFraca}
           />
           <Text style={styles.textoApoio}>
@@ -405,7 +464,7 @@ export default function Editar() {
             style={styles.botaoEscuro}
             onPress={() => router.replace("/scanner")}
           >
-            <Ionicons name="camera-outline" size={16} color={COR.branco} />
+            <Ionicons name="camera-outline" size={19} color={COR.branco} />
             <Text style={styles.botaoEscuroTexto}>Ir para o Scanner</Text>
           </TouchableOpacity>
         </View>
@@ -537,9 +596,21 @@ export default function Editar() {
                 >
                   {formatarNota(c.nota)}
                 </Text>
+                <TouchableOpacity
+                  style={styles.lixeiraAluno}
+                  activeOpacity={0.7}
+                  hitSlop={8}
+                  disabled={apagando}
+                  onPress={() => setParaApagar(c)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Apagar a correção de ${c.aluno?.nome || "este aluno"}`}
+                >
+                  <Ionicons name="trash-outline" size={16} color={COR.perigo} />
+                </TouchableOpacity>
+
                 <Ionicons
                   name="chevron-forward"
-                  size={15}
+                  size={18}
                   color={COR.chevron}
                 />
               </TouchableOpacity>
@@ -563,7 +634,7 @@ export default function Editar() {
     if (!detalhe) {
       return (
         <View style={[styles.cartao, styles.cartaoVazio]}>
-          <Ionicons name="hand-left-outline" size={30} color={COR.tintaFraca} />
+          <Ionicons name="hand-left-outline" size={35} color={COR.tintaFraca} />
           <Text style={styles.textoApoio}>
             Escolha um aluno na lista para ver o que a IA leu na folha dele.
           </Text>
@@ -598,7 +669,7 @@ export default function Editar() {
 
         {travada ? (
           <View style={styles.avisoTrancado}>
-            <Ionicons name="lock-closed" size={14} color={COR.avisoTexto} />
+            <Ionicons name="lock-closed" size={17} color={COR.avisoTexto} />
             <Text style={styles.avisoTrancadoTexto}>
               Correção concluída — as notas estão travadas.
             </Text>
@@ -709,7 +780,7 @@ export default function Editar() {
             activeOpacity={0.7}
             onPress={() => router.replace("/correcoes")}
           >
-            <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
+            <Ionicons name="arrow-back" size={21} color={COR.tintaForte} />
             <Text style={styles.tituloPagina}>Editar correção</Text>
           </TouchableOpacity>
 
@@ -724,7 +795,7 @@ export default function Editar() {
               >
                 <MaterialCommunityIcons
                   name={visual.icone}
-                  size={22}
+                  size={26}
                   color={visual.corIcone}
                 />
               </View>
@@ -746,7 +817,7 @@ export default function Editar() {
               >
                 <Ionicons
                   name={tudoConcluido ? "checkmark-done" : "time-outline"}
-                  size={12}
+                  size={14}
                   color={tudoConcluido ? COR.ok : COR.avisoTexto}
                 />
                 <Text
@@ -771,7 +842,7 @@ export default function Editar() {
             >
               <Ionicons
                 name={tudoConcluido ? "lock-open-outline" : "checkmark-done"}
-                size={17}
+                size={20}
                 color={tudoConcluido ? COR.marcador : COR.branco}
               />
               <Text
@@ -799,7 +870,7 @@ export default function Editar() {
               >
                 <Ionicons
                   name="document-text-outline"
-                  size={15}
+                  size={18}
                   color={COR.marcador}
                 />
                 <Text style={styles.botaoExportarTexto}>Salvar em PDF</Text>
@@ -812,10 +883,24 @@ export default function Editar() {
                 disabled={exportando}
                 onPress={exportarPlanilha}
               >
-                <Ionicons name="grid-outline" size={15} color={COR.marcador} />
+                <Ionicons name="grid-outline" size={18} color={COR.marcador} />
                 <Text style={styles.botaoExportarTexto}>Salvar em Excel</Text>
               </TouchableOpacity>
             </View>
+
+            {correcoes.length > 0 && (
+              <TouchableOpacity
+                style={styles.linkApagarTudo}
+                activeOpacity={0.7}
+                disabled={apagando}
+                onPress={() => setApagarTudo(true)}
+              >
+                <Ionicons name="trash-outline" size={15} color={COR.perigo} />
+                <Text style={styles.linkApagarTudoTexto}>
+                  Apagar todas as correções
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
@@ -832,7 +917,7 @@ export default function Editar() {
                 >
                   <Ionicons
                     name={aba.icone}
-                    size={15}
+                    size={18}
                     color={ativa ? COR.marcador : COR.tintaFraca}
                   />
                   <Text
@@ -855,7 +940,7 @@ export default function Editar() {
                       { backgroundColor: COR.emAndamentoFundo },
                     ]}
                   >
-                    <Ionicons name="people" size={17} color={COR.marcador} />
+                    <Ionicons name="people" size={20} color={COR.marcador} />
                   </View>
                   <Text style={styles.tileValor}>{correcoes.length}</Text>
                   <Text style={styles.tileRotulo}>folhas corrigidas</Text>
@@ -865,7 +950,7 @@ export default function Editar() {
                   <View
                     style={[styles.tileIcone, { backgroundColor: COR.okFundo }]}
                   >
-                    <Ionicons name="trending-up" size={17} color={COR.ok} />
+                    <Ionicons name="trending-up" size={20} color={COR.ok} />
                   </View>
                   <Text
                     style={[
@@ -922,7 +1007,7 @@ export default function Editar() {
               onPress={() => exportarPdf("notas")}
             >
               <View style={styles.opcaoIcone}>
-                <Ionicons name="people-outline" size={19} color={COR.marcador} />
+                <Ionicons name="people-outline" size={22} color={COR.marcador} />
               </View>
               <View style={styles.opcaoTextos}>
                 <Text style={styles.opcaoTitulo}>Notas dos alunos</Text>
@@ -933,7 +1018,7 @@ export default function Editar() {
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={16}
+                size={19}
                 color={COR.chevron}
               />
             </TouchableOpacity>
@@ -949,7 +1034,7 @@ export default function Editar() {
               <View style={styles.opcaoIcone}>
                 <Ionicons
                   name="stats-chart-outline"
-                  size={19}
+                  size={22}
                   color={COR.marcador}
                 />
               </View>
@@ -967,7 +1052,7 @@ export default function Editar() {
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={16}
+                size={19}
                 color={COR.chevron}
               />
             </TouchableOpacity>
@@ -983,7 +1068,7 @@ export default function Editar() {
               <View style={styles.opcaoIcone}>
                 <Ionicons
                   name="documents-outline"
-                  size={19}
+                  size={22}
                   color={COR.marcador}
                 />
               </View>
@@ -999,7 +1084,7 @@ export default function Editar() {
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={16}
+                size={19}
                 color={COR.chevron}
               />
             </TouchableOpacity>
@@ -1014,6 +1099,100 @@ export default function Editar() {
           </View>
         </View>
       </Modal>
+
+      {/* Apagar a correção de um aluno */}
+      <Modal
+        visible={!!paraApagar}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setParaApagar(null)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={[styles.modalCard, styles.modalConfirma]}>
+            <View style={styles.confirmaIcone}>
+              <Ionicons name="trash-outline" size={24} color={COR.perigo} />
+            </View>
+
+            <Text style={styles.confirmaTitulo}>
+              Apagar a correção de {paraApagar?.aluno?.nome || "este aluno"}?
+            </Text>
+            <Text style={styles.confirmaTexto}>
+              A nota dele nesta atividade some. O aluno continua na turma e você
+              pode escanear a folha de novo depois.
+            </Text>
+
+            <View style={styles.confirmaBotoes}>
+              <TouchableOpacity
+                style={styles.confirmaCancelar}
+                activeOpacity={0.8}
+                onPress={() => setParaApagar(null)}
+              >
+                <Text style={styles.confirmaCancelarTexto}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmaApagar}
+                activeOpacity={0.8}
+                disabled={apagando}
+                onPress={apagarUma}
+              >
+                <Text style={styles.confirmaApagarTexto}>
+                  {apagando ? "Apagando..." : "Apagar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Apagar todas as correções da atividade */}
+      <Modal
+        visible={apagarTudo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setApagarTudo(false)}
+      >
+        <View style={styles.modalFundo}>
+          <View style={[styles.modalCard, styles.modalConfirma]}>
+            <View style={styles.confirmaIcone}>
+              <Ionicons name="trash-outline" size={24} color={COR.perigo} />
+            </View>
+
+            <Text style={styles.confirmaTitulo}>
+              Apagar todas as correções?
+            </Text>
+            <Text style={styles.confirmaTexto}>
+              Isso apaga {correcoes.length}{" "}
+              {correcoes.length === 1
+                ? "folha corrigida"
+                : "folhas corrigidas"}{" "}
+              desta atividade, com as notas de todos os alunos. A atividade, as
+              questões e o gabarito continuam. Não dá para desfazer.
+            </Text>
+
+            <View style={styles.confirmaBotoes}>
+              <TouchableOpacity
+                style={styles.confirmaCancelar}
+                activeOpacity={0.8}
+                onPress={() => setApagarTudo(false)}
+              >
+                <Text style={styles.confirmaCancelarTexto}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmaApagar}
+                activeOpacity={0.8}
+                disabled={apagando}
+                onPress={apagarConjunto}
+              >
+                <Text style={styles.confirmaApagarTexto}>
+                  {apagando ? "Apagando..." : "Apagar tudo"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1024,35 +1203,35 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    padding: 30,
+    gap: 14,
+    padding: 35,
   },
   textoApoio: {
     fontFamily: FONTE.regular,
-    fontSize: 13,
+    fontSize: 15.5,
     color: COR.tintaMedia,
     textAlign: "center",
-    lineHeight: 19,
+    lineHeight: 22.5,
   },
 
   conteudo: { flex: 1 },
   conteudoInterno: {
-    padding: 16,
-    paddingBottom: 50,
+    padding: 19,
+    paddingBottom: 59,
     alignItems: "center",
-    gap: 12,
+    gap: 14,
   },
-  miolo: { width: "92%", maxWidth: 1100, gap: 12 },
+  miolo: { width: "92%", maxWidth: 1100, gap: 14 },
 
   voltarLinha: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
+    gap: 12,
+    paddingVertical: 7,
   },
   tituloPagina: {
     fontFamily: FONTE.bold,
-    fontSize: 18,
+    fontSize: 21,
     fontWeight: "700",
     color: COR.tintaForte,
   },
@@ -1063,54 +1242,54 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    padding: 16,
-    gap: 12,
+    padding: 19,
+    gap: 14,
   },
   cartaoVazio: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    minHeight: 200,
+    gap: 12,
+    minHeight: 236,
   },
-  cartaoTitulo: { fontFamily: FONTE.bold, fontSize: 14, color: COR.tintaForte },
+  cartaoTitulo: { fontFamily: FONTE.bold, fontSize: 16.5, color: COR.tintaForte },
   cartaoSubtitulo: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaFraca,
   },
 
-  atividadeLinha: { flexDirection: "row", alignItems: "center", gap: 12 },
+  atividadeLinha: { flexDirection: "row", alignItems: "center", gap: 14 },
   atividadeIcone: {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     borderRadius: RAIO.controle,
     alignItems: "center",
     justifyContent: "center",
   },
   atividadeNome: {
     fontFamily: FONTE.bold,
-    fontSize: 16,
+    fontSize: 19,
     color: COR.tintaForte,
   },
 
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: RAIO.controle,
   },
-  badgeTexto: { fontFamily: FONTE.bold, fontSize: 10.5 },
+  badgeTexto: { fontFamily: FONTE.bold, fontSize: 12.5 },
 
   botaoConcluir: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 9,
     backgroundColor: COR.ok,
     borderRadius: RAIO.controle,
-    paddingVertical: 13,
+    paddingVertical: 15,
   },
   botaoReabrir: {
     backgroundColor: COR.branco,
@@ -1119,25 +1298,25 @@ const styles = StyleSheet.create({
   },
   botaoConcluirTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 13.5,
+    fontSize: 16,
     color: COR.branco,
   },
 
-  exportarLinha: { flexDirection: "row", gap: 8 },
+  exportarLinha: { flexDirection: "row", gap: 9 },
   botaoExportar: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     borderWidth: 1.2,
     borderColor: COR.linha,
     borderRadius: RAIO.controle,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   botaoExportarTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.marcador,
   },
 
@@ -1146,81 +1325,156 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(11,30,61,0.45)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: 28,
   },
   modalCard: {
     width: "100%",
     maxWidth: 380,
     backgroundColor: COR.branco,
     borderRadius: RAIO.superficie,
-    padding: 18,
-    gap: 10,
+    padding: 21,
+    gap: 12,
   },
   modalCardDesktop: { maxWidth: 440, padding: 24 },
-  modalTitulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
+  modalTitulo: { fontFamily: FONTE.bold, fontSize: 19, color: COR.tintaForte },
   modalSub: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaFraca,
     marginTop: -6,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   opcao: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
     borderRadius: RAIO.controle,
-    padding: 12,
+    padding: 14,
   },
   opcaoDesativada: { opacity: 0.45 },
   opcaoIcone: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 45,
+    height: 45,
+    borderRadius: 22,
     backgroundColor: COR.emAndamentoFundo,
     alignItems: "center",
     justifyContent: "center",
   },
   opcaoTextos: { flex: 1, gap: 2 },
-  opcaoTitulo: { fontFamily: FONTE.bold, fontSize: 13.5, color: COR.tintaForte },
+  opcaoTitulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
   opcaoDescricao: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaFraca,
-    lineHeight: 16,
+    lineHeight: 19,
   },
-  modalCancelar: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
-  modalCancelarTexto: {
+  modalCancelar: { alignItems: "center", paddingVertical: 12, marginTop: 2 },
+
+  // --- apagar correção ---
+  // A lixeira fica depois da nota e antes da seta. Área tocável ampliada pelo
+  // hitSlop, para o dedo não acertar a linha inteira e abrir o aluno sem querer.
+  lixeiraAluno: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  linkApagarTudo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 10,
+  },
+  linkApagarTudoTexto: {
     fontFamily: FONTE.semi,
     fontSize: 13,
+    fontWeight: "600",
+    color: COR.perigo,
+  },
+
+  modalConfirma: { alignItems: "center", maxWidth: 400 },
+  confirmaIcone: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: COR.perigoFundo,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmaTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 17,
+    color: COR.tintaForte,
+    textAlign: "center",
+  },
+  confirmaTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 14,
+    color: COR.tintaMedia,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  confirmaBotoes: { flexDirection: "row", gap: 12, width: "100%", marginTop: 6 },
+  confirmaCancelar: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: RAIO.controle,
+    borderWidth: 1.5,
+    borderColor: COR.linha,
+  },
+  confirmaCancelarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    color: COR.tintaMedia,
+  },
+  confirmaApagar: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: RAIO.controle,
+    backgroundColor: COR.perigo,
+  },
+  confirmaApagarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    color: COR.branco,
+  },
+  modalCancelarTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 15.5,
     color: COR.tintaMedia,
   },
 
   botaoEscuro: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 8,
     backgroundColor: COR.marinho,
     borderRadius: RAIO.controle,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 19,
+    paddingVertical: 12,
   },
   botaoEscuroTexto: {
     color: COR.branco,
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
   },
 
   erroFaixa: {
     width: "100%",
     fontFamily: FONTE.media,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.perigo,
     backgroundColor: COR.perigoFundo,
     borderRadius: RAIO.controle,
-    padding: 12,
+    padding: 14,
   },
 
   abasLinha: {
@@ -1230,97 +1484,97 @@ const styles = StyleSheet.create({
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    padding: 4,
-    gap: 4,
+    padding: 5,
+    gap: 5,
   },
   aba: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
+    gap: 7,
+    paddingVertical: 12,
     borderRadius: RAIO.controle,
   },
   abaAtiva: { backgroundColor: COR.emAndamentoFundo },
-  abaTexto: { fontFamily: FONTE.semi, fontSize: 12.5, color: COR.tintaFraca },
+  abaTexto: { fontFamily: FONTE.semi, fontSize: 15, color: COR.tintaFraca },
   abaTextoAtiva: { color: COR.marcador },
 
-  tilesLinha: { flexDirection: "row", gap: 10, width: "100%" },
+  tilesLinha: { flexDirection: "row", gap: 12, width: "100%" },
   tile: {
     flex: 1,
     backgroundColor: COR.branco,
     borderRadius: RAIO.superficie,
     borderWidth: 1,
     borderColor: COR.linhaSuave,
-    padding: 14,
+    padding: 17,
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
   tileIcone: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
   },
-  tileValor: { fontFamily: FONTE.bold, fontSize: 20, color: COR.tintaForte },
+  tileValor: { fontFamily: FONTE.bold, fontSize: 23.5, color: COR.tintaForte },
   tileRotulo: {
     fontFamily: FONTE.regular,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: COR.tintaFraca,
     textAlign: "center",
   },
 
-  listaQuestoes: { gap: 16, borderTopWidth: 1, borderTopColor: COR.linhaSuave, paddingTop: 14 },
-  questaoResumo: { gap: 6 },
-  resumoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  listaQuestoes: { gap: 19, borderTopWidth: 1, borderTopColor: COR.linhaSuave, paddingTop: 17 },
+  questaoResumo: { gap: 7 },
+  resumoTopo: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
   resumoNumero: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaMedia,
-    minWidth: 18,
+    minWidth: 21,
   },
   resumoPergunta: {
     flex: 1,
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaForte,
-    lineHeight: 17,
+    lineHeight: 20,
   },
   resumoPorcento: {
     fontFamily: FONTE.bold,
-    fontSize: 13,
+    fontSize: 15.5,
     color: COR.tintaForte,
-    minWidth: 38,
+    minWidth: 45,
     textAlign: "right",
   },
   trilho: {
-    height: 8,
-    borderRadius: 4,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: BARRA_TRILHO,
     overflow: "hidden",
   },
   preenchimento: {
-    height: 8,
+    height: 9,
     backgroundColor: COR.marcador,
     borderTopRightRadius: 4,
     borderBottomRightRadius: 4,
   },
   resumoContas: {
     fontFamily: FONTE.regular,
-    fontSize: 11,
+    fontSize: 13,
     color: COR.tintaFraca,
   },
   resumoAjuste: {
     fontFamily: FONTE.semi,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: COR.avisoTexto,
   },
   resumoRodape: {
     fontFamily: FONTE.regular,
-    fontSize: 11,
+    fontSize: 13,
     color: COR.tintaFraca,
     fontStyle: "italic",
   },
@@ -1329,77 +1583,77 @@ const styles = StyleSheet.create({
   linhaAluno: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 11,
-    paddingHorizontal: 6,
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 7,
     borderBottomWidth: 1,
     borderBottomColor: COR.linhaSuave,
     borderRadius: RAIO.controle,
   },
   linhaAlunoAtiva: { backgroundColor: COR.emAndamentoFundo },
   chamadaCirculo: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 33,
+    height: 33,
+    borderRadius: 17,
     backgroundColor: COR.fundo,
     alignItems: "center",
     justifyContent: "center",
   },
-  chamadaTexto: { fontFamily: FONTE.bold, fontSize: 11, color: COR.tintaMedia },
+  chamadaTexto: { fontFamily: FONTE.bold, fontSize: 13, color: COR.tintaMedia },
   alunoTextos: { flex: 1, gap: 1 },
-  alunoNome: { fontFamily: FONTE.semi, fontSize: 13, color: COR.tintaForte },
+  alunoNome: { fontFamily: FONTE.semi, fontSize: 15.5, color: COR.tintaForte },
   alunoStatus: {
     fontFamily: FONTE.regular,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: COR.tintaFraca,
   },
-  alunoNota: { fontFamily: FONTE.bold, fontSize: 15 },
+  alunoNota: { fontFamily: FONTE.bold, fontSize: 17.5 },
 
   duasColunas: {
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
     width: "100%",
     alignItems: "flex-start",
   },
   colunaLista: { flex: 1 },
   colunaDetalhe: { flex: 1.3 },
 
-  detalheTopo: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  detalheNome: { fontFamily: FONTE.bold, fontSize: 16, color: COR.tintaForte },
-  detalheNota: { fontFamily: FONTE.bold, fontSize: 22 },
+  detalheTopo: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  detalheNome: { fontFamily: FONTE.bold, fontSize: 19, color: COR.tintaForte },
+  detalheNota: { fontFamily: FONTE.bold, fontSize: 26 },
   detalheNotaPeso: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaFraca,
   },
 
   avisoTrancado: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 8,
     backgroundColor: COR.avisoFundo,
     borderRadius: RAIO.controle,
-    paddingVertical: 9,
-    paddingHorizontal: 11,
+    paddingVertical: 11,
+    paddingHorizontal: 13,
   },
   avisoTrancadoTexto: {
     flex: 1,
     fontFamily: FONTE.semi,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.avisoTexto,
   },
   dicaAjuste: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaMedia,
-    lineHeight: 16,
+    lineHeight: 19,
   },
 
   blocoQuestao: {
-    gap: 8,
+    gap: 9,
     borderTopWidth: 1,
     borderTopColor: COR.linhaSuave,
-    paddingTop: 12,
+    paddingTop: 14,
   },
   questaoTopo: {
     flexDirection: "row",
@@ -1408,55 +1662,55 @@ const styles = StyleSheet.create({
   },
   questaoNumero: {
     fontFamily: FONTE.bold,
-    fontSize: 12.5,
+    fontSize: 15,
     color: COR.tintaForte,
   },
-  questaoNota: { fontFamily: FONTE.bold, fontSize: 13, color: COR.tintaForte },
+  questaoNota: { fontFamily: FONTE.bold, fontSize: 15.5, color: COR.tintaForte },
   questaoPeso: {
     fontFamily: FONTE.regular,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: COR.tintaFraca,
   },
   questaoPergunta: {
     fontFamily: FONTE.regular,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaMedia,
-    lineHeight: 16,
+    lineHeight: 19,
   },
 
   leitura: {
     backgroundColor: COR.fundo,
     borderRadius: RAIO.controle,
-    padding: 10,
+    padding: 12,
     borderLeftWidth: 3,
     borderLeftColor: COR.marcador,
-    gap: 3,
+    gap: 4,
   },
   leituraRotulo: {
     fontFamily: FONTE.semi,
-    fontSize: 9.5,
+    fontSize: 11,
     color: COR.tintaFraca,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   leituraTexto: {
     fontFamily: FONTE.regular,
-    fontSize: 12,
+    fontSize: 14,
     color: COR.tintaForte,
-    lineHeight: 17,
+    lineHeight: 20,
   },
   comentario: {
     fontFamily: FONTE.regular,
-    fontSize: 11,
+    fontSize: 13,
     color: COR.tintaFraca,
   },
 
-  fracoesLinha: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  fracoesLinha: { flexDirection: "row", gap: 7, flexWrap: "wrap" },
   botaoFracao: {
-    minWidth: 50,
+    minWidth: 59,
     alignItems: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 9,
     borderRadius: RAIO.controle,
     borderWidth: 1.5,
     borderColor: COR.linha,
@@ -1465,12 +1719,12 @@ const styles = StyleSheet.create({
   botaoFracaoAtivo: { borderColor: COR.marinho, backgroundColor: COR.marinho },
   botaoFracaoTexto: {
     fontFamily: FONTE.bold,
-    fontSize: 11.5,
+    fontSize: 13.5,
     color: COR.tintaForte,
   },
   botaoFracaoRotulo: {
     fontFamily: FONTE.regular,
-    fontSize: 9,
+    fontSize: 10.5,
     color: COR.tintaFraca,
     marginTop: 1,
   },
@@ -1478,7 +1732,7 @@ const styles = StyleSheet.create({
   desativado: { opacity: 0.5 },
   marcaAjustada: {
     fontFamily: FONTE.semi,
-    fontSize: 9.5,
+    fontSize: 11,
     color: COR.avisoTexto,
   },
 });

@@ -657,3 +657,22 @@ export function concluirAtividade(id_atividade, { reabrir } = {}) {
     autenticado: true,
   });
 }
+// Apaga a correção de UM aluno: a nota dele nesta atividade some, mas o aluno
+// continua na turma e a atividade continua existindo. Dá para escanear a
+// folha dele de novo depois.
+export function excluirCorrecao(id_correcao) {
+  return apiFetch(`${ENDPOINTS.correcoes}/${id_correcao}`, {
+    method: "DELETE",
+    autenticado: true,
+  });
+}
+
+// Apaga a correção de TODOS os alunos de uma atividade. A atividade, as
+// questões e o gabarito continuam lá -- só zera o que já foi corrigido.
+// Devolve { apagadas: <quantas> }.
+export function excluirCorrecoesDaAtividade(id_atividade) {
+  return apiFetch(`${ENDPOINTS.correcoes}/atividade/${id_atividade}`, {
+    method: "DELETE",
+    autenticado: true,
+  });
+}

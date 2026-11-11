@@ -29,6 +29,25 @@ const propsFundo = IMAGEM_FUNDO
   ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
   : {};
 
+// A imagem de fundo no celular.
+//
+// Desligada: no aparelho real ela não ficou boa. Para trazer de volta, põe
+// true aqui e ajusta o tamanho no ALTURA_GRAFISMO logo abaixo.
+const IMAGEM_NO_CELULAR = false;
+
+// Proporção (largura / altura) do grafismo, para ele nunca distorcer.
+const PROPORCAO_GRAFISMO = 962 / 1181;
+
+// Quanto da ALTURA da tela o grafismo ocupa, no canto de baixo.
+//
+// O tamanho vem da altura, não da largura. Se viesse da largura, num celular
+// alto o desenho comeria metade da tela e sobrava um vazio enorme entre o
+// cartão e o laranja. Amarrado à altura, ele fica do mesmo tamanho relativo
+// em qualquer aparelho.
+//
+// 0.32 = um terço da tela, discreto. Aumente para ele ficar mais presente.
+const ALTURA_GRAFISMO = 0.32;
+
 const AZUL = "#2E6FB0";
 
 const AMARELO = "#EAB308";
@@ -87,13 +106,21 @@ function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
       />
       <TextInput
         {...props}
-        style={[styles.campoTexto, SEM_CONTORNO_WEB]}
+        style={[
+          styles.campoTexto,
+          olho && styles.campoTextoComOlho,
+          SEM_CONTORNO_WEB,
+        ]}
         placeholderTextColor="#9AA3B2"
         onFocus={() => setFocado(true)}
         onBlur={() => setFocado(false)}
       />
       {olho && (
-        <TouchableOpacity onPress={aoAlternarOlho} hitSlop={8}>
+        <TouchableOpacity
+          onPress={aoAlternarOlho}
+          hitSlop={8}
+          style={styles.botaoOlho}
+        >
           <Ionicons
             name={olhoAberto ? "eye-outline" : "eye-off-outline"}
             size={18}
@@ -166,7 +193,7 @@ function lerErroDoLogin(e) {
 }
 
 export default function Login() {
-  const { width } = useWindowDimensions();
+  const { width, height: alturaDaTela } = useWindowDimensions();
   const isDesktop = width >= LARGURA_DESKTOP;
   const { email: emailVindoDoCadastro } = useLocalSearchParams();
 
@@ -324,63 +351,76 @@ export default function Login() {
           <View style={styles.sobreposicao} pointerEvents="none" />
         )}
 
-        <View style={styles.cartaoGrande}>
-          <View style={styles.colunaForm}>{conteudoFormulario}</View>
+        <ScrollView
+          contentContainerStyle={styles.scrollDesktop}
+          style={styles.scrollTransparente}
+        >
+          <View style={styles.cartaoGrande}>
+            <View style={styles.colunaForm}>{conteudoFormulario}</View>
 
-          <View style={styles.colunaPromo}>
-            <Text style={styles.promoTitulo}>
-              Mais tempo para ensinar,{"\n"}
-              <Text style={styles.promoTituloDestaque}>
-                menos tempo para corrigir.
+            <View style={styles.colunaPromo}>
+              <Text style={styles.promoTitulo}>
+                Mais tempo para ensinar,{"\n"}
+                <Text style={styles.promoTituloDestaque}>
+                  menos tempo para corrigir.
+                </Text>
               </Text>
-            </Text>
 
-            <Text style={styles.promoTexto}>
-              O Edusync automatiza a correção de atividades e organiza suas
-              notas de forma inteligente, para que você foque no que realmente
-              importa: <Text style={styles.promoLink}>seus alunos</Text>.
-            </Text>
-
-            <View style={styles.promoDivisor} />
-
-            {RECURSOS.map((r) => (
-              <View style={styles.promoItem} key={r.titulo}>
-                <View style={styles.promoIconeBox}>
-                  <Ionicons name={r.icone} size={18} color={AZUL} />
-                </View>
-                <View style={styles.promoItemTexto}>
-                  <Text style={styles.promoItemTitulo}>{r.titulo}</Text>
-                  <Text style={styles.promoItemDescricao}>{r.texto}</Text>
-                </View>
-              </View>
-            ))}
-
-            <View style={styles.promoCta}>
-              <View style={styles.promoCtaIcone}>
-                <Ionicons name="school" size={16} color={COR.branco} />
-              </View>
-              <Text style={styles.promoCtaTexto}>
-                Quer saber mais sobre o nosso projeto?
+              <Text style={styles.promoTexto}>
+                O Edusync automatiza a correção de atividades e organiza suas
+                notas de forma inteligente, para que você foque no que realmente
+                importa: <Text style={styles.promoLink}>seus alunos</Text>.
               </Text>
-              <TouchableOpacity
-                style={styles.promoCtaBotao}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
-              </TouchableOpacity>
+
+              <View style={styles.promoDivisor} />
+
+              {RECURSOS.map((r) => (
+                <View style={styles.promoItem} key={r.titulo}>
+                  <View style={styles.promoIconeBox}>
+                    <Ionicons name={r.icone} size={18} color={AZUL} />
+                  </View>
+                  <View style={styles.promoItemTexto}>
+                    <Text style={styles.promoItemTitulo}>{r.titulo}</Text>
+                    <Text style={styles.promoItemDescricao}>{r.texto}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <View style={styles.promoCta}>
+                <View style={styles.promoCtaIcone}>
+                  <Ionicons name="school" size={16} color={COR.branco} />
+                </View>
+                <Text style={styles.promoCtaTexto}>
+                  Quer saber mais sobre o nosso projeto?
+                </Text>
+                <TouchableOpacity
+                  style={styles.promoCtaBotao}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </Fundo>
     );
   }
 
   return (
-    <Fundo {...propsFundo} style={styles.tela}>
+    <View style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {IMAGEM_FUNDO && MOSTRAR_VEU && (
-        <View style={styles.sobreposicao} pointerEvents="none" />
+      {IMAGEM_FUNDO && IMAGEM_NO_CELULAR && (
+        <Image
+          source={IMAGEM_FUNDO}
+          style={[
+            styles.grafismoCelular,
+            { height: Math.round(alturaDaTela * ALTURA_GRAFISMO) },
+          ]}
+          resizeMode="contain"
+          pointerEvents="none"
+        />
       )}
 
       <KeyboardAvoidingView
@@ -395,7 +435,7 @@ export default function Login() {
           <View style={styles.cartao}>{conteudoFormulario}</View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </Fundo>
+    </View>
   );
 }
 
@@ -406,12 +446,38 @@ const styles = StyleSheet.create({
   },
 
   tela: { flex: 1, backgroundColor: COR.marinho },
+
+  // O grafismo do fundo, ancorado no canto de baixo à esquerda.
+  //
+  // Não dá para usar ImageBackground com "cover" aqui: o celular é muito mais
+  // alto que largo, então o cover ampliaria a imagem até cobrir a altura e
+  // sobraria só uma faixa estreita do meio dela -- a composição se perde.
+  //
+  // A altura vem do ALTURA_GRAFISMO lá em cima (aplicada no próprio
+  // componente, porque depende do tamanho da tela) e a largura sai dela pelo
+  // aspectRatio, então o desenho nunca distorce.
+  grafismoCelular: {
+    position: "absolute",
+    left: 0,
+    bottom: 0,
+    width: undefined,
+    aspectRatio: PROPORCAO_GRAFISMO,
+  },
   areaTeclado: { flex: 1 },
   scrollTransparente: { backgroundColor: "transparent" },
+  // Sem justifyContent: "center" aqui, de proposito.
+  //
+  // Centralizar com justifyContent dentro de uma area rolavel funciona
+  // enquanto o conteudo cabe. Quando ele passa da altura disponivel -- com o
+  // teclado aberto, com zoom, ou numa tela baixa -- o excedente transborda
+  // para os DOIS lados, e a parte que sobe fica fora do alcance da rolagem:
+  // o topo do cartao some e nao tem como chegar nele.
+  //
+  // O "marginVertical: auto" la no cartao centraliza do mesmo jeito quando
+  // sobra espaco, e quando nao sobra, encosta no topo e deixa rolar ate o fim.
   scroll: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
     padding: 24,
   },
 
@@ -419,15 +485,21 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: "100%",
     backgroundColor: "#07162E",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
     overflow: "hidden",
+  },
+  // O conteudo do desktop agora mora dentro de um ScrollView. Antes, numa
+  // janela baixa (projetor de sala, notebook pequeno), o cartao de 600px de
+  // altura nao cabia, o topo dele era cortado e nao havia rolagem nenhuma.
+  scrollDesktop: {
+    flexGrow: 1,
+    alignItems: "center",
+    padding: 40,
   },
   cartaoGrande: {
     flexDirection: "row",
     width: "100%",
     maxWidth: 1000,
+    marginVertical: "auto",
     minHeight: 600,
     backgroundColor: COR.branco,
     borderRadius: 24,
@@ -533,6 +605,7 @@ const styles = StyleSheet.create({
   cartao: {
     width: "100%",
     maxWidth: 380,
+    marginVertical: "auto",
     backgroundColor: COR.branco,
     borderRadius: 24,
     padding: 28,
@@ -570,6 +643,8 @@ const styles = StyleSheet.create({
   },
   campoLinha: {
     width: "100%",
+    // Ancora para o olhinho posicionado.
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
@@ -583,13 +658,36 @@ const styles = StyleSheet.create({
     backgroundColor: COR.branco,
   },
   campoIcone: { marginRight: 8 },
+
+  // O olhinho fica preso na direita da caixa, fora do fluxo.
+  //
+  // Antes ele era mais um item na fila do flexbox, disputando largura com o
+  // campo de texto. Na web o TextInput vira um <input>, e o Safari do iPhone
+  // da a esse <input> uma largura minima bem maior que a do Chrome -- com a
+  // tela estreita nao sobrava espaco e o olhinho era empurrado para fora da
+  // borda. Posicionado, nao existe largura que o expulse.
+  botaoOlho: {
+    position: "absolute",
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
   campoTexto: {
     flex: 1,
+    // Na web o TextInput vira um <input>, e todo <input> tem uma largura
+    // minima propria que o flexbox respeita. Sem este minWidth: 0 o campo se
+    // recusa a encolher quando a tela aperta, e quem sobra para fora da caixa
+    // e o olhinho da senha. So aparece no celular porque no desktop sobra
+    // espaco de sobra.
+    minWidth: 0,
     paddingVertical: 13,
     fontFamily: FONTE.regular,
     fontSize: 14,
     color: COR.tintaForte,
-  },
+  },  // Espaco reservado para o olhinho, que agora flutua por cima.
+  campoTextoComOlho: { paddingRight: 26 },
+
   linhaOpcoes: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -13,6 +13,25 @@ import {
 import { COR, FONTE } from "./estilo";
 import { buscarPerfil } from "../constants/api";
 
+// Mostrar ou não o atalho de sair aqui no cabeçalho.
+//
+// Tocar no nome já leva ao Perfil, e lá existe o botão "Sair da conta". Então
+// este atalho é conveniência, não a única saída. Põe false se quiser o
+// cabeçalho limpo, só com o logo e o seu nome -- nada se perde.
+const MOSTRAR_SAIR = true;
+
+// Tamanho geral do cabeçalho.
+//
+// Todas as medidas daqui -- logo, avatar, botão de sair, textos, respiro --
+// saem deste fator. Mexendo só neste número, o cabeçalho inteiro cresce ou
+// diminui junto, e a proporção entre as peças continua exatamente a mesma.
+// 1 = o tamanho original.
+const ESCALA = 1.18;
+
+// px para medidas (pixel inteiro), pt para fontes (meio ponto já é suficiente).
+const px = (n) => Math.round(n * ESCALA);
+const pt = (n) => Math.round(n * ESCALA * 2) / 2;
+
 function iniciais(nome) {
   if (!nome) return "?";
   const partes = String(nome).trim().split(/\s+/);
@@ -22,7 +41,7 @@ function iniciais(nome) {
 export default function CabecalhoMobile({
   linkPerfil = true,
   ehMobilePequeno = false,
-  paddingBottom = 11,
+  paddingBottom = px(11),
 }) {
   const router = useRouter();
   const [professor, setProfessor] = useState(null);
@@ -64,7 +83,7 @@ export default function CabecalhoMobile({
             {professor?.nome || ""}
           </Text>
           {linkPerfil && (
-            <Ionicons name="chevron-down" size={14} color={COR.branco} />
+            <Ionicons name="chevron-down" size={px(14)} color={COR.branco} />
           )}
         </View>
       )}
@@ -75,7 +94,10 @@ export default function CabecalhoMobile({
     <View
       style={[
         styles.cabecalho,
-        { paddingTop: Platform.OS === "web" ? 11 : 50, paddingBottom },
+        {
+          paddingTop: Platform.OS === "web" ? px(11) : 50,
+          paddingBottom,
+        },
       ]}
     >
       <View style={styles.cabecalhoMiolo}>
@@ -98,13 +120,25 @@ export default function CabecalhoMobile({
             conteudoAvatar
           )}
 
-          <TouchableOpacity
-            style={styles.botaoSair}
-            activeOpacity={0.8}
-            onPress={sair}
-          >
-            <Ionicons name="log-out-outline" size={17} color={COR.perigo} />
-          </TouchableOpacity>
+          {MOSTRAR_SAIR && (
+            <TouchableOpacity
+              style={styles.botaoSair}
+              activeOpacity={0.7}
+              onPress={sair}
+              // A área tocável fica maior que o desenho. O círculo tem 32px,
+              // abaixo dos 44 que o dedo pede; o hitSlop cobre a diferença
+              // sem engordar o botão na tela.
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Sair da conta"
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={px(18)}
+                color="rgba(255,255,255,0.82)"
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -112,7 +146,7 @@ export default function CabecalhoMobile({
 }
 
 const styles = StyleSheet.create({
-  cabecalho: { paddingHorizontal: 18, backgroundColor: COR.marinho },
+  cabecalho: { paddingHorizontal: px(18), backgroundColor: COR.marinho },
   cabecalhoMiolo: {
     flexDirection: "row",
     alignItems: "center",
@@ -120,42 +154,51 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  logo: { width: 104, height: 28, flexShrink: 0 },
-  logoPequeno: { width: 89, height: 24 },
+  // resizeMode "contain" mantém a proporção do desenho dentro destas
+  // medidas, então mesmo com o arredondamento o logo nunca distorce.
+  logo: { width: px(104), height: px(28), flexShrink: 0 },
+  logoPequeno: { width: px(89), height: px(24) },
 
-  usuarioLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
+  usuarioLinha: { flexDirection: "row", alignItems: "center", gap: px(8) },
   avatarPequeno: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
+    width: px(27),
+    height: px(27),
+    borderRadius: px(27) / 2,
     backgroundColor: COR.branco,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarFoto: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
+    width: px(27),
+    height: px(27),
+    borderRadius: px(27) / 2,
   },
   avatarPequenoTexto: {
     fontFamily: FONTE.bold,
     color: COR.marinho,
-    fontSize: 11,
+    fontSize: pt(11),
   },
-  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: 4 },
+  usuarioNomeLinha: { flexDirection: "row", alignItems: "center", gap: px(4) },
   usuarioNome: {
     fontFamily: FONTE.semi,
-    fontSize: 12.5,
+    fontSize: pt(12.5),
     color: COR.branco,
-    maxWidth: 110,
+    maxWidth: px(110),
   },
+  // Vermelho em cima de azul-marinho é o maior contraste da tela inteira, e
+  // isso fazia o "sair" gritar mais que "Escanear atividade" -- justamente a
+  // ação que a pessoa veio fazer. Sair da conta também não é destrutivo: ela
+  // entra de novo. Vermelho fica guardado para o que não tem volta.
+  //
+  // Agora é um círculo de branco translúcido: ele pertence ao cabeçalho, o
+  // dedo encontra, e não disputa atenção com o resto.
   botaoSair: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COR.perigoFundo,
+    width: px(32),
+    height: px(32),
+    borderRadius: px(32) / 2,
+    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 4,
+    marginLeft: px(4),
   },
 });

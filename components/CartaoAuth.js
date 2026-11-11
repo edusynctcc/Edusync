@@ -11,18 +11,31 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { COR, FONTE } from "./estilo";
- 
+
 const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
- 
+
+const LARGURA_DESKTOP = 900;
+
+// A imagem de fundo no celular.
+//
+// Desligada de propósito. Ela foi composta para tela larga; numa tela
+// estreita e alta o "cover" precisa ampliá-la até cobrir a altura, e aí
+// sobra só uma fatia do meio -- fica parecendo defeito. No computador ela
+// continua aparecendo normalmente.
+//
+// Põe true aqui se quiser a imagem também no celular.
+const IMAGEM_NO_CELULAR = false;
+
 export const AZUL = "#2E6FB0";
 export const AMARELO = "#EAB308";
- 
+
 const SEM_CONTORNO_WEB =
   Platform.OS === "web" ? { outlineStyle: "none" } : null;
- 
+
 if (
   Platform.OS === "web" &&
   typeof document !== "undefined" &&
@@ -39,10 +52,10 @@ if (
   `;
   document.head.appendChild(folha);
 }
- 
+
 export function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
   const [focado, setFocado] = useState(false);
- 
+
   return (
     <View style={[styles.campoLinha, focado && styles.campoLinhaFocado]}>
       <Ionicons
@@ -53,13 +66,23 @@ export function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
       />
       <TextInput
         {...props}
-        style={[styles.campoTexto, SEM_CONTORNO_WEB]}
+        style={[
+          styles.campoTexto,
+          olho && styles.campoTextoComOlho,
+          SEM_CONTORNO_WEB,
+        ]}
         placeholderTextColor="#9AA3B2"
         onFocus={() => setFocado(true)}
         onBlur={() => setFocado(false)}
       />
       {olho && (
-        <TouchableOpacity onPress={aoAlternarOlho} hitSlop={8}>
+        <TouchableOpacity
+          onPress={aoAlternarOlho}
+          hitSlop={10}
+          style={styles.botaoOlho}
+          accessibilityRole="button"
+          accessibilityLabel={olhoAberto ? "Esconder a senha" : "Mostrar a senha"}
+        >
           <Ionicons
             name={olhoAberto ? "eye-outline" : "eye-off-outline"}
             size={18}
@@ -70,7 +93,7 @@ export function Campo({ icone, olho, olhoAberto, aoAlternarOlho, ...props }) {
     </View>
   );
 }
- 
+
 export function CaixaMensagem({ texto, tipo = "erro" }) {
   if (!texto) return null;
   const ok = tipo === "ok";
@@ -88,7 +111,7 @@ export function CaixaMensagem({ texto, tipo = "erro" }) {
     </View>
   );
 }
- 
+
 export function BotaoAzul({ texto, carregando, textoCarregando, onPress }) {
   return (
     <TouchableOpacity
@@ -106,14 +129,20 @@ export function BotaoAzul({ texto, carregando, textoCarregando, onPress }) {
     </TouchableOpacity>
   );
 }
- 
+
 export default function CartaoAuth({ titulo, subtitulo, children }) {
+  const { width } = useWindowDimensions();
+  const ehDesktop = width >= LARGURA_DESKTOP;
+
+  // No computador, a imagem. No celular, o marinho sólido.
+  const comImagem = ehDesktop || IMAGEM_NO_CELULAR;
+  const Fundo = comImagem ? ImageBackground : View;
+  const propsFundo = comImagem
+    ? { source: IMAGEM_FUNDO, resizeMode: "cover" }
+    : {};
+
   return (
-    <ImageBackground
-      source={IMAGEM_FUNDO}
-      resizeMode="cover"
-      style={styles.tela}
-    >
+    <Fundo {...propsFundo} style={styles.tela}>
       <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -136,10 +165,10 @@ export default function CartaoAuth({ titulo, subtitulo, children }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </Fundo>
   );
 }
- 
+
 export const estilosAuth = StyleSheet.create({
   rotulo: {
     alignSelf: "flex-start",
@@ -163,18 +192,29 @@ export const estilosAuth = StyleSheet.create({
   },
   linkDesabilitado: { color: "#9AA3B2" },
 });
- 
+
 const styles = StyleSheet.create({
   tela: { flex: 1, backgroundColor: COR.marinho },
+
+  // Sem justifyContent: "center" aqui, de propósito.
+  //
+  // Centralizar com justifyContent dentro de uma área rolável funciona
+  // enquanto o conteúdo cabe. Quando ele passa da altura disponível -- com o
+  // teclado aberto, ou numa tela baixa -- o excedente transborda para os DOIS
+  // lados, e a parte que sobe fica fora do alcance da rolagem: o topo do
+  // cartão (o logo) é cortado e não tem como chegar nele.
+  //
+  // O "marginVertical: auto" lá no cartão centraliza do mesmo jeito quando
+  // sobra espaço, e quando não sobra, encosta no topo e deixa rolar até o fim.
   scroll: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
     padding: 24,
   },
   cartao: {
     width: "100%",
     maxWidth: 400,
+    marginVertical: "auto",
     backgroundColor: COR.branco,
     borderRadius: 24,
     padding: 28,
@@ -205,6 +245,8 @@ const styles = StyleSheet.create({
   },
   campoLinha: {
     width: "100%",
+    // Âncora para o olhinho posicionado.
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
@@ -215,13 +257,36 @@ const styles = StyleSheet.create({
   },
   campoLinhaFocado: { borderColor: AZUL, backgroundColor: COR.branco },
   campoIcone: { marginRight: 8 },
+
+  // O olhinho fica preso na direita da caixa, fora do fluxo.
+  //
+  // Antes ele era mais um item na fila do flexbox, disputando largura com o
+  // campo de texto. Na web o TextInput vira um <input>, e o Safari do iPhone
+  // dá a esse <input> uma largura mínima bem maior que a do Chrome -- com a
+  // tela estreita não sobrava espaço e o olhinho era empurrado para fora da
+  // borda. Posicionado, não existe largura que o expulse.
+  botaoOlho: {
+    position: "absolute",
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
+
   campoTexto: {
     flex: 1,
+    // Na web o TextInput vira um <input>, e todo <input> tem uma largura
+    // mínima própria que o flexbox respeita. Sem este minWidth: 0 a caixa
+    // inteira vaza para fora do cartão quando a tela aperta.
+    minWidth: 0,
     paddingVertical: 12,
     fontFamily: FONTE.regular,
     fontSize: 14,
     color: COR.tintaForte,
   },
+  // Espaço reservado para o olhinho, que agora flutua por cima.
+  campoTextoComOlho: { paddingRight: 26 },
+
   aviso: {
     flexDirection: "row",
     alignItems: "flex-start",

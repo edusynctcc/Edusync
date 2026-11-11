@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, usePathname, useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import AvisoCorrecao from "../../components/AvisoCorrecao";
 import {
@@ -15,6 +15,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { COR, FONTE, RAIO } from "../../components/estilo";
+import { listarAtividades, listarTurmas } from "../../constants/api";
+import { semAcento } from "../../constants/disciplinas";
 
 export const LARGURA_LATERAL = 272;
 
@@ -60,40 +62,82 @@ const ITENS_LATERAL = [
   },
 ];
 
-const INDICE_BUSCA = [
-  { tipo: "turma", titulo: "9º Ano A" },
-  { tipo: "turma", titulo: "1ª Série B" },
-  { tipo: "turma", titulo: "7º Ano C" },
-  { tipo: "atividade", titulo: "Prova de Álgebra" },
-  { tipo: "atividade", titulo: "Lista de Exercícios" },
-  { tipo: "atividade", titulo: "Trabalho de Geometria" },
-  { tipo: "atividade", titulo: "Prova Bimestral" },
-  { tipo: "atividade", titulo: "Exercícios de Frações" },
-  { tipo: "atividade", titulo: "Projeto de Estatística" },
-];
+// O índice da busca vem do banco, não de uma lista escrita à mão: antes isto
+// era um array fixo com "9º Ano A" e "Prova de Álgebra", então a busca da
+// lateral mostrava turmas e atividades que não existiam e clicar nelas levava
+// para uma lista vazia.
+type ItemBusca = {
+  tipo: "turma" | "atividade";
+  id: number;
+  titulo: string;
+  subtitulo: string;
+};
+
+const MAX_RESULTADOS = 8;
 
 function LateralDesktop() {
   const router = useRouter();
   const caminho = usePathname();
   const [buscaTexto, setBuscaTexto] = useState("");
+  const [indice, setIndice] = useState<ItemBusca[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  const carregarIndice = useCallback(async () => {
+    const [turmas, atividades] = await Promise.all([
+      listarTurmas().catch(() => []),
+      listarAtividades().catch(() => []),
+    ]);
+
+    const nomeDaTurma = new Map<number, string>(
+      (turmas || []).map((t: any) => [t.id_turma, t.nome]),
+    );
+
+    setIndice([
+      ...(turmas || []).map((t: any) => ({
+        tipo: "turma" as const,
+        id: t.id_turma,
+        titulo: t.nome,
+        subtitulo: t.escola || `${t.alunos ?? 0} alunos`,
+      })),
+      ...(atividades || []).map((a: any) => ({
+        tipo: "atividade" as const,
+        id: a.id_atividade,
+        titulo: a.nome,
+        subtitulo:
+          a.disciplina || nomeDaTurma.get(a.id_turma) || "Atividade",
+      })),
+    ]);
+
+    setCarregando(false);
+  }, []);
+
+  // Recarrega a cada troca de tela: assim uma turma criada agora já aparece
+  // na busca sem precisar recarregar a página.
+  useEffect(() => {
+    carregarIndice();
+  }, [carregarIndice, caminho]);
+
+  const procurado = semAcento(buscaTexto);
 
   const resultados =
-    buscaTexto.trim().length === 0
+    procurado.length === 0
       ? []
-      : INDICE_BUSCA.filter((item) =>
-          item.titulo.toLowerCase().includes(buscaTexto.toLowerCase()),
-        );
+      : indice
+          .filter(
+            (item) =>
+              semAcento(item.titulo).includes(procurado) ||
+              semAcento(item.subtitulo).includes(procurado),
+          )
+          .slice(0, MAX_RESULTADOS);
 
-  function abrirResultado(item: any) {
+  const semResultado = procurado.length > 0 && resultados.length === 0;
+
+  function abrirResultado(item: ItemBusca) {
     setBuscaTexto("");
-    if (item.tipo === "turma") {
-      router.push({ pathname: "/turmas", params: { turmaBusca: item.titulo } });
-    } else {
-      router.push({
-        pathname: "/atividades",
-        params: { atividadeTitulo: item.titulo },
-      });
-    }
+    router.push({
+      pathname: item.tipo === "turma" ? "/turma" : "/atividade",
+      params: { id: item.id },
+    } as any);
   }
 
   async function sair() {
@@ -114,7 +158,7 @@ function LateralDesktop() {
         <TextInput
           value={buscaTexto}
           onChangeText={setBuscaTexto}
-          placeholder="Buscar..."
+          placeholder="Buscar turma ou atividade"
           placeholderTextColor={COR.marinhoClaro}
           style={[styles.buscaInput, SEM_CONTORNO_WEB]}
           onSubmitEditing={() => resultados[0] && abrirResultado(resultados[0])}
@@ -125,28 +169,43 @@ function LateralDesktop() {
           </TouchableOpacity>
         )}
 
-        {resultados.length > 0 && (
+        {(resultados.length > 0 || semResultado) && (
           <View style={styles.buscaResultados}>
-            {resultados.map((item) => (
-              <TouchableOpacity
-                key={item.tipo + item.titulo}
-                style={styles.buscaResultadoItem}
-                onPress={() => abrirResultado(item)}
-              >
-                <Ionicons
-                  name={
-                    item.tipo === "turma"
-                      ? "people-outline"
-                      : "document-text-outline"
-                  }
-                  size={14}
-                  color={COR.tintaMedia}
-                />
-                <Text style={styles.buscaResultadoTexto} numberOfLines={1}>
-                  {item.titulo}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {semResultado ? (
+              <Text style={styles.buscaVazio}>
+                {carregando
+                  ? "Carregando..."
+                  : `Nada encontrado para "${buscaTexto.trim()}"`}
+              </Text>
+            ) : (
+              resultados.map((item) => (
+                <TouchableOpacity
+                  key={`${item.tipo}-${item.id}`}
+                  style={styles.buscaResultadoItem}
+                  activeOpacity={0.6}
+                  onPress={() => abrirResultado(item)}
+                >
+                  <Ionicons
+                    name={
+                      item.tipo === "turma"
+                        ? "people-outline"
+                        : "document-text-outline"
+                    }
+                    size={14}
+                    color={COR.tintaMedia}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.buscaResultadoTexto} numberOfLines={1}>
+                      {item.titulo}
+                    </Text>
+                    <Text style={styles.buscaResultadoApoio} numberOfLines={1}>
+                      {item.tipo === "turma" ? "Turma" : "Atividade"} ·{" "}
+                      {item.subtitulo}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         )}
       </View>
@@ -239,7 +298,7 @@ function BarraMobile({ state, navigation }: any) {
                   focado && styles.botaoCentralAtivo,
                 ]}
               >
-                <Ionicons name={icone} size={24} color={COR.branco} />
+                <Ionicons name={icone} size={px(24)} color={COR.branco} />
               </View>
               <Text
                 style={[
@@ -262,7 +321,7 @@ function BarraMobile({ state, navigation }: any) {
           >
             <Ionicons
               name={icone}
-              size={21}
+              size={px(21)}
               color={focado ? COR.branco : COR.marinhoClaro}
             />
             <Text
@@ -280,6 +339,15 @@ function BarraMobile({ state, navigation }: any) {
     </View>
   );
 }
+
+// Tamanho geral da barra de navegação de baixo.
+//
+// Mesmo fator usado no CabecalhoMobile, para as duas pontas da tela
+// crescerem juntas. Todas as medidas da barra saem daqui, então a proporção
+// entre ícone, rótulo e botão central fica travada. 1 = o tamanho original.
+const ESCALA = 1.18;
+const px = (n: number) => Math.round(n * ESCALA);
+const pt = (n: number) => Math.round(n * ESCALA * 2) / 2;
 
 const ICONES_POR_ROTA: Record<string, any> = {
   home: "home-outline",
@@ -335,8 +403,6 @@ export default function TabsLayout() {
       {ehDesktop && <LateralDesktop />}
 
       <View style={[styles.area, ehDesktop && styles.areaDesktop]}>
-        {
-          }
         <Tabs
           tabBar={(props: any) =>
             ehDesktop ? null : <BarraMobile {...props} />
@@ -354,7 +420,7 @@ export default function TabsLayout() {
           <Tabs.Screen name="processando" />
           <Tabs.Screen name="revisar" />
         </Tabs>
-        <AvisoCorrecao/>
+        <AvisoCorrecao />
       </View>
     </View>
   );
@@ -429,10 +495,22 @@ const styles = StyleSheet.create({
   },
   buscaResultadoTexto: {
     fontFamily: FONTE.media,
-    flex: 1,
     fontSize: 12.5,
     color: COR.tintaForte,
     fontWeight: "500",
+  },
+  buscaResultadoApoio: {
+    fontFamily: FONTE.regular,
+    fontSize: 10.5,
+    color: COR.tintaFraca,
+    marginTop: 1,
+  },
+  buscaVazio: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaFraca,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
   },
 
   lateralItens: { gap: 4 },
@@ -486,34 +564,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     backgroundColor: COR.marinho,
-    minHeight: 62,
-    paddingTop: 9,
-    paddingBottom: 12,
+    minHeight: px(62),
+    paddingTop: px(9),
+    paddingBottom: px(12),
   },
   itemInferior: {
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 4,
+    gap: px(4),
   },
   rotuloInferior: {
     fontFamily: FONTE.semi,
-    fontSize: 10,
+    fontSize: pt(10),
     fontWeight: "600",
     color: COR.marinhoClaro,
   },
   rotuloInferiorAtivo: { color: COR.branco },
 
   botaoCentral: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: px(54),
+    height: px(54),
+    borderRadius: px(54) / 2,
     backgroundColor: COR.marcador,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -26,
-    marginBottom: 2,
-    borderWidth: 4,
+    // Sobe metade da própria altura para "pousar" na borda da barra.
+    marginTop: -px(26),
+    marginBottom: px(2),
+    borderWidth: px(4),
     borderColor: COR.marinho,
     shadowColor: COR.marcador,
     shadowOffset: { width: 0, height: 4 },
