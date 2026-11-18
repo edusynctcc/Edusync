@@ -118,9 +118,36 @@ export function montarHtmlDaProva({
   </div>
   <p class="aviso">Escreva o seu <b>número de chamada</b> nas duas casinhas e o seu nome completo. É por eles que a prova é identificada.</p>`;
 
+  // Questão com itens: o enunciado termina numa lista "a) ...", "b) ...".
+  // Aqui ela é separada do comando para que cada item ganhe a SUA linha de
+  // resposta. Sem isso o aluno escreve as três respostas embaralhadas no
+  // mesmo espaço, e aí não há leitura que acerte.
+  const separarItens = (enunciado) => {
+    const linhas = String(enunciado || "").split("\n");
+    const itens = [];
+
+    while (linhas.length) {
+      const ultima = linhas[linhas.length - 1].trim();
+      if (!ultima) {
+        linhas.pop();
+        continue;
+      }
+      const achou = ultima.match(/^([a-z])\)\s*(.+)$/i);
+      if (!achou) break;
+      itens.unshift({ letra: achou[1].toLowerCase(), texto: achou[2].trim() });
+      linhas.pop();
+    }
+
+    if (itens.length < 2) return null;
+    return { comando: linhas.join("\n").trim(), itens };
+  };
+
   const blocos = lista
     .map((questao, indice) => {
       const rotuloPeso = comVirgula(comoNumero(questao.peso));
+      const comItens =
+        questao.tipo === "alternativa" ? null : separarItens(questao.enunciado);
+      const textoEnunciado = comItens ? comItens.comando : questao.enunciado;
       let corpo = "";
 
       if (questao.tipo === "alternativa") {
@@ -134,6 +161,19 @@ export function montarHtmlDaProva({
         corpo =
           '<div class="espaco-calculo"></div>' +
           '<p class="resultado">Resultado: <span class="linha-curta"></span></p>';
+      } else if (comItens) {
+        corpo =
+          '<div class="itens">' +
+          comItens.itens
+            .map(
+              (item) =>
+                '<div class="item">' +
+                `<p class="item-texto"><b>${escaparHtml(item.letra)})</b> ${escaparHtml(item.texto)}</p>` +
+                '<div class="linha"></div>' +
+                "</div>"
+            )
+            .join("") +
+          "</div>";
       } else {
         corpo = '<div class="linhas">' + '<div class="linha"></div>'.repeat(4) + "</div>";
       }
@@ -146,7 +186,7 @@ export function montarHtmlDaProva({
         <section class="questao">
           <div class="questao-topo">
             <span class="numero">${indice + 1}.</span>
-            <span class="enunciado">${escaparHtml(questao.enunciado)}</span>
+            <span class="enunciado">${escaparHtml(textoEnunciado)}</span>
             <span class="peso">${rotuloPeso} pt</span>
           </div>
           ${figura}
@@ -216,6 +256,9 @@ export function montarHtmlDaProva({
   .marcar { display: inline-block; width: 13px; height: 13px; border: 1.4px solid #17242E; border-radius: 50%; flex: 0 0 13px; }
 
   .linhas { padding-left: 22px; }
+  .itens { padding-left: 22px; }
+  .item { margin-top: 10px; }
+  .item-texto { font-size: 12.5px; line-height: 1.4; margin: 0 0 3px; color: #17242E; }
   .linha { border-bottom: 1px solid #C4CAD0; height: 26px; }
 
   .espaco-calculo { margin-left: 22px; height: 90px; border: 1px dashed #C4CAD0; border-radius: 6px; }

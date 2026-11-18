@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -109,11 +109,45 @@ export default function TurmaDetalhe() {
   const [confirmandoExclusaoTurma, setConfirmandoExclusaoTurma] =
     useState(false);
 
+  // Qual turma já está carregada nesta tela. É ref, e não estado, porque
+  // precisa ser lido de dentro do próprio carregar(), sem causar re-render.
+  const turmaNaTela = useRef(0);
+
   const carregar = useCallback(async () => {
     if (!id_turma) {
       setErro("Nenhuma turma foi indicada.");
       setCarregando(false);
       return;
+    }
+
+    // Esta tela vive dentro do <Tabs>, que NÃO desmonta o que já foi aberto.
+    // Quando você troca de turma é o mesmo componente que continua montado:
+    // só o id muda. Então tudo que pertence a uma turma específica tem que
+    // ser apagado na mão aqui, ou vaza para a turma seguinte.
+    //
+    // Foi isso que fez aparecer "30 alunos entraram na turma" numa turma
+    // vazia: o aviso verde era da turma anterior, e o "0 alunos" ao lado
+    // dele estava certo. E havia um caso pior, silencioso: uma lista de
+    // chamada já lida e ainda não confirmada continuava na tela depois da
+    // troca -- confirmando ali, os alunos entravam na turma errada.
+    if (turmaNaTela.current !== id_turma) {
+      turmaNaTela.current = id_turma;
+
+      setAviso("");
+      setListaLida(null);
+      setMarcados({});
+      setEditando(null);
+      setAlunoParaExcluir(null);
+      setConfirmandoExclusaoTurma(false);
+      setNovoNome("");
+      setNovaMatricula("");
+      setAbaAtiva("alunos");
+
+      // Zerar os dados também: sem isto, por um instante a turma nova
+      // aparece com os alunos da turma antiga embaixo do nome certo.
+      setTurma(null);
+      setAlunos([]);
+      setAtividades([]);
     }
 
     setCarregando(true);

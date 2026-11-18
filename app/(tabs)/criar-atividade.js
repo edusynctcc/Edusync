@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -40,9 +40,19 @@ const TIPOS = [
   { valor: "alternativa", rotulo: "Alternativa" },
   { valor: "dissertativa", rotulo: "Dissertativa" },
   { valor: "calculo", rotulo: "Cálculo" },
+  { valor: "itens", rotulo: "Itens (a, b, c)" },
 ];
 
 const LETRAS = ["A", "B", "C", "D", "E"];
+const LETRAS_ITEM = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+function novoItem(indice) {
+  return {
+    letra: LETRAS_ITEM[indice] || String(indice + 1),
+    texto: "",
+    resposta: "",
+  };
+}
 
 const TIPOS_DA_ATIVIDADE = [
   "application/pdf",
@@ -69,6 +79,7 @@ function novaQuestao() {
     letraCorreta: "",
     palavrasChave: "",
     respostaEsperada: "",
+    itens: [novoItem(0), novoItem(1)],
 
     imagem: null,
   };
@@ -81,8 +92,70 @@ function questaoEmBranco(q) {
     !q.palavrasChave.trim() &&
     !q.respostaEsperada.trim() &&
     !q.imagem &&
-    q.alternativas.every((a) => !a.texto.trim())
+    q.alternativas.every((a) => !a.texto.trim()) &&
+    (q.itens || []).every((i) => !i.texto.trim() && !i.resposta.trim())
   );
+}
+
+// A questão com itens não existe no banco, e de propósito: ela é enviada
+// como uma dissertativa comum. O enunciado leva os itens listados embaixo, e
+// a resposta de cada item vira uma palavra-chave do gabarito.
+//
+// Isso resolve a nota de graça. A correção de dissertativa já divide o peso
+// pelo número de palavras-chave e conta quantas o aluno expressou -- que é
+// exatamente "cada item vale a mesma coisa, e acertar dois de três vale dois
+// terços". Nada muda no banco, na API nem na correção.
+function perguntaDaQuestao(questao) {
+  const base = questao.enunciado.trim();
+  if (questao.tipo !== "itens") return base;
+
+  const itens = (questao.itens || []).filter((i) => i.texto.trim());
+  if (itens.length === 0) return base;
+
+  const lista = itens.map((i) => `${i.letra}) ${i.texto.trim()}`).join("\n");
+  return base ? `${base}\n\n${lista}` : lista;
+}
+
+function tipoParaApi(questao) {
+  return questao.tipo === "itens" ? "dissertativa" : questao.tipo;
+}
+
+// O caminho de volta, para quando a atividade é aberta para editar: se o fim
+// do enunciado é uma lista "a) ...", "b) ...", ela volta a ser itens. Sem
+// isto, editar uma questão com itens grudaria a lista no enunciado e
+// duplicaria tudo no próximo salvamento.
+function separarItens(pergunta, gabarito) {
+  const linhas = String(pergunta || "").split("\n");
+  const itens = [];
+
+  while (linhas.length) {
+    const ultima = linhas[linhas.length - 1].trim();
+    if (!ultima) {
+      linhas.pop();
+      continue;
+    }
+    const achou = ultima.match(/^([a-z])\)\s*(.+)$/i);
+    if (!achou) break;
+    itens.unshift({
+      letra: achou[1].toLowerCase(),
+      texto: achou[2].trim(),
+      resposta: "",
+    });
+    linhas.pop();
+  }
+
+  // Um item só pode ser coincidência: uma pergunta que por acaso termina em
+  // "a) alguma coisa". Com dois ou mais, foi escrito como lista.
+  if (itens.length < 2) return null;
+
+  const respostas = String(gabarito || "")
+    .split(";")
+    .map((r) => r.trim());
+  itens.forEach((item, i) => {
+    item.resposta = respostas[i] || "";
+  });
+
+  return { enunciado: linhas.join("\n").trim(), itens };
 }
 
 function contarPalavrasChave(texto) {
@@ -186,23 +259,75 @@ export default function CriarAtividade() {
   const [importando, setImportando] = useState(false);
   const [resumoImport, setResumoImport] = useState("");
 
-  useEffect(() => {
-    async function carregarTurmas() {
-      try {
-        const dados = await listarTurmas();
-        setTurmas(dados);
-        if (idTurmaInicial) {
-          const turmaAtual = dados.find(
-            (t) => t.id_turma === Number(idTurmaInicial),
-          );
-          if (turmaAtual) setTurmaSelecionada(turmaAtual);
-        }
-      } catch (e) {
-        setErro(e.message);
+  // Questões lidas de um arquivo, esperando você decidir se substituem o que
+  // já está na tela ou se somam.
+  const [importPendente, setImportPendente] = useState(null);
+
+  // O que esta tela está editando agora: "nova" ou "editar:7". Serve para
+  // perceber quando ela trocou de alvo. É ref porque só é lido dentro de
+  // efeito -- virar estado faria render à toa.
+  const alvoNaTela = useRef(null);
+
+  const limparFormulario = useCallback(() => {
+    setTitulo(typeof tituloInicial === "string" ? tituloInicial : "");
+    setDisciplina("");
+    setDescricao("");
+    setQuestoes([novaQuestao()]);
+    setTurmaSelecionada(null);
+    setResumoImport("");
+    setImportPendente(null);
+    setErro("");
+    setProblema(null);
+  }, [tituloInicial]);
+
+  // Esta tela também vive dentro do <Tabs> e não é desmontada ao sair dela:
+  // o que estava digitado continua aqui quando você volta.
+  //
+  // Isso é bom no meio de uma atividade -- dá para ir criar uma turma e
+  // voltar sem perder o que escreveu. E era ruim ao começar OUTRA atividade:
+  // as questões e a turma da anterior continuavam na tela, e a segunda
+  // nascia com as questões da primeira, na turma da primeira. Era o que
+  // obrigava a apagar questão por questão antes de importar a próxima prova.
+  //
+  // O critério é o alvo. Mudou de "nova" para "editar a 7", ou de uma
+  // atividade para outra: limpa. Continuou no mesmo alvo: preserva.
+  useFocusEffect(
+    useCallback(() => {
+      const alvo = emEdicao ? `editar:${id ?? ""}` : "nova";
+
+      if (alvoNaTela.current !== alvo) {
+        alvoNaTela.current = alvo;
+        limparFormulario();
       }
-    }
-    carregarTurmas();
-  }, [idTurmaInicial]);
+
+      // A lista de turmas é relida toda vez que a tela aparece, e não só na
+      // primeira: se você saiu daqui para criar uma turma, ela precisa estar
+      // na lista quando voltar.
+      let ativo = true;
+
+      (async () => {
+        try {
+          const dados = await listarTurmas();
+          if (!ativo) return;
+
+          setTurmas(dados);
+
+          if (idTurmaInicial) {
+            const turmaAtual = dados.find(
+              (t) => t.id_turma === Number(idTurmaInicial),
+            );
+            if (turmaAtual) setTurmaSelecionada(turmaAtual);
+          }
+        } catch (e) {
+          if (ativo) setErro(e.message);
+        }
+      })();
+
+      return () => {
+        ativo = false;
+      };
+    }, [emEdicao, id, idTurmaInicial, limparFormulario]),
+  );
 
   useEffect(() => {
     if (!emEdicao || !id) return;
@@ -225,6 +350,22 @@ export default function CriarAtividade() {
                 : null;
 
               if (tipo !== "alternativa") {
+                const comItens =
+                  tipo === "dissertativa"
+                    ? separarItens(q.pergunta, q.resposta_correta)
+                    : null;
+
+                if (comItens) {
+                  return {
+                    ...base,
+                    enunciado: comItens.enunciado,
+                    peso: String(q.peso ?? 1).replace(".", ","),
+                    tipo: "itens",
+                    imagem,
+                    itens: comItens.itens,
+                  };
+                }
+
                 return {
                   ...base,
                   enunciado: q.pergunta || "",
@@ -272,6 +413,39 @@ export default function CriarAtividade() {
     setQuestoes((atuais) =>
       atuais.map((q) => (q.id === idQuestao ? { ...q, [campo]: valor } : q)),
     );
+  }
+
+  // Toda mexida nos itens passa por aqui para reescrever as letras no fim.
+  // Tirando o b), o que era c) vira b) -- senão a prova sai com buraco.
+  function mexerNosItens(idQuestao, transformar) {
+    setQuestoes((atuais) =>
+      atuais.map((q) => {
+        if (q.id !== idQuestao) return q;
+        const itens = transformar([...(q.itens || [])]);
+        return {
+          ...q,
+          itens: itens.map((item, i) => ({
+            ...item,
+            letra: LETRAS_ITEM[i] || String(i + 1),
+          })),
+        };
+      }),
+    );
+  }
+
+  function atualizarItem(idQuestao, indice, campo, valor) {
+    mexerNosItens(idQuestao, (itens) => {
+      itens[indice] = { ...itens[indice], [campo]: valor };
+      return itens;
+    });
+  }
+
+  function adicionarItem(idQuestao) {
+    mexerNosItens(idQuestao, (itens) => [...itens, novoItem(itens.length)]);
+  }
+
+  function removerItem(idQuestao, indice) {
+    mexerNosItens(idQuestao, (itens) => itens.filter((_, i) => i !== indice));
   }
 
   function adicionarQuestao() {
@@ -356,6 +530,21 @@ export default function CriarAtividade() {
     );
   }
 
+  function aplicarImportacao(novas, manter, nomeArquivo) {
+    setQuestoes(manter.length > 0 ? [...manter, ...novas] : novas);
+    setImportPendente(null);
+
+    const quantas = novas.length;
+
+    setResumoImport(
+      `${quantas} ${quantas === 1 ? "questão importada" : "questões importadas"} de "${nomeArquivo}"` +
+        (manter.length > 0
+          ? `, somadas às ${manter.length} que já estavam aqui. `
+          : ". ") +
+        `Falta você definir o gabarito ${quantas === 1 ? "dela" : "de cada uma"}.`,
+    );
+  }
+
   async function importarAtividade() {
     if (importando || salvando) return;
 
@@ -418,16 +607,21 @@ export default function CriarAtividade() {
         return;
       }
 
-      setQuestoes((atuais) => {
-        const aproveitar = atuais.filter((q) => !questaoEmBranco(q));
-        return [...aproveitar, ...novas];
-      });
+      const jaEscritas = questoes.filter((q) => !questaoEmBranco(q));
 
-      const quantas = novas.length;
-      setResumoImport(
-        `${quantas} ${quantas === 1 ? "questão importada" : "questões importadas"} de "${arquivo.nome}". ` +
-          `Falta você definir o gabarito ${quantas === 1 ? "dela" : "de cada uma"}.`,
-      );
+      // Com a tela vazia não há o que perguntar. Só quando já existe questão
+      // escrita é que a escolha importa -- e antes ela era tomada sozinha,
+      // sempre somando: quem importasse a mesma prova de novo terminava com
+      // tudo em dobro, para apagar uma a uma.
+      if (jaEscritas.length === 0) {
+        aplicarImportacao(novas, [], arquivo.nome);
+      } else {
+        setImportPendente({
+          novas,
+          jaEscritas,
+          nomeArquivo: arquivo.nome,
+        });
+      }
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -437,20 +631,38 @@ export default function CriarAtividade() {
 
   function faltaGabarito(questao) {
     if (!questao.enunciado.trim()) return false;
+    if (questao.tipo === "itens") {
+      const itens = (questao.itens || []).filter((i) => i.texto.trim());
+      return itens.length === 0 || itens.some((i) => !i.resposta.trim());
+    }
     if (questao.tipo === "alternativa") return !questao.letraCorreta;
     if (questao.tipo === "calculo") return !questao.respostaEsperada.trim();
     return contarPalavrasChave(questao.palavrasChave) === 0;
   }
 
+  // navigate, e não replace.
+  //
+  // O `_layout.tsx` da raiz declara `unstable_settings = { anchor: "index" }`.
+  // Com isso, `router.replace` não troca só a tela de cima: ele reconstrói a
+  // pilha a partir da rota âncora, e o app acabava caindo na home em vez de
+  // ir para onde foi pedido. `navigate` vai direto para a rota, reaproveitando
+  // a que já está no histórico quando existe.
   function voltar() {
     if (emEdicao && id) {
-      router.replace({ pathname: "/atividade", params: { id } });
+      router.navigate({ pathname: "/atividade", params: { id: String(id) } });
       return;
     }
-    router.replace("/atividades");
+    router.navigate("/atividades");
   }
 
   function gabaritoDaQuestao(questao) {
+    if (questao.tipo === "itens") {
+      return (questao.itens || [])
+        .filter((i) => i.texto.trim())
+        .map((i) => i.resposta.trim())
+        .filter(Boolean)
+        .join("; ");
+    }
     if (questao.tipo === "alternativa") return questao.letraCorreta.trim();
     if (questao.tipo === "calculo") return questao.respostaEsperada.trim();
     return questao.palavrasChave.trim();
@@ -461,7 +673,6 @@ export default function CriarAtividade() {
 
     if (!titulo.trim()) return noTopo("Dê um título para a atividade.");
     if (!disciplina.trim()) return noTopo("Escolha a disciplina.");
-    if (!turmaSelecionada) return noTopo("Escolha a turma.");
     if (questoes.length === 0)
       return noTopo("Adicione pelo menos uma questão.");
 
@@ -491,6 +702,16 @@ export default function CriarAtividade() {
       if (q.tipo === "calculo" && !q.respostaEsperada.trim()) {
         return na("Falta o resultado esperado.");
       }
+
+      if (q.tipo === "itens") {
+        const itens = (q.itens || []).filter((i) => i.texto.trim());
+        if (itens.length === 0) {
+          return na("Escreva pelo menos um item (a, b, c).");
+        }
+        if (itens.some((i) => !i.resposta.trim())) {
+          return na("Falta a resposta de um dos itens.");
+        }
+      }
     }
 
     return null;
@@ -519,8 +740,8 @@ export default function CriarAtividade() {
 
       const criada = await criarQuestao(
         i + 1,
-        questao.enunciado.trim(),
-        questao.tipo,
+        perguntaDaQuestao(questao),
+        tipoParaApi(questao),
         gabaritoDaQuestao(questao),
         comoNumero(questao.peso),
         id_atividade,
@@ -615,14 +836,14 @@ export default function CriarAtividade() {
           titulo,
           disciplina,
           descricao,
-          turmaSelecionada.id_turma,
+          turmaSelecionada ? turmaSelecionada.id_turma : null,
         );
       } else {
         const criada = await criarAtividade(
           titulo,
           disciplina,
           descricao,
-          turmaSelecionada.id_turma,
+          turmaSelecionada ? turmaSelecionada.id_turma : null,
         );
         id_atividade = criada?.id_atividade ?? criada?.id;
 
@@ -635,7 +856,19 @@ export default function CriarAtividade() {
 
       await gravarQuestoes(id_atividade);
 
-      router.replace("/atividades");
+      // Salvou: o formulário já cumpriu o papel. Limpar aqui é o que garante
+      // que a PRÓXIMA atividade comece em branco -- o alvo continua sendo
+      // "nova" de uma para a outra, então o efeito de cima sozinho não
+      // perceberia a troca.
+      alvoNaTela.current = null;
+      limparFormulario();
+
+      // Termina na atividade que acabou de ser salva, não na lista: é de lá
+      // que se imprime a prova e se vê o resumo, que é o passo seguinte.
+      router.navigate({
+        pathname: "/atividade",
+        params: { id: String(id_atividade) },
+      });
     } catch (e) {
       const texto = String(e.message || "");
 
@@ -787,7 +1020,7 @@ export default function CriarAtividade() {
             />
 
             <Text style={styles.rotulo}>
-              Turma <Text style={styles.obrigatorio}>*</Text>
+              Turma <Text style={styles.opcional}>(pode escolher depois)</Text>
             </Text>
             <TouchableOpacity
               style={styles.campoSelect}
@@ -800,10 +1033,19 @@ export default function CriarAtividade() {
                     : styles.campoSelectPlaceholder
                 }
               >
-                {turmaSelecionada ? turmaSelecionada.nome : "Selecione a turma"}
+                {turmaSelecionada
+                  ? turmaSelecionada.nome
+                  : "Ainda sem turma"}
               </Text>
               <Ionicons name="chevron-down" size={19} color="#64748B" />
             </TouchableOpacity>
+            {!turmaSelecionada && (
+              <Text style={styles.dica}>
+                Dá para montar as questões agora e escolher a turma depois. Só
+                não dá para escanear folhas enquanto ela não for escolhida: é a
+                turma que diz de quem são as provas.
+              </Text>
+            )}
           </View>
 
           <View style={styles.avisoBox}>
@@ -1109,6 +1351,71 @@ export default function CriarAtividade() {
                   </Text>
                 </>
               )}
+
+              {questao.tipo === "itens" && (
+                <>
+                  <Text style={styles.rotulo}>
+                    Itens <Text style={styles.obrigatorio}>*</Text>
+                  </Text>
+                  <Text style={styles.dica}>
+                    Cada item ganha a sua linha de resposta na prova impressa. O
+                    peso da questão é dividido por igual entre eles: acertar dois
+                    de três vale dois terços.
+                  </Text>
+
+                  {(questao.itens || []).map((item, indice) => (
+                    <View key={`${questao.id}-${indice}`} style={styles.itemLinha}>
+                      <Text style={styles.itemLetra}>{item.letra})</Text>
+
+                      <View style={styles.itemCampos}>
+                        <TextInput
+                          value={item.texto}
+                          onChangeText={(v) =>
+                            atualizarItem(questao.id, indice, "texto", v)
+                          }
+                          placeholder="O que se pede neste item"
+                          placeholderTextColor={COR.tintaFraca}
+                          style={styles.campoTexto}
+                        />
+                        <TextInput
+                          value={item.resposta}
+                          onChangeText={(v) =>
+                            atualizarItem(questao.id, indice, "resposta", v)
+                          }
+                          placeholder="Resposta certa deste item"
+                          placeholderTextColor={COR.tintaFraca}
+                          style={[styles.campoTexto, styles.itemResposta]}
+                        />
+                      </View>
+
+                      {(questao.itens || []).length > 1 && (
+                        <TouchableOpacity
+                          onPress={() => removerItem(questao.id, indice)}
+                          style={styles.itemRemover}
+                          hitSlop={10}
+                          accessibilityLabel={`Remover o item ${item.letra}`}
+                        >
+                          <Ionicons
+                            name="close"
+                            size={17}
+                            color={COR.tintaFraca}
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+
+                  <TouchableOpacity
+                    style={styles.itemAdicionar}
+                    onPress={() => adicionarItem(questao.id)}
+                  >
+                    <Ionicons name="add" size={17} color={COR.marcador} />
+                    <Text style={styles.itemAdicionarTexto}>
+                      Adicionar item
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           ))}
 
@@ -1246,6 +1553,76 @@ export default function CriarAtividade() {
             <TouchableOpacity
               style={styles.modalTurmaFechar}
               onPress={() => setModalTurmaAberto(false)}
+            >
+              <Text style={styles.modalTurmaFecharTexto}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!importPendente}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImportPendente(null)}
+      >
+        <View style={styles.modalTurmaFundo}>
+          <View style={styles.modalTurmaCard}>
+            <Text style={styles.modalTurmaTitulo}>
+              Já tem questão nesta tela
+            </Text>
+
+            <Text style={styles.importAviso}>
+              {importPendente
+                ? `Li ${importPendente.novas.length} ${
+                    importPendente.novas.length === 1
+                      ? "questão"
+                      : "questões"
+                  } de "${importPendente.nomeArquivo}". Aqui já ${
+                    importPendente.jaEscritas.length === 1
+                      ? "tem 1 questão escrita"
+                      : `tem ${importPendente.jaEscritas.length} questões escritas`
+                  }.`
+                : ""}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.importBotao}
+              activeOpacity={0.85}
+              onPress={() =>
+                aplicarImportacao(
+                  importPendente.novas,
+                  [],
+                  importPendente.nomeArquivo,
+                )
+              }
+            >
+              <Ionicons name="swap-horizontal" size={18} color={COR.branco} />
+              <Text style={styles.importBotaoTexto}>
+                Trocar pelas importadas
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.importBotaoClaro}
+              activeOpacity={0.85}
+              onPress={() =>
+                aplicarImportacao(
+                  importPendente.novas,
+                  importPendente.jaEscritas,
+                  importPendente.nomeArquivo,
+                )
+              }
+            >
+              <Ionicons name="add" size={18} color={COR.marcador} />
+              <Text style={styles.importBotaoClaroTexto}>
+                Somar às que já estão aqui
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalTurmaFechar}
+              onPress={() => setImportPendente(null)}
             >
               <Text style={styles.modalTurmaFecharTexto}>Cancelar</Text>
             </TouchableOpacity>
@@ -1677,6 +2054,45 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  itemLinha: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+    marginBottom: 10,
+  },
+  itemLetra: {
+    width: 24,
+    paddingTop: 13,
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    color: COR.tintaMedia,
+  },
+  itemCampos: { flex: 1, gap: 7, minWidth: 0 },
+  itemResposta: {
+    backgroundColor: "#F8FAFC",
+    borderStyle: "dashed",
+  },
+  itemRemover: { paddingTop: 12 },
+  itemAdicionar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  itemAdicionarTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 13.5,
+    color: COR.marcador,
+  },
+
+  opcional: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    color: COR.tintaFraca,
+  },
+
   botaoAdicionarQuestao: {
     flexDirection: "row",
     alignItems: "center",
@@ -1742,6 +2158,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   botaoPublicarTexto: { fontSize: 15.5, fontWeight: "600", color: "#FFFFFF" },
+
+  importAviso: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#475569",
+    marginBottom: 14,
+  },
+  importBotao: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COR.marcador,
+    borderRadius: RAIO.controle,
+    paddingVertical: 14,
+  },
+  importBotaoTexto: { fontSize: 14.5, fontWeight: "600", color: COR.branco },
+  importBotaoClaro: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    borderRadius: RAIO.controle,
+    paddingVertical: 14,
+    marginTop: 9,
+  },
+  importBotaoClaroTexto: {
+    fontSize: 14.5,
+    fontWeight: "600",
+    color: COR.marcador,
+  },
 
   modalTurmaFundo: {
     flex: 1,

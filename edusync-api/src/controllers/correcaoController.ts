@@ -112,6 +112,15 @@ export async function corrigirFolha(req: Request, res: Response) {
     });
   }
 
+  // Sem turma não há lista de alunos, e sem ela não há a quem dar a nota.
+  // Melhor dizer isso do que estourar num `undefined` lá na frente.
+  if (!atividade.turma) {
+    return res.status(400).json({
+      erro: 'Esta atividade ainda não tem turma.',
+      detalhe: 'Abra a atividade, escolha a turma e tente de novo.',
+    });
+  }
+
   const alunos = atividade.turma.aluno;
   const id_sugerido = acharAluno(resultado.nome_aluno, alunos);
   const sugerido = id_sugerido ? alunos.find((a) => a.id_aluno === id_sugerido) : null;
@@ -172,6 +181,15 @@ export async function confirmarCorrecao(req: Request, res: Response) {
 
   if (!atividade) {
     return res.status(404).json({ erro: 'Atividade não encontrada' });
+  }
+
+  // Sem turma não há lista de alunos, e sem ela não há a quem dar a nota.
+  // Melhor dizer isso do que estourar num `undefined` lá na frente.
+  if (!atividade.turma) {
+    return res.status(400).json({
+      erro: 'Esta atividade ainda não tem turma.',
+      detalhe: 'Abra a atividade, escolha a turma e tente de novo.',
+    });
   }
 
   const aluno = atividade.turma.aluno.find((a) => a.id_aluno === id_aluno);

@@ -7,12 +7,22 @@ export async function criarAtividade(req: Request, res: Response) {
   const { nome, disciplina, descricao, imagem, id_turma } = req.body;
   const id_professor = req.professor!.id;
 
-  if (!nome || !id_turma) {
-    return res.status(400).json({ erro: 'Nome e id_turma são obrigatórios' });
+  if (!nome) {
+    return res.status(400).json({ erro: 'O nome da atividade é obrigatório' });
   }
 
+  // A turma é opcional aqui de propósito: dá para montar as questões antes
+  // de saber para qual turma a prova vai. Quem cobra a turma é a correção,
+  // que sem ela não tem a quem atribuir a nota.
   const atividade = await prisma.atividade.create({
-    data: { nome, disciplina, descricao, imagem, id_professor, id_turma },
+    data: {
+      nome,
+      disciplina,
+      descricao,
+      imagem,
+      id_professor,
+      id_turma: id_turma ?? null,
+    },
   });
 
   return res.status(201).json(atividade);

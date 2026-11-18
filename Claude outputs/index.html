@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>EduSync — Correção de provas pela câmera do celular</title>
+  <meta name="description" content="EduSync é um aplicativo que lê a folha de respostas pela câmera, compara com o gabarito e devolve a nota para o professor revisar. Trabalho de Conclusão de Curso de Desenvolvimento de Sistemas, Etec Profª Ermelinda Giannini Teixeira, 2026.">
+  <meta name="theme-color" content="#03275e">
+
+  <!-- Como o site aparece quando o link é compartilhado -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="EduSync — Correção de provas pela câmera do celular">
+  <meta property="og:description" content="TCC de Desenvolvimento de Sistemas: o professor fotografa a folha, o sistema lê e corrige, e a última palavra continua sendo dele.">
+  <meta property="og:image" content="og-image.png">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Ícone da aba: o símbolo do app, não o logo escrito. A palavra
+       inteira espremida em 16 pixels virava um borrão. -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- Fontes do Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Raleway: a mesma fonte do aplicativo, nos mesmos pesos (400 a 700) -->
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Nosso CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <a href="#inicio" class="pular-para-conteudo">Pular para o conteúdo</a>
+
+  <header class="cabecalho" id="cabecalho">
+    <div class="container cabecalho__interno">
+
+      <a href="#inicio" class="logo__link" aria-label="EduSync, ir para o início">
+        <img src="logo_escrita_lateral.png" alt="EduSync" class="logo__imagem" width="3765" height="1096">
+      </a>
+
+      <!-- Vira hambúrguer no celular -->
+      <button class="menu-botao" id="menuBotao" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="menu" id="menu" aria-label="Navegação principal">
+        <a href="#inicio" class="menu__link">Início</a>
+        <a href="#quem-somos" class="menu__link">Quem somos</a>
+        <a href="#solucao" class="menu__link">Solução</a>
+        <a href="#como-usar" class="menu__link">Como usar</a>
+        <a href="#funcionalidades" class="menu__link">Funcionalidades</a>
+        <a href="#equipe" class="menu__link">Equipe</a>
+        <a href="#contato" class="menu__link">Contato</a>
+        <a href="https://edusync-api.expo.app" class="menu__link menu__link--destaque"
+           target="_blank" rel="noopener">Acessar o app</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <main>
+
+    <section class="hero" id="inicio">
+      <div class="container hero__grade">
+
+        <div class="hero__texto">
+          <span class="etiqueta">Trabalho de Conclusão de Curso · 2026</span>
+          <h1>Corrigir a turma inteira
+            <span class="destaque">pela câmera do celular</span>
+          </h1>
+          <p>
+            O professor fotografa a folha de respostas. O EduSync lê o que o aluno
+            escreveu, compara com o gabarito e devolve a nota com os acertos questão
+            por questão. Quem fecha a nota continua sendo o professor.
+          </p>
+          <div class="hero__botoes">
+            <a href="https://edusync-api.expo.app" class="botao botao--primario"
+               target="_blank" rel="noopener">Acessar o app</a>
+            <a href="#solucao" class="botao botao--secundario">Ver como funciona</a>
+          </div>
+        </div>
+
+        <div class="hero__imagem">
+          <img src="print_app.png" width="720" height="1554"
+               alt="Tela inicial do aplicativo EduSync, com oito folhas esperando revisão e atalhos para turmas, atividades, scanner e correções">
+        </div>
+
+      </div>
+    </section>
+
+    <section class="secao" id="quem-somos">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">Quem somos</span>
+          <h2>Um projeto que nasceu dentro da sala de aula</h2>
+        </div>
+
+        <p>
+          Somos cinco estudantes de <strong>Desenvolvimento de Sistemas</strong> da
+          <strong>Etec Profª Ermelinda Giannini Teixeira</strong>, em Santana de
+          Parnaíba. O EduSync
+          é o nosso Trabalho de Conclusão de Curso, construído ao longo de 2026.
+        </p>
+        <p>
+          A ideia veio de uma conta que todo professor conhece de cor: cinco turmas de
+          35 alunos dão 175 provas por avaliação. Quisemos descobrir quanto desse
+          trabalho um celular comum, com OCR e uma API de inteligência artificial,
+          conseguiria assumir. A resposta foi quase tudo, menos a decisão final.
+          Essa continua com quem dá aula.
+        </p>
+      </div>
+    </section>
+
+    <section class="secao secao--escura" id="problema">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--clara">O problema</span>
+          <h2>Corrigir à mão custa caro, em tempo e em critério</h2>
+        </div>
+
+        <div class="dores">
+          <article class="dor">
+            <h3>Tempo que não volta</h3>
+            <p>
+              Cinco turmas de 35 alunos são 175 provas por avaliação. A três minutos
+              cada, quase nove horas de correção.
+            </p>
+          </article>
+          <article class="dor">
+            <h3>O critério escorrega</h3>
+            <p>
+              Na centésima prova é difícil manter exatamente o mesmo rigor que se teve
+              na primeira.
+            </p>
+          </article>
+          <article class="dor">
+            <h3>O retorno chega tarde</h3>
+            <p>
+              Quando a prova volta duas semanas depois, o aluno já esqueceu o raciocínio
+              que usou para errar.
+            </p>
+          </article>
+          <article class="dor">
+            <h3>Os dados se perdem</h3>
+            <p>
+              Sem registro organizado, ninguém consegue dizer depois qual foi a questão
+              que a turma inteira errou.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="solucao">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">A solução</span>
+          <h2>O que muda na hora de corrigir</h2>
+        </div>
+
+        <div class="cards">
+          <article class="card">
+            <h3>Objetivas e dissertativas</h3>
+            <p>
+              A alternativa é conferida direto contra o gabarito. Na dissertativa e na de
+              cálculo, a IA compara a resposta com as palavras-chave ou com o resultado
+              que o professor cadastrou.
+            </p>
+          </article>
+          <article class="card">
+            <h3>A última palavra é do professor</h3>
+            <p>
+              Nenhuma nota é fechada sozinha. Acerto, erro e comentário ficam editáveis
+              até ele concluir a correção da folha.
+            </p>
+          </article>
+          <article class="card">
+            <h3>O aluno não precisa de nada</h3>
+            <p>
+              A prova continua em papel, respondida à caneta. Quem usa o aplicativo é só
+              o professor, depois que recolhe as folhas.
+            </p>
+          </article>
+          <article class="card">
+            <h3>A turma de relance</h3>
+            <p>
+              Terminada a correção, a atividade mostra quantas folhas foram corrigidas,
+              a média da turma e o que ainda falta revisar.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao--cinza" id="como-usar">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">Como usar</span>
+          <h2>O caminho completo, da turma até a nota</h2>
+        </div>
+
+        <ol class="passos">
+          <li class="passo">
+            <span class="passo__numero" aria-hidden="true">1</span>
+            <div class="passo__texto">
+              <h3>Crie a turma</h3>
+              <p>
+                Cadastre a turma e os alunos. A lista de chamada entra de uma vez, a
+                partir de um PDF, uma planilha, um CSV ou uma foto da lista impressa.
+              </p>
+            </div>
+          </li>
+
+          <li class="passo">
+            <span class="passo__numero" aria-hidden="true">2</span>
+            <div class="passo__texto">
+              <h3>Monte a atividade</h3>
+              <p>
+                Escolha a turma, escreva as questões e marque o gabarito. Cada questão
+                tem o seu peso na nota. Se a prova já existe em PDF, dá para importar as
+                questões dele em vez de digitar tudo de novo.
+              </p>
+            </div>
+          </li>
+
+          <li class="passo">
+            <span class="passo__numero" aria-hidden="true">3</span>
+            <div class="passo__texto">
+              <h3>Imprima e aplique</h3>
+              <p>
+                O aplicativo gera a prova em PDF, pronta para imprimir. O gabarito não
+                entra nesse arquivo. O aluno responde no papel, como sempre.
+              </p>
+            </div>
+          </li>
+
+          <li class="passo">
+            <span class="passo__numero" aria-hidden="true">4</span>
+            <div class="passo__texto">
+              <h3>Escaneie as folhas</h3>
+              <p>
+                Com as provas recolhidas, fotografe uma por uma pelo scanner do
+                aplicativo ou envie as imagens já salvas. É aqui que o OCR lê a letra do
+                aluno e a IA compara cada resposta com o gabarito.
+              </p>
+            </div>
+          </li>
+
+          <li class="passo">
+            <span class="passo__numero" aria-hidden="true">5</span>
+            <div class="passo__texto">
+              <h3>Revise e conclua</h3>
+              <p>
+                A nota chega pronta, questão por questão. Você muda o que discordar,
+                escreve um comentário para o aluno e conclui a correção. A média da
+                turma aparece sozinha no fim.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="secao" id="funcionalidades">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">Funcionalidades</span>
+          <h2>O que já existe no aplicativo</h2>
+        </div>
+
+        <div class="cards">
+          <article class="card">
+            <h3>Scanner de folhas</h3>
+            <p>
+              Captura pela câmera ou envio de arquivo, com aviso quando o enquadramento
+              atrapalha a leitura.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Turmas e alunos</h3>
+            <p>
+              A lista de chamada entra de uma vez, a partir de um PDF, uma planilha, um
+              CSV ou uma foto da lista impressa.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Atividades e gabarito</h3>
+            <p>
+              Questões de alternativa, dissertativa e cálculo, cada uma com o seu peso na
+              nota final.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Prova em PDF</h3>
+            <p>
+              O aplicativo monta a folha pronta para imprimir. O gabarito nunca entra
+              nesse arquivo.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Painel de correções</h3>
+            <p>
+              Nota e acertos de cada aluno, com as folhas que ainda esperam revisão em
+              destaque.
+            </p>
+          </article>
+          <article class="card">
+            <h3>No celular e no navegador</h3>
+            <p>
+              O mesmo sistema nos dois: aplicativo Android e versão web, que dá para
+              instalar na tela inicial do iPhone.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao--cinza" id="tecnologias">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">Tecnologias</span>
+          <h2>Como o EduSync é construído</h2>
+        </div>
+
+        <div class="tec-grupos">
+          <div class="tec-grupo">
+            <h3>Aplicativo</h3>
+            <ul class="badges">
+              <li class="badge">React Native</li>
+              <li class="badge">Expo</li>
+              <li class="badge">Expo Router</li>
+            </ul>
+          </div>
+          <div class="tec-grupo">
+            <h3>Back-end</h3>
+            <ul class="badges">
+              <li class="badge">Node.js</li>
+              <li class="badge">TypeScript</li>
+              <li class="badge">Express</li>
+              <li class="badge">Prisma</li>
+              <li class="badge">MySQL</li>
+            </ul>
+          </div>
+          <div class="tec-grupo">
+            <h3>Inteligência</h3>
+            <ul class="badges">
+              <li class="badge">OCR</li>
+              <li class="badge">Gemini API</li>
+            </ul>
+          </div>
+          <div class="tec-grupo">
+            <h3>Hospedagem</h3>
+            <ul class="badges">
+              <li class="badge">Railway</li>
+              <li class="badge">EAS Hosting</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="equipe">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--azul">Equipe</span>
+          <h2>Quem construiu o EduSync</h2>
+        </div>
+
+        <div class="equipe">
+
+          <article class="integrante">
+            <img class="integrante__foto" src="Imagem_Raissa.png" width="320" height="320" alt="Raissa Rodrigues">
+            <h3>Raissa Rodrigues</h3>
+            <p class="integrante__funcao">
+              Líder de equipe e <span class="juntos">front-end</span>
+            </p>
+            <div class="integrante__links">
+              <a href="https://github.com/raiidellamura" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+
+          <article class="integrante">
+            <img class="integrante__foto" src="Imagem_Victoria.png" width="320" height="320" alt="Victória Murakami">
+            <h3>Victória Murakami</h3>
+            <p class="integrante__funcao">
+              Desenvolvimento <span class="juntos">back-end</span>
+            </p>
+            <div class="integrante__links">
+              <a href="https://github.com/victoriaMurakami" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+
+          <article class="integrante">
+            <img class="integrante__foto" src="Imagem_Willian.png" width="320" height="320" alt="Willian Leandro">
+            <h3>Willian Leandro</h3>
+            <p class="integrante__funcao">Design de interface</p>
+            <div class="integrante__links">
+              <a href="https://github.com/Leandro-Willian" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+
+          <article class="integrante">
+            <img class="integrante__foto" src="Imagem_Rafael.png?v=2" width="320" height="320" alt="Rafael Grespan">
+            <h3>Rafael Grespan</h3>
+            <p class="integrante__funcao">Desenvolvimento web e produto digital</p>
+            <div class="integrante__links">
+              <a href="https://github.com/Grespan147" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+
+          <article class="integrante">
+            <img class="integrante__foto" src="Imagem_Nicolas.png" width="320" height="320" alt="Nicolas Lins">
+            <h3>Nicolas Lins</h3>
+            <p class="integrante__funcao">Análise de requisitos e documentação</p>
+            <div class="integrante__links">
+              <a href="https://github.com/Nicolasantos11" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao--contato" id="contato">
+      <div class="container">
+        <div class="secao__cabecalho secao__cabecalho--centro">
+          <span class="etiqueta etiqueta--clara">Acesso e contato</span>
+          <h2>Quer ver o EduSync funcionando?</h2>
+          <p class="contato__chamada">
+            O sistema está no ar. Crie uma conta de professor, cadastre uma turma e
+            corrija a sua primeira folha. No iPhone, dá para adicionar o site à tela
+            inicial, e ele abre como aplicativo.
+          </p>
+          <a href="https://edusync-api.expo.app" class="botao botao--claro"
+             target="_blank" rel="noopener">Entrar no EduSync</a>
+        </div>
+
+        <div class="contato__links">
+          <a class="contato__item" href="mailto:edusynctcc@gmail.com">
+            <span class="contato__rotulo">E-mail</span>
+            <span>edusynctcc@gmail.com</span>
+          </a>
+          <a class="contato__item" href="https://github.com/edusynctcc" target="_blank" rel="noopener">
+            <span class="contato__rotulo">Repositório</span>
+            <span>github.com/edusynctcc</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="rodape">
+    <div class="container rodape__interno">
+      <p>
+        EduSync · Trabalho de Conclusão de Curso · Desenvolvimento de Sistemas ·
+        Etec Profª Ermelinda Giannini Teixeira · Santana de Parnaíba, SP · 2026
+      </p>
+      <a href="#inicio">Voltar ao topo ↑</a>
+    </div>
+  </footer>
+
+  <!-- Nosso JavaScript, sempre no final -->
+  <script src="script.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import {
   Image,
   ImageBackground,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,19 @@ import { COR, FONTE } from "../components/estilo";
 import { login } from "../constants/api";
 
 const LARGURA_DESKTOP = 900;
+
+const SITE_DO_PROJETO = "https://dellamuraissa-souza.github.io/Edusync-site/";
+
+// No navegador, abre em outra aba: quem estava preenchendo o formulário não
+// perde o que já digitou. No celular, entrega o endereço para o navegador
+// do sistema.
+function abrirSiteDoProjeto() {
+  if (Platform.OS === "web") {
+    window.open(SITE_DO_PROJETO, "_blank", "noopener,noreferrer");
+    return;
+  }
+  Linking.openURL(SITE_DO_PROJETO).catch(() => {});
+}
 
 const IMAGEM_FUNDO = require("../assets/images/img_fundo_login.png");
 
@@ -396,6 +410,8 @@ export default function Login() {
                 <TouchableOpacity
                   style={styles.promoCtaBotao}
                   activeOpacity={0.85}
+                  onPress={abrirSiteDoProjeto}
+                  accessibilityRole="link"
                 >
                   <Text style={styles.promoCtaBotaoTexto}>Acessar site</Text>
                 </TouchableOpacity>

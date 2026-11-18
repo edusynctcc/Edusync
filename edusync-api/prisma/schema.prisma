@@ -32,14 +32,14 @@ model aluno {
 model atividade {
   id_atividade Int        @id @default(autoincrement())
   id_professor Int?
-  id_turma     Int
+  id_turma     Int?
   nome         String     @db.VarChar(100)
   disciplina   String?    @db.VarChar(80)
   descricao    String?    @db.Text
   imagem       String?    @db.VarChar(255)
   criado_em    DateTime?  @default(now()) @db.Timestamp(0)
   professor    professor? @relation(fields: [id_professor], references: [id_professor], onDelete: NoAction, onUpdate: NoAction, map: "atividade_ibfk_1")
-  turma        turma      @relation(fields: [id_turma], references: [id_turma], onDelete: NoAction, onUpdate: NoAction, map: "atividade_ibfk_2")
+  turma        turma?     @relation(fields: [id_turma], references: [id_turma], onDelete: NoAction, onUpdate: NoAction, map: "atividade_ibfk_2")
   correcao     correcao[]
   questao      questao[]
 
