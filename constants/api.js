@@ -272,9 +272,11 @@ export function excluirAtividade(id) {
 }
 
 export function listarAlunos(id_turma) {
-  return apiFetch(`${ENDPOINTS.alunos}?id_turma=${id_turma}`, {
-    autenticado: true,
-  });
+  // Sem turma, o servidor devolve os alunos de todas as turmas do professor.
+  return apiFetch(
+    id_turma ? `${ENDPOINTS.alunos}?id_turma=${id_turma}` : ENDPOINTS.alunos,
+    { autenticado: true },
+  );
 }
 
 export function criarAluno(nome, matricula, numero_chamada, id_turma) {

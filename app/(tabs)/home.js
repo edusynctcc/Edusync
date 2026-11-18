@@ -18,6 +18,7 @@ import {
   buscarPerfil,
   listarAtividades,
   listarCorrecoes,
+  listarAlunos,
   listarTurmas,
 } from "../../constants/api";
 
@@ -115,6 +116,7 @@ export default function Home() {
   const router = useRouter();
 
   const [buscaHome, setBuscaHome] = useState("");
+  const [alunos, setAlunos] = useState([]);
   const [professor, setProfessor] = useState(null);
   const [turmas, setTurmas] = useState([]);
   const [atividades, setAtividades] = useState([]);
@@ -131,17 +133,25 @@ export default function Home() {
         setErro("");
 
         try {
-          const [perfil, listaTurmas, listaAtividades, listaCorrecoes] =
+          const [
+            perfil,
+            listaTurmas,
+            listaAtividades,
+            listaCorrecoes,
+            listaAlunos,
+          ] =
             await Promise.all([
               buscarPerfil().catch(() => null),
               listarTurmas().catch(() => []),
               listarAtividades().catch(() => []),
               listarCorrecoes().catch(() => []),
+              listarAlunos().catch(() => []),
             ]);
 
           if (!ativo) return;
 
           setProfessor(perfil);
+          setAlunos(listaAlunos || []);
           setTurmas(listaTurmas || []);
           setAtividades(listaAtividades || []);
           setCorrecoes(listaCorrecoes || []);
@@ -219,6 +229,13 @@ export default function Home() {
       titulo: a.nome,
       subtitulo: a.disciplina || nomeDaTurma(a.id_turma) || "Atividade",
     })),
+    // O aluno abre a turma dele: é lá que estão os dados e as notas.
+    ...alunos.map((al) => ({
+      tipo: "aluno",
+      id: al.id_turma,
+      titulo: al.nome,
+      subtitulo: `Nº ${al.numero_chamada} · ${al.turma?.nome || nomeDaTurma(al.id_turma) || "Turma"}`,
+    })),
   ];
 
   const buscaNormalizada = buscaHome.trim().toLowerCase();
@@ -231,7 +248,7 @@ export default function Home() {
   function abrirResultado(item) {
     setBuscaHome("");
     router.push({
-      pathname: item.tipo === "turma" ? "/turma" : "/atividade",
+      pathname: item.tipo === "atividade" ? "/atividade" : "/turma",
       params: { id: item.id },
     });
   }
@@ -507,7 +524,7 @@ export default function Home() {
           <TextInput
             value={buscaHome}
             onChangeText={setBuscaHome}
-            placeholder="Buscar turma ou atividade"
+            placeholder="Buscar turma, atividade ou aluno"
             placeholderTextColor={COR.tintaFraca}
             style={styles.buscaInput}
           />
@@ -536,7 +553,9 @@ export default function Home() {
                     name={
                       item.tipo === "turma"
                         ? "people-outline"
-                        : "document-text-outline"
+                        : item.tipo === "aluno"
+                          ? "person-outline"
+                          : "document-text-outline"
                     }
                     size={16}
                     color={COR.tintaMedia}
@@ -546,7 +565,12 @@ export default function Home() {
                       {item.titulo}
                     </Text>
                     <Text style={styles.resultadoSubtitulo} numberOfLines={1}>
-                      {item.tipo === "turma" ? "Turma" : "Atividade"} ·{" "}
+                      {item.tipo === "turma"
+                        ? "Turma"
+                        : item.tipo === "aluno"
+                          ? "Aluno"
+                          : "Atividade"}{" "}
+                      ·{" "}
                       {item.subtitulo}
                     </Text>
                   </View>

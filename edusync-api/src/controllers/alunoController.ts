@@ -50,10 +50,17 @@ export async function listarAlunos(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_turma = Number(req.query.id_turma);
 
+  // Sem id_turma, devolve todos os alunos das turmas deste professor. É o
+  // que a busca do app usa: procurar um aluno sem saber em que turma ele
+  // está. Com id_turma, continua como antes.
   if (!id_turma) {
-    return res
-      .status(400)
-      .json({ erro: "Informe o id_turma na query (?id_turma=)" });
+    const todos = await prisma.aluno.findMany({
+      where: { turma: { id_professor } },
+      orderBy: [{ id_turma: "asc" }, { numero_chamada: "asc" }],
+      include: { turma: { select: { id_turma: true, nome: true } } },
+    });
+
+    return res.json(todos);
   }
 
   const podeAcessar = await turmaPertenceAoProfessor(id_turma, id_professor);

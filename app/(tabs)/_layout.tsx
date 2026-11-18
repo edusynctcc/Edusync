@@ -15,7 +15,11 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { COR, FONTE, RAIO } from "../../components/estilo";
-import { listarAtividades, listarTurmas } from "../../constants/api";
+import {
+  listarAlunos,
+  listarAtividades,
+  listarTurmas,
+} from "../../constants/api";
 import { semAcento } from "../../constants/disciplinas";
 
 export const LARGURA_LATERAL = 272;
@@ -67,7 +71,7 @@ const ITENS_LATERAL = [
 // lateral mostrava turmas e atividades que não existiam e clicar nelas levava
 // para uma lista vazia.
 type ItemBusca = {
-  tipo: "turma" | "atividade";
+  tipo: "turma" | "atividade" | "aluno";
   id: number;
   titulo: string;
   subtitulo: string;
@@ -83,9 +87,10 @@ function LateralDesktop() {
   const [carregando, setCarregando] = useState(true);
 
   const carregarIndice = useCallback(async () => {
-    const [turmas, atividades] = await Promise.all([
+    const [turmas, atividades, alunos] = await Promise.all([
       listarTurmas().catch(() => []),
       listarAtividades().catch(() => []),
+      listarAlunos().catch(() => []),
     ]);
 
     const nomeDaTurma = new Map<number, string>(
@@ -105,6 +110,15 @@ function LateralDesktop() {
         titulo: a.nome,
         subtitulo:
           a.disciplina || nomeDaTurma.get(a.id_turma) || "Atividade",
+      })),
+      // O aluno leva para a turma dele.
+      ...(alunos || []).map((al: any) => ({
+        tipo: "aluno" as const,
+        id: al.id_turma,
+        titulo: al.nome,
+        subtitulo: `Nº ${al.numero_chamada} · ${
+          al.turma?.nome || nomeDaTurma.get(al.id_turma) || "Turma"
+        }`,
       })),
     ]);
 
@@ -135,7 +149,7 @@ function LateralDesktop() {
   function abrirResultado(item: ItemBusca) {
     setBuscaTexto("");
     router.push({
-      pathname: item.tipo === "turma" ? "/turma" : "/atividade",
+      pathname: item.tipo === "atividade" ? "/atividade" : "/turma",
       params: { id: item.id },
     } as any);
   }
@@ -158,7 +172,7 @@ function LateralDesktop() {
         <TextInput
           value={buscaTexto}
           onChangeText={setBuscaTexto}
-          placeholder="Buscar turma ou atividade"
+          placeholder="Buscar turma, atividade ou aluno"
           placeholderTextColor={COR.marinhoClaro}
           style={[styles.buscaInput, SEM_CONTORNO_WEB]}
           onSubmitEditing={() => resultados[0] && abrirResultado(resultados[0])}
@@ -189,7 +203,9 @@ function LateralDesktop() {
                     name={
                       item.tipo === "turma"
                         ? "people-outline"
-                        : "document-text-outline"
+                        : item.tipo === "aluno"
+                          ? "person-outline"
+                          : "document-text-outline"
                     }
                     size={14}
                     color={COR.tintaMedia}
@@ -199,7 +215,12 @@ function LateralDesktop() {
                       {item.titulo}
                     </Text>
                     <Text style={styles.buscaResultadoApoio} numberOfLines={1}>
-                      {item.tipo === "turma" ? "Turma" : "Atividade"} ·{" "}
+                      {item.tipo === "turma"
+                        ? "Turma"
+                        : item.tipo === "aluno"
+                          ? "Aluno"
+                          : "Atividade"}{" "}
+                      ·{" "}
                       {item.subtitulo}
                     </Text>
                   </View>

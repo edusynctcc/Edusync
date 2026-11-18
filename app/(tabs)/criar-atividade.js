@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -61,6 +62,18 @@ const TIPOS_DA_ATIVIDADE = [
   "text/plain",
   "application/octet-stream",
 ];
+
+const CHAVE_RASCUNHO = "rascunho:atividade";
+
+function quandoFoi(ms) {
+  const minutos = Math.round((Date.now() - ms) / 60000);
+  if (minutos < 1) return "agora há pouco";
+  if (minutos < 60) return `há ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return horas === 1 ? "há 1 hora" : `há ${horas} horas`;
+  const dias = Math.round(horas / 24);
+  return dias === 1 ? "ontem" : `há ${dias} dias`;
+}
 
 let proximoId = 1;
 
@@ -263,6 +276,11 @@ export default function CriarAtividade() {
   // já está na tela ou se somam.
   const [importPendente, setImportPendente] = useState(null);
 
+  // Rascunho encontrado e ainda não respondido: enquanto ele existe, a tela
+  // não grava por cima: seria apagar o que a pessoa está sendo convidada a
+  // retomar.
+  const [rascunho, setRascunho] = useState(null);
+
   // O que esta tela está editando agora: "nova" ou "editar:7". Serve para
   // perceber quando ela trocou de alvo. É ref porque só é lido dentro de
   // efeito -- virar estado faria render à toa.
@@ -298,6 +316,21 @@ export default function CriarAtividade() {
       if (alvoNaTela.current !== alvo) {
         alvoNaTela.current = alvo;
         limparFormulario();
+
+        // Só oferece o rascunho logo depois de a tela ser zerada. No meio da
+        // digitação a pergunta seria intrusiva, e o que está na tela já é
+        // mais novo do que o que está guardado.
+        if (!emEdicao) {
+          AsyncStorage.getItem(CHAVE_RASCUNHO)
+            .then((cru) => {
+              if (!cru) return;
+              const salvo = JSON.parse(cru);
+              if (salvo && (salvo.titulo || (salvo.questoes || []).length)) {
+                setRascunho(salvo);
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       // A lista de turmas é relida toda vez que a tela aparece, e não só na
@@ -417,6 +450,78 @@ export default function CriarAtividade() {
 
   // Toda mexida nos itens passa por aqui para reescrever as letras no fim.
   // Tirando o b), o que era c) vira b) -- senão a prova sai com buraco.
+  // Guarda o que está escrito, pouco depois de a pessoa parar de digitar.
+  // Só para atividade nova -- editar uma existente já tem onde salvar.
+  //
+  // As imagens ficam de fora de propósito: uma foto escolhida na galeria é um
+  // arquivo da sessão do navegador, que não sobrevive a fechar o app. Guardar
+  // o caminho dela devolveria um rascunho com imagem quebrada.
+  useEffect(() => {
+    if (emEdicao || rascunho) return;
+
+    const temAlgo =
+      titulo.trim() ||
+      disciplina.trim() ||
+      descricao.trim() ||
+      questoes.some((q) => !questaoEmBranco(q));
+
+    const esperar = setTimeout(() => {
+      if (!temAlgo) {
+        AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(() => {});
+        return;
+      }
+
+      const corpo = {
+        quando: Date.now(),
+        titulo,
+        disciplina,
+        descricao,
+        id_turma: turmaSelecionada ? turmaSelecionada.id_turma : null,
+        tinhaImagem: questoes.some((q) => q.imagem),
+        questoes: questoes.map((q) => ({ ...q, imagem: null })),
+      };
+
+      AsyncStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(corpo)).catch(
+        () => {},
+      );
+    }, 900);
+
+    return () => clearTimeout(esperar);
+  }, [
+    emEdicao,
+    rascunho,
+    titulo,
+    disciplina,
+    descricao,
+    questoes,
+    turmaSelecionada,
+  ]);
+
+  function retomarRascunho() {
+    if (!rascunho) return;
+
+    setTitulo(rascunho.titulo || "");
+    setDisciplina(rascunho.disciplina || "");
+    setDescricao(rascunho.descricao || "");
+    setQuestoes(
+      (rascunho.questoes || []).length
+        ? rascunho.questoes.map((q) => ({ ...novaQuestao(), ...q, imagem: null }))
+        : [novaQuestao()],
+    );
+
+    if (rascunho.id_turma) {
+      const achou = turmas.find((x) => x.id_turma === rascunho.id_turma);
+      if (achou) setTurmaSelecionada(achou);
+    }
+
+    setRascunho(null);
+  }
+
+  function descartarRascunho() {
+    AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(() => {});
+    setRascunho(null);
+  }
+
   function mexerNosItens(idQuestao, transformar) {
     setQuestoes((atuais) =>
       atuais.map((q) => {
@@ -862,6 +967,7 @@ export default function CriarAtividade() {
       // perceberia a troca.
       alvoNaTela.current = null;
       limparFormulario();
+      AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(() => {});
 
       // Termina na atividade que acabou de ser salva, não na lista: é de lá
       // que se imprime a prova e se vê o resumo, que é o passo seguinte.
@@ -922,6 +1028,47 @@ export default function CriarAtividade() {
                 {emEdicao ? "Editar atividade" : "Criar atividade"}
               </Text>
             </TouchableOpacity>
+          )}
+
+          {rascunho && (
+            <View style={styles.rascunhoBox}>
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color={COR.marcador}
+              />
+              <View style={styles.rascunhoMeio}>
+                <Text style={styles.rascunhoTitulo}>
+                  Você parou no meio de uma atividade
+                </Text>
+                <Text style={styles.rascunhoTexto}>
+                  {rascunho.titulo ? `"${rascunho.titulo}"` : "Sem título"}
+                  {" · salvo "}
+                  {quandoFoi(rascunho.quando)}
+                  {rascunho.tinhaImagem
+                    ? " · as imagens precisam ser escolhidas de novo"
+                    : ""}
+                </Text>
+
+                <View style={styles.rascunhoBotoes}>
+                  <TouchableOpacity
+                    style={styles.rascunhoContinuar}
+                    onPress={retomarRascunho}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.rascunhoContinuarTexto}>
+                      Continuar de onde parei
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={descartarRascunho}>
+                    <Text style={styles.rascunhoDescartar}>
+                      Começar do zero
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
           )}
 
           {erro ? <Alerta titulo="Não deu certo" texto={erro} /> : null}
@@ -2085,6 +2232,54 @@ const styles = StyleSheet.create({
     fontFamily: FONTE.semi,
     fontSize: 13.5,
     color: COR.marcador,
+  },
+
+  rascunhoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 11,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: RAIO.controle,
+    padding: 14,
+    marginBottom: 14,
+  },
+  rascunhoMeio: { flex: 1, minWidth: 0 },
+  rascunhoTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    color: COR.tintaForte,
+  },
+  rascunhoTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: COR.tintaMedia,
+    marginTop: 2,
+  },
+  rascunhoBotoes: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 14,
+    marginTop: 11,
+  },
+  rascunhoContinuar: {
+    backgroundColor: COR.marcador,
+    borderRadius: RAIO.controle,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  rascunhoContinuarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.branco,
+  },
+  rascunhoDescartar: {
+    fontFamily: FONTE.semi,
+    fontSize: 13,
+    color: COR.tintaFraca,
   },
 
   opcional: {
