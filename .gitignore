@@ -43,3 +43,8 @@ app-example
 /android
 edusync-api/.env
 .env
+
+# pasta onde o app do Claude salva os arquivos entregues no chat.
+# São cópias do que já está no projeto: não precisam ir para o repositório.
+entregas/
+Claude outputs/
