@@ -19,6 +19,13 @@ import {
   listarAtividades,
 } from "../../constants/api";
 import {
+  apagarRascunho,
+  lerRascunhos,
+  quandoFoi,
+  resumoDoRascunho,
+  tituloDoRascunho,
+} from "../../constants/rascunhos";
+import {
   semAcento,
   visualDaDisciplina,
 } from "../../constants/disciplinas";
@@ -62,6 +69,7 @@ export default function Atividades() {
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
   const [gerandoProva, setGerandoProva] = useState(false);
+  const [rascunhos, setRascunhos] = useState([]);
 
   async function salvarProvaEmPdf(atividade) {
     if (gerandoProva) return;
@@ -85,6 +93,11 @@ export default function Atividades() {
       async function carregar() {
         setCarregando(true);
         setErro("");
+
+        // Relido a cada vez que a tela aparece: um rascunho criado agora na
+        // tela de criar atividade já aparece aqui ao voltar.
+        setRascunhos(await lerRascunhos());
+
         try {
           const dados = await listarAtividades();
           const comVisual = dados.map((a) => {
@@ -170,6 +183,63 @@ export default function Atividades() {
           )}
 
           {!ehDesktop && <Text style={styles.tituloPagina}>Atividades</Text>}
+
+          {rascunhos.length > 0 && (
+            <View style={styles.rascunhosBloco}>
+              <View style={styles.rascunhosTopo}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={16}
+                  color={COR.marcador}
+                />
+                <Text style={styles.rascunhosTitulo}>
+                  {rascunhos.length === 1
+                    ? "1 rascunho"
+                    : `${rascunhos.length} rascunhos`}
+                </Text>
+                <Text style={styles.rascunhosApoio}>
+                  começados e não publicados
+                </Text>
+              </View>
+
+              {rascunhos.map((r) => (
+                <View key={r.id} style={styles.rascunhoLinha}>
+                  <TouchableOpacity
+                    style={styles.rascunhoMeio}
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/criar-atividade",
+                        params: { rascunho: r.id },
+                      })
+                    }
+                  >
+                    <Text style={styles.rascunhoNome} numberOfLines={1}>
+                      {tituloDoRascunho(r)}
+                    </Text>
+                    <Text style={styles.rascunhoApoio} numberOfLines={1}>
+                      {resumoDoRascunho(r)} · {quandoFoi(r.quando)}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await apagarRascunho(r.id);
+                      setRascunhos(await lerRascunhos());
+                    }}
+                    hitSlop={10}
+                    accessibilityLabel="Descartar este rascunho"
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={17}
+                      color={COR.tintaFraca}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View
             style={[
@@ -458,6 +528,55 @@ export default function Atividades() {
 }
 
 const styles = StyleSheet.create({
+  rascunhosBloco: {
+    width: "100%",
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: RAIO.controle,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+    marginBottom: 14,
+  },
+  rascunhosTopo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    flexWrap: "wrap",
+  },
+  rascunhosTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 13.5,
+    color: COR.marcador,
+  },
+  rascunhosApoio: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaMedia,
+  },
+  rascunhoLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: "#CFE2FD",
+    marginTop: 9,
+  },
+  rascunhoMeio: { flex: 1, minWidth: 0 },
+  rascunhoNome: {
+    fontFamily: FONTE.semi,
+    fontSize: 14,
+    color: COR.tintaForte,
+  },
+  rascunhoApoio: {
+    fontFamily: FONTE.regular,
+    fontSize: 12,
+    color: COR.tintaFraca,
+    marginTop: 2,
+  },
+
   tela: { flex: 1, backgroundColor: COR.fundo },
 
   conteudo: { flex: 1 },
