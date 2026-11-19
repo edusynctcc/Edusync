@@ -299,8 +299,10 @@ export function atualizarAluno(id, nome, matricula, numero_chamada) {
   });
 }
 
-export function excluirAluno(id) {
-  return apiFetch(`${ENDPOINTS.alunos}/${id}`, {
+// Sem `forcar`, o servidor recusa com 409 quando o aluno já tem prova
+// corrigida, e devolve quantas são para a tela poder perguntar.
+export function excluirAluno(id, { forcar = false } = {}) {
+  return apiFetch(`${ENDPOINTS.alunos}/${id}${forcar ? "?forcar=1" : ""}`, {
     method: "DELETE",
     autenticado: true,
   });

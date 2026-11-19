@@ -97,6 +97,7 @@ export default function TurmaDetalhe() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   useAviso(erro);
+  useAviso(aviso, "ok");
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
 
@@ -108,6 +109,7 @@ export default function TurmaDetalhe() {
 
   const [editando, setEditando] = useState(null);
   const [alunoParaExcluir, setAlunoParaExcluir] = useState(null);
+  const [notasQueVaoJunto, setNotasQueVaoJunto] = useState(0);
   const [confirmandoExclusaoTurma, setConfirmandoExclusaoTurma] =
     useState(false);
 
@@ -360,7 +362,7 @@ export default function TurmaDetalhe() {
 
   const totalMarcados = Object.values(marcados).filter(Boolean).length;
 
-  async function removerAluno() {
+  async function removerAluno(forcar = false) {
     if (!alunoParaExcluir || ocupado) return;
 
     setOcupado("excluirAluno");
@@ -368,16 +370,29 @@ export default function TurmaDetalhe() {
     setAviso("");
 
     try {
-      await excluirAluno(alunoParaExcluir.id_aluno);
+      await excluirAluno(alunoParaExcluir.id_aluno, { forcar });
       setAlunoParaExcluir(null);
+      setNotasQueVaoJunto(0);
       setAviso(`${alunoParaExcluir.nome} saiu da turma.`);
       await carregar();
     } catch (e) {
-      setAlunoParaExcluir(null);
-      setErro(e.message);
+      // 409 com a contagem: o aluno tem prova corrigida. Em vez de só recusar,
+      // a janela continua aberta e passa a dizer o que vai junto.
+      if (e.status === 409 && e.dados?.correcoes) {
+        setNotasQueVaoJunto(e.dados.correcoes);
+      } else {
+        setAlunoParaExcluir(null);
+        setNotasQueVaoJunto(0);
+        setErro(e.message);
+      }
     } finally {
       setOcupado("");
     }
+  }
+
+  function fecharExclusaoDeAluno() {
+    setAlunoParaExcluir(null);
+    setNotasQueVaoJunto(0);
   }
 
   async function salvarTurma() {
@@ -849,7 +864,6 @@ export default function TurmaDetalhe() {
             </View>
           </View>
 
-          {!!aviso && <Text style={styles.avisoFaixa}>{aviso}</Text>}
 
           {
                                        }
@@ -1107,7 +1121,7 @@ export default function TurmaDetalhe() {
         visible={!!alunoParaExcluir}
         transparent
         animationType="fade"
-        onRequestClose={() => setAlunoParaExcluir(null)}
+        onRequestClose={fecharExclusaoDeAluno}
       >
         <View style={styles.modalFundoCentro}>
           <View
@@ -1130,14 +1144,19 @@ export default function TurmaDetalhe() {
             <Text
               style={[styles.modalTexto, ehDesktop && styles.modalTextoDesktop]}
             >
-              Se este aluno já tiver correções lançadas, o servidor vai recusar
-              — apagar levaria as notas dele junto.
+              {notasQueVaoJunto
+                ? `Este aluno tem ${notasQueVaoJunto} ${
+                    notasQueVaoJunto === 1
+                      ? "prova corrigida"
+                      : "provas corrigidas"
+                  }. Continuar apaga essas correções e as notas delas, e isso não volta atrás.`
+                : "O cadastro dele sai da lista de chamada."}
             </Text>
 
             <View style={styles.modalBotoes}>
               <TouchableOpacity
                 style={styles.modalCancelar}
-                onPress={() => setAlunoParaExcluir(null)}
+                onPress={fecharExclusaoDeAluno}
               >
                 <Text style={styles.modalCancelarTexto}>Cancelar</Text>
               </TouchableOpacity>
@@ -1145,10 +1164,14 @@ export default function TurmaDetalhe() {
               <TouchableOpacity
                 style={styles.modalExcluir}
                 disabled={!!ocupado}
-                onPress={removerAluno}
+                onPress={() => removerAluno(notasQueVaoJunto > 0)}
               >
                 <Text style={styles.modalExcluirTexto}>
-                  {ocupado === "excluirAluno" ? "Removendo..." : "Remover"}
+                  {ocupado === "excluirAluno"
+                    ? "Removendo..."
+                    : notasQueVaoJunto
+                      ? "Remover mesmo assim"
+                      : "Remover"}
                 </Text>
               </TouchableOpacity>
             </View>

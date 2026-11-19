@@ -114,20 +114,47 @@ export async function atualizarAluno(req: Request, res: Response) {
   return res.json(aluno);
 }
 
+// ---------------------------------------------------------------------------
+// Tirar um aluno da turma
+//
+// `correcao` aponta para `aluno` com onDelete: NoAction, e `resposta` aponta
+// para `correcao`. O banco não deixa apagar o pai enquanto o filho existir --
+// era isso que voltava como erro cru quando o aluno já tinha prova corrigida.
+//
+// Agora a primeira tentativa não apaga nada: ela devolve 409 com a CONTAGEM,
+// para a tela poder perguntar antes. Só com ?forcar=1 a exclusão acontece, de
+// baixo para cima e dentro de uma transação -- respostas, correções, aluno.
+// ---------------------------------------------------------------------------
 export async function excluirAluno(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_aluno = Number(req.params.id);
 
   const alunoExiste = await prisma.aluno.findUnique({
     where: { id_aluno },
-    include: { turma: true },
+    include: { turma: true, correcao: { select: { id_correcao: true } } },
   });
 
-  if (!alunoExiste || alunoExiste.turma.id_professor !== id_professor) {
+  if (!alunoExiste || !alunoExiste.turma || alunoExiste.turma.id_professor !== id_professor) {
     return res.status(404).json({ erro: "Aluno não encontrado" });
   }
 
-  await prisma.aluno.delete({ where: { id_aluno } });
+  const idsCorrecao = alunoExiste.correcao.map((c) => c.id_correcao);
+  const forcar = req.query.forcar === "1" || req.query.forcar === "true";
+
+  if (idsCorrecao.length > 0 && !forcar) {
+    const quantas = idsCorrecao.length;
+    return res.status(409).json({
+      erro: `${alunoExiste.nome} tem ${quantas} ${quantas === 1 ? "prova corrigida" : "provas corrigidas"}.`,
+      detalhe: "Tirar o aluno da turma apaga essas correções e as notas junto.",
+      correcoes: quantas,
+    });
+  }
+
+  await prisma.$transaction([
+    prisma.resposta.deleteMany({ where: { id_correcao: { in: idsCorrecao } } }),
+    prisma.correcao.deleteMany({ where: { id_aluno } }),
+    prisma.aluno.delete({ where: { id_aluno } }),
+  ]);
 
   return res.status(204).send();
 }

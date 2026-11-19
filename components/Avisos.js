@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { COR, FONTE, RAIO } from "./estilo";
 
@@ -98,6 +99,9 @@ const CARA = {
 };
 
 export default function Avisos() {
+  const { width } = useWindowDimensions();
+  const ehDesktop = width >= 900;
+
   const [atual, setAtual] = useState(() => avisoAtual);
   // useState em vez de useRef: o valor é lido durante o render, e ref lida
   // no render é justamente o que o compilador do React proíbe.
@@ -130,10 +134,14 @@ export default function Avisos() {
   const cara = CARA[atual.tipo] || CARA.erro;
 
   return (
-    <View style={styles.area} pointerEvents="box-none">
+    <View
+      style={[styles.area, ehDesktop && styles.areaDesktop]}
+      pointerEvents="box-none"
+    >
       <Animated.View
         style={[
           styles.cartao,
+          ehDesktop && styles.cartaoDesktop,
           {
             backgroundColor: cara.fundo,
             borderColor: cara.borda,
@@ -151,7 +159,7 @@ export default function Avisos() {
       >
         <Ionicons name={cara.icone} size={19} color={cara.tinta} />
 
-        <Text style={[styles.texto, { color: cara.tinta }]} numberOfLines={4}>
+        <Text style={[styles.texto, { color: cara.tinta }]} numberOfLines={6}>
           {atual.texto}
         </Text>
 
@@ -168,6 +176,10 @@ export default function Avisos() {
 }
 
 const styles = StyleSheet.create({
+  // No celular o aviso nasce centralizado no topo, onde o olho já está. No
+  // computador ele vai para o canto direito: a tela é larga, o conteúdo fica
+  // no meio, e um cartão pousando em cima do que a pessoa está lendo atrapalha
+  // mais do que ajuda.
   area: {
     position: "absolute",
     top: 0,
@@ -177,6 +189,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     zIndex: 90,
+  },
+  areaDesktop: {
+    alignItems: "flex-end",
+    paddingHorizontal: 22,
+    paddingTop: 20,
   },
   cartao: {
     flexDirection: "row",
@@ -193,6 +210,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 14,
     elevation: 8,
+  },
+  cartaoDesktop: {
+    width: "auto",
+    minWidth: 300,
+    maxWidth: 400,
   },
   texto: {
     flex: 1,
