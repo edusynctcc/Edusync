@@ -22,6 +22,7 @@ import {
   criarAlternativa,
   criarAtividade,
   criarQuestao,
+  excluirAtividade as excluirAtividadeApi,
   enviarImagemDaQuestao,
   excluirQuestao,
   lerAtividadeDeArquivo,
@@ -34,9 +35,6 @@ import {
   apagarRascunho,
   guardarRascunho,
   lerRascunhos,
-  quandoFoi,
-  resumoDoRascunho,
-  tituloDoRascunho,
 } from "../../constants/rascunhos";
 import {
   embutirImagens,
@@ -278,7 +276,8 @@ export default function CriarAtividade() {
   const [importPendente, setImportPendente] = useState(null);
 
   const [rascunhos, setRascunhos] = useState([]);
-  const [listaRascunhosAberta, setListaRascunhosAberta] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const [apagando, setApagando] = useState(false);
 
   // Qual rascunho esta tela está alimentando. Null significa "ainda não
   // virou rascunho": o primeiro salvamento automático cria um e guarda o id
@@ -320,6 +319,32 @@ export default function CriarAtividade() {
   //
   // O critério é o alvo. Mudou de "nova" para "editar a 7", ou de uma
   // atividade para outra: limpa. Continuou no mesmo alvo: preserva.
+  function aplicarRascunho(r) {
+    if (!r) return;
+
+    idRascunho.current = r.id;
+    setTitulo(r.titulo || "");
+    setDisciplina(r.disciplina || "");
+    setDescricao(r.descricao || "");
+    setQuestoes(
+      (r.questoes || []).length
+        ? r.questoes.map((q) => ({ ...novaQuestao(), ...q, imagem: null }))
+        : [novaQuestao()],
+    );
+
+    // A lista de turmas pode ainda estar chegando do servidor. Se já chegou,
+    // resolve agora; se não, fica anotado e o carregamento resolve depois.
+    turmaPendente.current = r.id_turma || null;
+    if (r.id_turma) {
+      const achou = turmasRef.current.find((x) => x.id_turma === r.id_turma);
+      if (achou) {
+        setTurmaSelecionada(achou);
+        turmaPendente.current = null;
+      }
+    }
+
+  }
+
   useFocusEffect(
     useCallback(() => {
       const alvo = emEdicao
@@ -521,40 +546,59 @@ export default function CriarAtividade() {
     return () => clearTimeout(esperar);
   }, [emEdicao, titulo, disciplina, descricao, questoes, turmaSelecionada]);
 
-  function aplicarRascunho(r) {
-    if (!r) return;
+  // Guarda o rascunho na hora e sai. É o "deixo pra depois" explícito, para
+  // quem não confia no salvamento automático -- e ele é invisível mesmo.
+  async function salvarRascunhoESair() {
+    const corpo = {
+      id: idRascunho.current,
+      titulo,
+      disciplina,
+      descricao,
+      id_turma: turmaSelecionada ? turmaSelecionada.id_turma : null,
+      tinhaImagem: questoes.some((q) => q.imagem),
+      questoes: questoes.map((q) => ({ ...q, imagem: null })),
+    };
 
-    idRascunho.current = r.id;
-    setTitulo(r.titulo || "");
-    setDisciplina(r.disciplina || "");
-    setDescricao(r.descricao || "");
-    setQuestoes(
-      (r.questoes || []).length
-        ? r.questoes.map((q) => ({ ...novaQuestao(), ...q, imagem: null }))
-        : [novaQuestao()],
-    );
+    await guardarRascunho(corpo);
 
-    // A lista de turmas pode ainda estar chegando do servidor. Se já chegou,
-    // resolve agora; se não, fica anotado e o carregamento resolve depois.
-    turmaPendente.current = r.id_turma || null;
-    if (r.id_turma) {
-      const achou = turmasRef.current.find((x) => x.id_turma === r.id_turma);
-      if (achou) {
-        setTurmaSelecionada(achou);
-        turmaPendente.current = null;
-      }
-    }
+    // Solta o id ANTES de limpar a tela. A tela fica montada depois que a
+    // gente sai, e o salvamento automático ainda vai disparar uma vez: se
+    // ele encontrasse a tela vazia com o id ainda apontando para este
+    // rascunho, apagaria justamente o que acabou de ser guardado.
+    idRascunho.current = null;
+    alvoNaTela.current = null;
+    limparFormulario();
 
-    setListaRascunhosAberta(false);
+    setRascunhos(await lerRascunhos());
+    router.navigate("/atividades");
   }
 
-  async function descartarRascunho(idAlvo) {
-    await apagarRascunho(idAlvo);
-    if (idRascunho.current === idAlvo) idRascunho.current = null;
+  async function confirmarSaida() {
+    if (apagando) return;
+    setApagando(true);
 
-    const restantes = await lerRascunhos();
-    setRascunhos(restantes);
-    if (restantes.length === 0) setListaRascunhosAberta(false);
+    try {
+      if (emEdicao && id) {
+        await excluirAtividadeApi(id);
+      }
+
+      if (idRascunho.current) {
+        await apagarRascunho(idRascunho.current);
+      }
+
+      idRascunho.current = null;
+      alvoNaTela.current = null;
+      limparFormulario();
+
+      setRascunhos(await lerRascunhos());
+      setConfirmandoSaida(false);
+      router.navigate("/atividades");
+    } catch (e) {
+      setConfirmandoSaida(false);
+      setErro(e.message);
+    } finally {
+      setApagando(false);
+    }
   }
 
   function mexerNosItens(idQuestao, transformar) {
@@ -794,6 +838,13 @@ export default function CriarAtividade() {
     }
     router.navigate("/atividades");
   }
+
+  const temConteudo = Boolean(
+    titulo.trim() ||
+      disciplina.trim() ||
+      descricao.trim() ||
+      questoes.some((q) => !questaoEmBranco(q)),
+  );
 
   function gabaritoDaQuestao(questao) {
     if (questao.tipo === "itens") {
@@ -1073,20 +1124,20 @@ export default function CriarAtividade() {
           {!emEdicao && rascunhos.length > 0 && (
             <TouchableOpacity
               style={styles.rascunhoBotao}
-              onPress={() => setListaRascunhosAberta(true)}
+              onPress={() => router.push("/rascunhos")}
               activeOpacity={0.85}
             >
               <Ionicons
                 name="document-text-outline"
                 size={17}
-                color={COR.marcador}
+                color={COR.tintaFraca}
               />
               <Text style={styles.rascunhoBotaoTexto}>
                 {rascunhos.length === 1
                   ? "1 rascunho guardado"
                   : `${rascunhos.length} rascunhos guardados`}
               </Text>
-              <Ionicons name="chevron-forward" size={16} color={COR.marcador} />
+              <Ionicons name="chevron-forward" size={16} color={COR.chevron} />
             </TouchableOpacity>
           )}
 
@@ -1632,6 +1683,47 @@ export default function CriarAtividade() {
             ]}
           >
             <TouchableOpacity
+              style={[
+                styles.botaoExcluir,
+                ehDesktop && styles.botaoExcluirDesktop,
+              ]}
+              onPress={() => setConfirmandoSaida(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="trash-outline" size={18} color={COR.perigo} />
+              <Text style={styles.botaoExcluirTexto} numberOfLines={1}>
+                {emEdicao ? "Excluir atividade" : "Descartar"}
+              </Text>
+            </TouchableOpacity>
+
+            {!emEdicao && (
+              <TouchableOpacity
+                style={[
+                  styles.botaoProva,
+                  ehDesktop && styles.botaoProvaDesktop,
+                ]}
+                onPress={salvarRascunhoESair}
+                disabled={!temConteudo}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={18}
+                  color={temConteudo ? COR.marcador : COR.tintaFraca}
+                />
+                <Text
+                  style={[
+                    styles.botaoProvaTexto,
+                    !temConteudo && { color: COR.tintaFraca },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Salvar rascunho
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
               style={[styles.botaoProva, ehDesktop && styles.botaoProvaDesktop]}
               onPress={salvarProvaEmPdf}
               disabled={gerandoPdf}
@@ -1797,61 +1889,54 @@ export default function CriarAtividade() {
       </Modal>
 
       <Modal
-        visible={listaRascunhosAberta}
+        visible={confirmandoSaida}
         transparent
         animationType="fade"
-        onRequestClose={() => setListaRascunhosAberta(false)}
+        onRequestClose={() => setConfirmandoSaida(false)}
       >
         <View style={styles.modalTurmaFundo}>
           <View style={styles.modalTurmaCard}>
-            <Text style={styles.modalTurmaTitulo}>Rascunhos</Text>
-            <Text style={styles.rascunhoAviso}>
-              Atividades que você começou e não publicou. Ficam guardadas só
-              neste aparelho.
+            <View style={styles.confirmaIcone}>
+              <Ionicons name="trash-outline" size={21} color={COR.perigo} />
+            </View>
+
+            <Text style={styles.confirmaTitulo}>
+              {emEdicao ? "Excluir esta atividade?" : "Descartar esta atividade?"}
             </Text>
 
-            <ScrollView style={{ maxHeight: 320 }}>
-              {rascunhos.map((r) => (
-                <View key={r.id} style={styles.rascunhoItem}>
-                  <TouchableOpacity
-                    style={styles.rascunhoItemMeio}
-                    onPress={() => aplicarRascunho(r)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.rascunhoItemTitulo} numberOfLines={1}>
-                      {tituloDoRascunho(r)}
-                    </Text>
-                    <Text style={styles.rascunhoItemApoio} numberOfLines={2}>
-                      {resumoDoRascunho(r)} · {quandoFoi(r.quando)}
-                      {r.tinhaImagem ? " · as imagens não vieram" : ""}
-                    </Text>
-                  </TouchableOpacity>
+            <Text style={styles.confirmaTexto}>
+              {emEdicao
+                ? "As questões, o gabarito e as folhas já corrigidas vão junto. Não dá para desfazer."
+                : "O que está escrito aqui se perde, e o rascunho guardado também. Não dá para desfazer."}
+            </Text>
 
-                  <TouchableOpacity
-                    onPress={() => descartarRascunho(r.id)}
-                    hitSlop={10}
-                    accessibilityLabel="Descartar este rascunho"
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={18}
-                      color={COR.tintaFraca}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
+            <View style={styles.confirmaBotoes}>
+              <TouchableOpacity
+                style={styles.confirmaCancelar}
+                onPress={() => setConfirmandoSaida(false)}
+              >
+                <Text style={styles.confirmaCancelarTexto}>Cancelar</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.modalTurmaFechar}
-              onPress={() => setListaRascunhosAberta(false)}
-            >
-              <Text style={styles.modalTurmaFecharTexto}>Fechar</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmaApagar}
+                onPress={confirmarSaida}
+                disabled={apagando}
+              >
+                <Text style={styles.confirmaApagarTexto}>
+                  {apagando
+                    ? "Apagando..."
+                    : emEdicao
+                      ? "Excluir"
+                      : "Descartar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
-    </View>
+
+   </View>
   );
 }
 
@@ -2314,9 +2399,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     alignSelf: "flex-start",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: COR.campo,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: COR.linhaSuave,
     borderRadius: RAIO.controle,
     paddingVertical: 9,
     paddingHorizontal: 13,
@@ -2325,7 +2410,7 @@ const styles = StyleSheet.create({
   rascunhoBotaoTexto: {
     fontFamily: FONTE.semi,
     fontSize: 13,
-    color: COR.marcador,
+    color: COR.tintaMedia,
   },
   rascunhoAviso: {
     fontFamily: FONTE.regular,
@@ -2411,6 +2496,76 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     fontWeight: "600",
     color: "#0F172A",
+  },
+
+  botaoExcluir: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderColor: COR.perigoFundo,
+    borderRadius: RAIO.controle,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    backgroundColor: COR.branco,
+  },
+  botaoExcluirDesktop: { marginRight: "auto" },
+  botaoExcluirTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 14,
+    color: COR.perigo,
+  },
+
+  confirmaIcone: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COR.perigoFundo,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  confirmaTitulo: {
+    fontFamily: FONTE.bold,
+    fontSize: 16,
+    color: COR.tintaForte,
+    textAlign: "center",
+  },
+  confirmaTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: COR.tintaMedia,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  confirmaBotoes: { flexDirection: "row", gap: 10, marginTop: 18 },
+  confirmaCancelar: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: RAIO.controle,
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+  },
+  confirmaCancelarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.tintaMedia,
+  },
+  confirmaApagar: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: RAIO.controle,
+    backgroundColor: COR.perigo,
+  },
+  confirmaApagarTexto: {
+    fontFamily: FONTE.bold,
+    fontSize: 13,
+    color: COR.branco,
   },
 
   botaoPublicar: {

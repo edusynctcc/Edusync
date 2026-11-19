@@ -18,13 +18,7 @@ import {
   excluirAtividade as excluirAtividadeApi,
   listarAtividades,
 } from "../../constants/api";
-import {
-  apagarRascunho,
-  lerRascunhos,
-  quandoFoi,
-  resumoDoRascunho,
-  tituloDoRascunho,
-} from "../../constants/rascunhos";
+import { lerRascunhos } from "../../constants/rascunhos";
 import {
   semAcento,
   visualDaDisciplina,
@@ -185,60 +179,27 @@ export default function Atividades() {
           {!ehDesktop && <Text style={styles.tituloPagina}>Atividades</Text>}
 
           {rascunhos.length > 0 && (
-            <View style={styles.rascunhosBloco}>
-              <View style={styles.rascunhosTopo}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={16}
-                  color={COR.marcador}
-                />
-                <Text style={styles.rascunhosTitulo}>
-                  {rascunhos.length === 1
-                    ? "1 rascunho"
-                    : `${rascunhos.length} rascunhos`}
-                </Text>
-                <Text style={styles.rascunhosApoio}>
-                  começados e não publicados
-                </Text>
-              </View>
-
-              {rascunhos.map((r) => (
-                <View key={r.id} style={styles.rascunhoLinha}>
-                  <TouchableOpacity
-                    style={styles.rascunhoMeio}
-                    activeOpacity={0.7}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/criar-atividade",
-                        params: { rascunho: r.id },
-                      })
-                    }
-                  >
-                    <Text style={styles.rascunhoNome} numberOfLines={1}>
-                      {tituloDoRascunho(r)}
-                    </Text>
-                    <Text style={styles.rascunhoApoio} numberOfLines={1}>
-                      {resumoDoRascunho(r)} · {quandoFoi(r.quando)}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={async () => {
-                      await apagarRascunho(r.id);
-                      setRascunhos(await lerRascunhos());
-                    }}
-                    hitSlop={10}
-                    accessibilityLabel="Descartar este rascunho"
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={17}
-                      color={COR.tintaFraca}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
+            <TouchableOpacity
+              style={styles.rascunhosAtalho}
+              activeOpacity={0.85}
+              onPress={() => router.push("/rascunhos")}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={16}
+                color={COR.tintaFraca}
+              />
+              <Text style={styles.rascunhosAtalhoTexto}>
+                {rascunhos.length === 1
+                  ? "1 rascunho não publicado"
+                  : `${rascunhos.length} rascunhos não publicados`}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={15}
+                color={COR.chevron}
+              />
+            </TouchableOpacity>
           )}
 
           <View
@@ -528,53 +489,23 @@ export default function Atividades() {
 }
 
 const styles = StyleSheet.create({
-  rascunhosBloco: {
-    width: "100%",
-    backgroundColor: "#EFF6FF",
+  rascunhosAtalho: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: COR.campo,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: COR.linhaSuave,
     borderRadius: RAIO.controle,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
     marginBottom: 14,
   },
-  rascunhosTopo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    flexWrap: "wrap",
-  },
-  rascunhosTitulo: {
-    fontFamily: FONTE.bold,
-    fontSize: 13.5,
-    color: COR.marcador,
-  },
-  rascunhosApoio: {
-    fontFamily: FONTE.regular,
-    fontSize: 12,
-    color: COR.tintaMedia,
-  },
-  rascunhoLinha: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 11,
-    borderTopWidth: 1,
-    borderTopColor: "#CFE2FD",
-    marginTop: 9,
-  },
-  rascunhoMeio: { flex: 1, minWidth: 0 },
-  rascunhoNome: {
+  rascunhosAtalhoTexto: {
     fontFamily: FONTE.semi,
-    fontSize: 14,
-    color: COR.tintaForte,
-  },
-  rascunhoApoio: {
-    fontFamily: FONTE.regular,
-    fontSize: 12,
-    color: COR.tintaFraca,
-    marginTop: 2,
+    fontSize: 13,
+    color: COR.tintaMedia,
   },
 
   tela: { flex: 1, backgroundColor: COR.fundo },
