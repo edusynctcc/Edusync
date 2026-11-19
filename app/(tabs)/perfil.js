@@ -139,8 +139,11 @@ export default function Perfil() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   useAviso(erro);
-  useAviso(aviso, "ok");
   const [aviso, setAviso] = useState("");
+  // Depois da declaração, não antes: `const` não sobe junto com a função, e
+  // ler a variável uma linha acima derruba a tela inteira com
+  // "Cannot access 'aviso' before initialization".
+  useAviso(aviso, "ok");
 
   const [modal, setModal] = useState(null);
   const [erroModal, setErroModal] = useState("");
