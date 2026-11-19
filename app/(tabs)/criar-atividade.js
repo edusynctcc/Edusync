@@ -176,6 +176,25 @@ function contarPalavrasChave(texto) {
     .filter(Boolean).length;
 }
 
+// ---------------------------------------------------------------------------
+// OS TETOS DO BANCO
+//
+// Estas colunas são VARCHAR no MySQL, e o MySQL não corta sozinho: ele recusa
+// a linha inteira. Sem freio aqui, escrever um gabarito comprido demais fazia
+// o salvamento voltar com "erro ao conectar com o servidor (HTTP 500)" -- que
+// não diz nada para quem está do outro lado da tela.
+//
+// Os números são os da tabela, não chutes: atividade.nome VARCHAR(100),
+// atividade.disciplina VARCHAR(80), questao.resposta_correta VARCHAR(255),
+// alternativa.texto VARCHAR(255).
+// ---------------------------------------------------------------------------
+const TETO = {
+  titulo: 100,
+  disciplina: 80,
+  gabarito: 255,
+  alternativa: 255,
+};
+
 function comoNumero(texto) {
   const n = parseFloat(String(texto).replace(",", "."));
   return Number.isFinite(n) ? n : 0;
@@ -986,6 +1005,16 @@ export default function CriarAtividade() {
           return na("Falta a resposta de um dos itens.");
         }
       }
+
+      // As respostas dos itens viram um gabarito só, separado por ponto e
+      // vírgula, e é ele que vai para a coluna de 255 caracteres.
+      const gabarito = gabaritoDaQuestao(q);
+      if (gabarito && gabarito.length > TETO.gabarito) {
+        return na(
+          `O gabarito ficou com ${gabarito.length} caracteres e o limite é ` +
+            `${TETO.gabarito}. Encurte as respostas.`,
+        );
+      }
     }
 
     return null;
@@ -1293,6 +1322,7 @@ export default function CriarAtividade() {
             <TextInput
               value={titulo}
               onChangeText={setTitulo}
+              maxLength={TETO.titulo}
               placeholder="Ex: Prova de Ciências — Fotossíntese"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
@@ -1304,6 +1334,7 @@ export default function CriarAtividade() {
             <TextInput
               value={disciplina}
               onChangeText={setDisciplina}
+              maxLength={TETO.disciplina}
               placeholder="Ex: Ciências"
               placeholderTextColor={COR.tintaFraca}
               style={styles.campoTexto}
@@ -1562,6 +1593,7 @@ export default function CriarAtividade() {
                               v,
                             )
                           }
+                          maxLength={TETO.alternativa}
                           placeholder="Texto da alternativa"
                           placeholderTextColor={COR.tintaFraca}
                           style={[styles.campoTexto, styles.alternativaCampo]}
@@ -1606,6 +1638,7 @@ export default function CriarAtividade() {
                     onChangeText={(v) =>
                       atualizarQuestao(questao.id, "palavrasChave", v)
                     }
+                    maxLength={TETO.gabarito}
                     placeholder="luz solar; gás carbônico; água; glicose; oxigênio"
                     placeholderTextColor={COR.tintaFraca}
                     style={styles.campoTexto}
@@ -1640,6 +1673,7 @@ export default function CriarAtividade() {
                     onChangeText={(v) =>
                       atualizarQuestao(questao.id, "respostaEsperada", v)
                     }
+                    maxLength={TETO.gabarito}
                     placeholder="Ex: 3 g por hora"
                     placeholderTextColor={COR.tintaFraca}
                     style={styles.campoTexto}

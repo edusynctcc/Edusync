@@ -79,4 +79,66 @@ app.use('/alternativas', alternativaRoutes);
 app.use('/correcoes', correcaoRoutes);
 app.use('/importacao', importacaoRoutes);
 
+// ---------------------------------------------------------------------------
+// O ÚLTIMO FILTRO DE ERRO
+//
+// Sem isto, qualquer erro do Prisma caía no tratador padrão do Express e
+// voltava como um 500 seco. Na tela aparecia "erro ao conectar com o
+// servidor", que é falso -- a conexão funcionou, o banco é que recusou -- e
+// não ajudava ninguém a descobrir o motivo.
+//
+// Agora o erro inteiro vai para o log do servidor, e a tela recebe uma frase
+// em português. Os códigos P2000 e companhia são do Prisma:
+// https://www.prisma.io/docs/reference/api-reference/error-reference
+//
+// O `detalhe` vai junto de propósito: num TCC, poder ler o motivo na própria
+// tela vale mais do que esconder o nome de uma coluna.
+// ---------------------------------------------------------------------------
+const tratarErro: express.ErrorRequestHandler = (erro, _req, res, _seguir) => {
+  console.error('[erro]', erro);
+
+  const codigo = (erro as { code?: string } | null)?.code;
+  const meta = (erro as { meta?: Record<string, unknown> } | null)?.meta ?? {};
+  const mensagem =
+    typeof (erro as { message?: unknown } | null)?.message === 'string'
+      ? ((erro as { message: string }).message as string)
+      : '';
+
+  const campo = String(meta.column_name ?? meta.target ?? '');
+
+  if (codigo === 'P2000' || /Data too long/i.test(mensagem)) {
+    return res.status(400).json({
+      erro: 'Um dos campos ficou comprido demais para o banco.',
+      detalhe: campo
+        ? `O campo "${campo}" passou do limite. Encurte o texto e salve de novo.`
+        : 'Encurte o texto mais longo e salve de novo.',
+    });
+  }
+
+  if (codigo === 'P2002') {
+    return res.status(409).json({
+      erro: 'Esse valor já está cadastrado.',
+      detalhe: campo ? `Já existe outro registro com o mesmo "${campo}".` : undefined,
+    });
+  }
+
+  if (codigo === 'P2003') {
+    return res.status(409).json({
+      erro: 'Não dá para fazer isso enquanto houver registros ligados a este.',
+      detalhe: 'Apague primeiro as correções ou respostas que dependem dele.',
+    });
+  }
+
+  if (codigo === 'P2025') {
+    return res.status(404).json({ erro: 'Registro não encontrado.' });
+  }
+
+  return res.status(500).json({
+    erro: 'Deu erro no servidor.',
+    detalhe: mensagem ? mensagem.slice(0, 300) : undefined,
+  });
+};
+
+app.use(tratarErro);
+
 export default app;
