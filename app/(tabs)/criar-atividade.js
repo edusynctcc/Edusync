@@ -19,6 +19,7 @@ import {
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   atualizarAtividade,
+  buscarAtividade,
   criarAlternativa,
   criarAtividade,
   criarQuestao,
@@ -31,6 +32,10 @@ import {
   listarTurmas,
   urlDaImagem,
 } from "../../constants/api";
+import {
+  imagemDeVolta,
+  questoesParaGuardar,
+} from "../../constants/imagemRascunho";
 import {
   apagarRascunho,
   guardarRascunho,
@@ -194,11 +199,32 @@ function lerComoBlob(endereco) {
 async function prepararParaEnvio(imagem) {
   if (!imagem) return null;
 
-  if (imagem.objetoWeb || (imagem.uri && !imagem.caminho)) {
+  if (imagem.objetoWeb) {
     return {
       uri: imagem.uri,
       mime: imagem.mime || "image/jpeg",
-      objetoWeb: imagem.objetoWeb || null,
+      objetoWeb: imagem.objetoWeb,
+    };
+  }
+
+  // Imagem que veio de um rascunho: o arquivo que a pessoa escolheu não existe
+  // mais, só o endereço guardado. Na web o envio precisa de um File de
+  // verdade, então ele é remontado aqui a partir do próprio endereço.
+  if (imagem.uri && !imagem.caminho) {
+    if (Platform.OS !== "web") {
+      return { uri: imagem.uri, mime: imagem.mime || "image/jpeg", objetoWeb: null };
+    }
+
+    const dados = await lerComoBlob(imagem.uri);
+    const tipo = dados?.type || imagem.mime || "image/jpeg";
+
+    return {
+      uri: imagem.uri,
+      mime: tipo,
+      objetoWeb:
+        typeof File === "function"
+          ? new File([dados], "questao.jpg", { type: tipo })
+          : dados,
     };
   }
 
@@ -328,7 +354,11 @@ export default function CriarAtividade() {
     setDescricao(r.descricao || "");
     setQuestoes(
       (r.questoes || []).length
-        ? r.questoes.map((q) => ({ ...novaQuestao(), ...q, imagem: null }))
+        ? r.questoes.map((q) => ({
+            ...novaQuestao(),
+            ...q,
+            imagem: imagemDeVolta(q.imagem),
+          }))
         : [novaQuestao()],
     );
 
@@ -416,6 +446,55 @@ export default function CriarAtividade() {
       // identidade.
     }, [emEdicao, id, idTurmaInicial, idRascunhoParam, limparFormulario]),
   );
+
+  // ---------------------------------------------------------------------
+  // EDIÇÃO: o cabeçalho da atividade.
+  //
+  // Antes daqui só vinham as questões, e disciplina, descrição e turma
+  // apareciam em branco ao abrir "Editar" -- o professor salvava achando que
+  // estava mexendo só nas questões e apagava os três campos sem perceber.
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    if (!emEdicao || !id) return;
+    let ativo = true;
+
+    async function carregarCabecalho() {
+      try {
+        const a = await buscarAtividade(id);
+        if (!ativo || !a) return;
+
+        setTitulo(a.nome || "");
+        setDisciplina(a.disciplina || "");
+        setDescricao(a.descricao || "");
+
+        if (!a.id_turma) return;
+
+        // A turma precisa do objeto inteiro, não só do id. Se a lista ainda
+        // não chegou, busca aqui mesmo em vez de esperar o outro efeito.
+        let lista = turmasRef.current || [];
+        if (lista.length === 0) {
+          lista = await listarTurmas().catch(() => []);
+          if (!ativo) return;
+          if (lista.length) {
+            turmasRef.current = lista;
+            setTurmas(lista);
+          }
+        }
+
+        const achou = lista.find((t) => t.id_turma === a.id_turma);
+        if (achou) setTurmaSelecionada(achou);
+        else turmaPendente.current = a.id_turma;
+      } catch (e) {
+        if (ativo) setErro("Não consegui carregar a atividade: " + e.message);
+      }
+    }
+
+    carregarCabecalho();
+
+    return () => {
+      ativo = false;
+    };
+  }, [emEdicao, id]);
 
   useEffect(() => {
     if (!emEdicao || !id) return;
@@ -508,9 +587,9 @@ export default function CriarAtividade() {
   // Guarda o que está escrito, pouco depois de a pessoa parar de digitar.
   // Só para atividade nova -- editar uma existente já tem onde salvar.
   //
-  // As imagens ficam de fora de propósito: uma foto escolhida na galeria é um
-  // arquivo temporário do navegador, que não sobrevive a fechar o app.
-  // Guardar o caminho dela devolveria um rascunho com imagem quebrada.
+  // As imagens vão junto, encolhidas (ver constants/imagemRascunho.js). A que
+  // não couber fica de fora e entra na conta de `imagensPerdidas`, para a tela
+  // de rascunhos poder avisar em vez de o professor descobrir sozinho.
   useEffect(() => {
     if (emEdicao) return;
 
@@ -530,14 +609,16 @@ export default function CriarAtividade() {
         return;
       }
 
+      const guardaveis = await questoesParaGuardar(questoes);
+
       idRascunho.current = await guardarRascunho({
         id: idRascunho.current,
         titulo,
         disciplina,
         descricao,
         id_turma: turmaSelecionada ? turmaSelecionada.id_turma : null,
-        tinhaImagem: questoes.some((q) => q.imagem),
-        questoes: questoes.map((q) => ({ ...q, imagem: null })),
+        imagensPerdidas: guardaveis.perdidas,
+        questoes: guardaveis.questoes,
       });
 
       setRascunhos(await lerRascunhos());
@@ -549,14 +630,16 @@ export default function CriarAtividade() {
   // Guarda o rascunho na hora e sai. É o "deixo pra depois" explícito, para
   // quem não confia no salvamento automático -- e ele é invisível mesmo.
   async function salvarRascunhoESair() {
+    const guardaveis = await questoesParaGuardar(questoes);
+
     const corpo = {
       id: idRascunho.current,
       titulo,
       disciplina,
       descricao,
       id_turma: turmaSelecionada ? turmaSelecionada.id_turma : null,
-      tinhaImagem: questoes.some((q) => q.imagem),
-      questoes: questoes.map((q) => ({ ...q, imagem: null })),
+      imagensPerdidas: guardaveis.perdidas,
+      questoes: guardaveis.questoes,
     };
 
     await guardarRascunho(corpo);

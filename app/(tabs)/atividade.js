@@ -186,7 +186,7 @@ export default function AtividadeDetalhe() {
     try {
       await excluirAtividade(id_atividade);
       setConfirmandoExclusao(false);
-      router.replace("/atividades");
+      router.navigate("/atividades");
     } catch (e) {
       setConfirmandoExclusao(false);
       setErro(e.message);
@@ -222,7 +222,7 @@ export default function AtividadeDetalhe() {
           </Text>
           <TouchableOpacity
             style={styles.botaoEscuro}
-            onPress={() => router.replace("/atividades")}
+            onPress={() => router.navigate("/atividades")}
           >
             <Text style={styles.botaoEscuroTexto}>Ver atividades</Text>
           </TouchableOpacity>
@@ -255,7 +255,7 @@ export default function AtividadeDetalhe() {
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
-            onPress={() => router.back()}
+            onPress={() => router.navigate("/atividades")}
           >
             <Ionicons name="arrow-back" size={21} color={COR.tintaForte} />
             <Text

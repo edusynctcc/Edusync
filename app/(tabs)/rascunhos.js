@@ -167,7 +167,9 @@ export default function Rascunhos() {
                       {nomeDaTurma(r.id_turma)
                         ? ` · ${nomeDaTurma(r.id_turma)}`
                         : ""}
-                      {r.tinhaImagem ? " · as imagens não vieram" : ""}
+                      {r.imagensPerdidas || r.tinhaImagem
+                        ? " · sem as imagens"
+                        : ""}
                     </Text>
                   </View>
                 </TouchableOpacity>

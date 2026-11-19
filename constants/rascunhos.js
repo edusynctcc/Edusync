@@ -26,16 +26,34 @@ export async function guardarRascunho(rascunho) {
   const id = rascunho.id || `r${Date.now()}`;
   const corpo = { ...rascunho, id, quando: Date.now() };
 
+  const lista = await lerRascunhos();
+  const semEle = lista.filter((r) => r.id !== id);
+
   try {
-    const lista = await lerRascunhos();
-    const semEle = lista.filter((r) => r.id !== id);
     await AsyncStorage.setItem(
       CHAVE,
       JSON.stringify([corpo, ...semEle].slice(0, LIMITE)),
     );
+    return id;
   } catch {
-    // Sem espaço ou sem permissão de armazenamento: o rascunho se perde,
-    // mas a tela continua funcionando. Não vale derrubar a criação por isso.
+    // Quase sempre é falta de espaço, e o que ocupa espaço são as imagens.
+    // Guardar o texto sem elas é muito melhor do que perder o rascunho.
+  }
+
+  try {
+    const questoes = corpo.questoes || [];
+    const semImagens = {
+      ...corpo,
+      imagensPerdidas: questoes.filter((q) => q && q.imagem).length,
+      questoes: questoes.map((q) => ({ ...q, imagem: null })),
+    };
+
+    await AsyncStorage.setItem(
+      CHAVE,
+      JSON.stringify([semImagens, ...semEle].slice(0, LIMITE)),
+    );
+  } catch {
+    // Sem espaço nem para o texto: a tela continua funcionando mesmo assim.
   }
 
   return id;

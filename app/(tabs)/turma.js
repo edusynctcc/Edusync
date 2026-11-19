@@ -409,7 +409,7 @@ export default function TurmaDetalhe() {
     try {
       await excluirTurmaApi(id_turma);
       setConfirmandoExclusaoTurma(false);
-      router.replace("/turmas");
+      router.navigate("/turmas");
     } catch (e) {
       setConfirmandoExclusaoTurma(false);
       setErro(e.message);
@@ -445,7 +445,7 @@ export default function TurmaDetalhe() {
           </Text>
           <TouchableOpacity
             style={styles.botaoEscuro}
-            onPress={() => router.replace("/turmas")}
+            onPress={() => router.navigate("/turmas")}
           >
             <Text style={styles.botaoEscuroTexto}>Ver turmas</Text>
           </TouchableOpacity>
@@ -737,7 +737,7 @@ export default function TurmaDetalhe() {
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
-            onPress={() => router.replace("/turmas")}
+            onPress={() => router.navigate("/turmas")}
           >
             <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
             <Text

@@ -392,7 +392,7 @@ export default function Editar() {
       await carregarQuestoes();
 
       // Era a última folha: não sobrou nada para editar nesta tela.
-      if (lista.length === 0) router.replace("/correcoes");
+      if (lista.length === 0) router.navigate("/correcoes");
     } catch (e) {
       setErro(e.message);
       setParaApagar(null);
@@ -410,7 +410,7 @@ export default function Editar() {
     try {
       await excluirCorrecoesDaAtividade(id_atividade);
       setApagarTudo(false);
-      router.replace("/correcoes");
+      router.navigate("/correcoes");
     } catch (e) {
       setErro(e.message);
       setApagarTudo(false);
@@ -462,7 +462,7 @@ export default function Editar() {
           </Text>
           <TouchableOpacity
             style={styles.botaoEscuro}
-            onPress={() => router.replace("/scanner")}
+            onPress={() => router.navigate("/scanner")}
           >
             <Ionicons name="camera-outline" size={19} color={COR.branco} />
             <Text style={styles.botaoEscuroTexto}>Ir para o Scanner</Text>
@@ -778,7 +778,7 @@ export default function Editar() {
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
-            onPress={() => router.replace("/correcoes")}
+            onPress={() => router.navigate("/correcoes")}
           >
             <Ionicons name="arrow-back" size={21} color={COR.tintaForte} />
             <Text style={styles.tituloPagina}>Editar correção</Text>

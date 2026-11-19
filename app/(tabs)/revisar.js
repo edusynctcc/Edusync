@@ -223,7 +223,7 @@ export default function Revisar() {
               ehDesktop && styles.botaoSecundarioLargoDesktop,
             ]}
             activeOpacity={0.85}
-            onPress={() => router.replace("/correcoes")}
+            onPress={() => router.navigate("/correcoes")}
           >
             <Text
               style={[
@@ -254,7 +254,7 @@ export default function Revisar() {
           <TouchableOpacity
             style={styles.voltarLinha}
             activeOpacity={0.7}
-            onPress={() => router.back()}
+            onPress={() => router.navigate("/correcoes")}
           >
             <Ionicons
               name="arrow-back"
@@ -678,7 +678,7 @@ export default function Revisar() {
             <TouchableOpacity
               style={styles.linkCorrecoes}
               activeOpacity={0.7}
-              onPress={() => router.replace("/correcoes")}
+              onPress={() => router.navigate("/correcoes")}
             >
               <Ionicons
                 name="checkmark-done-outline"

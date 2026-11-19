@@ -424,7 +424,10 @@ export default function Perfil() {
         >
           {ehDesktop && (
             <View style={styles.cabecalhoDesktopLinha}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.voltarLinha}>
+              <TouchableOpacity
+                onPress={() => router.navigate("/home")}
+                style={styles.voltarLinha}
+              >
                 <Ionicons name="arrow-back" size={18} color={COR.tintaForte} />
                 <Text style={styles.tituloPaginaDesktop}>Perfil</Text>
               </TouchableOpacity>

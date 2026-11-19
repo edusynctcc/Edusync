@@ -1201,7 +1201,7 @@ export default function Processando() {
           <TouchableOpacity
             style={styles.botaoSecundario}
             activeOpacity={0.85}
-            onPress={() => router.replace("/scanner")}
+            onPress={() => router.navigate("/scanner")}
           >
             <Ionicons name="scan-outline" size={17} color={COR.marcador} />
             <Text
@@ -1221,7 +1221,7 @@ export default function Processando() {
             ]}
             activeOpacity={0.85}
             onPress={() =>
-              router.replace({
+              router.navigate({
                 pathname: "/revisar",
                 params: { id_correcao: resultado.id_correcao },
               })
@@ -1362,7 +1362,7 @@ export default function Processando() {
             activeOpacity={0.85}
             onPress={() => {
               limparArquivo();
-              router.back();
+              router.navigate("/scanner");
             }}
           >
             <Ionicons

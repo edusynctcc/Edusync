@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -110,6 +111,145 @@ function pendentesPorAtividade(correcoes) {
   return [...porAtividade.values()].sort((a, b) => b.folhas - a.folhas);
 }
 
+// ---------------------------------------------------------------------------
+// PRIMEIROS PASSOS
+//
+// Um professor que abre o EduSync pela primeira vez vê uma home vazia e não
+// tem como adivinhar que a ordem é turma -> atividade -> scanner. Este bloco
+// conta isso e some sozinho assim que a primeira folha é escaneada: quem já
+// usou o app não precisa de tutorial ocupando o topo da home todo dia.
+// ---------------------------------------------------------------------------
+const CHAVE_GUIA = "guia:primeiros-passos";
+
+function PrimeirosPassos({
+  turmas,
+  atividades,
+  correcoes,
+  ehDesktop,
+  router,
+  aoPular,
+}) {
+  const passos = [
+    {
+      chave: "turma",
+      titulo: "Crie a sua primeira turma",
+      texto:
+        "Cadastre a turma e os alunos. A lista de chamada entra de uma vez: de um PDF, de uma planilha ou de uma foto da lista impressa.",
+      feito: turmas.length > 0,
+      rotulo: "Criar turma",
+      rota: "/turmas",
+    },
+    {
+      chave: "atividade",
+      titulo: "Monte uma atividade",
+      texto:
+        "Escreva as questões e marque o gabarito. No fim o app gera a prova em PDF para imprimir — sem o gabarito, porque essa é a folha que vai para o aluno.",
+      feito: atividades.length > 0,
+      rotulo: "Criar atividade",
+      rota: "/criar-atividade",
+    },
+    {
+      chave: "scanner",
+      titulo: "Escaneie a primeira folha",
+      texto:
+        "Com as provas respondidas na mão, fotografe uma folha. O app lê, compara com o gabarito e mostra a nota para você conferir antes de fechar.",
+      feito: correcoes.length > 0,
+      rotulo: "Abrir o scanner",
+      rota: "/scanner",
+    },
+  ];
+
+  const atual = passos.findIndex((p) => !p.feito);
+  const prontos = passos.filter((p) => p.feito).length;
+
+  return (
+    <View style={[styles.guia, ehDesktop && styles.guiaDesktop]}>
+      <View style={styles.guiaTopo}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            style={[styles.guiaTitulo, ehDesktop && styles.guiaTituloDesktop]}
+          >
+            Primeiros passos
+          </Text>
+          <Text style={styles.guiaApoio}>
+            {prontos} de {passos.length} · some sozinho depois da primeira
+            folha escaneada
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={aoPular}
+          activeOpacity={0.6}
+          style={styles.guiaPular}
+        >
+          <Text style={styles.guiaPularTexto}>Já sei usar</Text>
+        </TouchableOpacity>
+      </View>
+
+      {passos.map((passo, indice) => {
+        const ehAtual = indice === atual;
+
+        return (
+          <View
+            key={passo.chave}
+            style={[
+              styles.guiaPasso,
+              indice === passos.length - 1 && styles.guiaPassoUltimo,
+            ]}
+          >
+            <View
+              style={[
+                styles.guiaBolinha,
+                ehAtual && styles.guiaBolinhaAtual,
+                passo.feito && styles.guiaBolinhaFeita,
+              ]}
+            >
+              {passo.feito ? (
+                <Ionicons name="checkmark" size={15} color={COR.branco} />
+              ) : (
+                <Text
+                  style={[
+                    styles.guiaBolinhaTexto,
+                    ehAtual && styles.guiaBolinhaTextoAtual,
+                  ]}
+                >
+                  {indice + 1}
+                </Text>
+              )}
+            </View>
+
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[
+                  styles.guiaPassoTitulo,
+                  passo.feito && styles.guiaPassoTituloFeito,
+                ]}
+              >
+                {passo.titulo}
+              </Text>
+
+              {!passo.feito && (
+                <Text style={styles.guiaPassoTexto}>{passo.texto}</Text>
+              )}
+
+              {ehAtual && (
+                <TouchableOpacity
+                  style={styles.guiaBotao}
+                  activeOpacity={0.85}
+                  onPress={() => router.push(passo.rota)}
+                >
+                  <Text style={styles.guiaBotaoTexto}>{passo.rotulo}</Text>
+                  <Ionicons name="arrow-forward" size={14} color={COR.branco} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function Home() {
   const { width } = useWindowDimensions();
   const ehDesktop = width >= 900;
@@ -123,6 +263,7 @@ export default function Home() {
   const [correcoes, setCorrecoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [guiaPulado, setGuiaPulado] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,8 +289,13 @@ export default function Home() {
               listarAlunos().catch(() => []),
             ]);
 
+          const pulado = await AsyncStorage.getItem(CHAVE_GUIA).catch(
+            () => null,
+          );
+
           if (!ativo) return;
 
+          setGuiaPulado(pulado === "1");
           setProfessor(perfil);
           setAlunos(listaAlunos || []);
           setTurmas(listaTurmas || []);
@@ -170,6 +316,15 @@ export default function Home() {
   );
 
   const nome = primeiroNome(professor?.nome) || "professor";
+
+  // O guia vale para quem ainda não escaneou nada. A primeira correção já é a
+  // prova de que o caminho foi percorrido inteiro.
+  const mostrarGuia = !carregando && !guiaPulado && correcoes.length === 0;
+
+  function pularGuia() {
+    setGuiaPulado(true);
+    AsyncStorage.setItem(CHAVE_GUIA, "1").catch(() => {});
+  }
 
   const pendentes = pendentesPorAtividade(correcoes);
   const temPendentes = pendentes.length > 0;
@@ -288,6 +443,17 @@ export default function Home() {
             </View>
 
             {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
+
+            {mostrarGuia && (
+              <PrimeirosPassos
+                turmas={turmas}
+                atividades={atividades}
+                correcoes={correcoes}
+                ehDesktop
+                router={router}
+                aoPular={pularGuia}
+              />
+            )}
 
             {carregando ? (
               <View style={styles.carregandoBloco}>
@@ -587,6 +753,17 @@ export default function Home() {
 
         {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
+        {mostrarGuia && (
+          <PrimeirosPassos
+            turmas={turmas}
+            atividades={atividades}
+            correcoes={correcoes}
+            ehDesktop={false}
+            router={router}
+            aoPular={pularGuia}
+          />
+        )}
+
         <View style={styles.destaque}>
           {carregando ? (
             <View style={styles.carregandoLinha}>
@@ -683,6 +860,9 @@ export default function Home() {
 }
 
 const AUMENTO_DESKTOP = {
+  guiaDesktop: { padding: 26, marginBottom: 34 },
+  guiaTituloDesktop: { fontSize: 19.5 },
+
   blocoPendentesDesktop: {
     paddingHorizontal: 26,
     paddingTop: 22,
@@ -720,6 +900,115 @@ const AUMENTO_DESKTOP = {
 
 const styles = StyleSheet.create({
   ...AUMENTO_DESKTOP,
+
+  // ---------------------------------------------------- primeiros passos
+  guia: {
+    width: "100%",
+    backgroundColor: COR.branco,
+    borderWidth: 1,
+    borderColor: COR.linha,
+    borderRadius: RAIO.superficie,
+    padding: 18,
+    marginBottom: 20,
+  },
+  guiaTopo: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 16,
+  },
+  guiaTitulo: {
+    fontFamily: FONTE.semi,
+    fontSize: 16,
+    color: COR.tintaForte,
+  },
+  guiaApoio: {
+    fontFamily: FONTE.regular,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: COR.tintaFraca,
+    marginTop: 3,
+  },
+  guiaPular: { flexShrink: 0, paddingTop: 2 },
+  guiaPularTexto: {
+    fontFamily: FONTE.media,
+    fontSize: 12.5,
+    color: COR.tintaFraca,
+    textDecorationLine: "underline",
+  },
+  guiaPasso: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 13,
+    paddingBottom: 16,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COR.linhaSuave,
+  },
+  guiaPassoUltimo: {
+    paddingBottom: 0,
+    marginBottom: 0,
+    borderBottomWidth: 0,
+  },
+  guiaBolinha: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COR.campo,
+    borderWidth: 1,
+    borderColor: COR.linhaSuave,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  guiaBolinhaAtual: {
+    backgroundColor: COR.marinho,
+    borderColor: COR.marinho,
+  },
+  guiaBolinhaFeita: {
+    backgroundColor: COR.ok,
+    borderColor: COR.ok,
+  },
+  guiaBolinhaTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 12.5,
+    color: COR.tintaFraca,
+  },
+  guiaBolinhaTextoAtual: { color: COR.branco },
+  guiaPassoTitulo: {
+    fontFamily: FONTE.semi,
+    fontSize: 14.5,
+    color: COR.tintaForte,
+  },
+  guiaPassoTituloFeito: {
+    color: COR.tintaFraca,
+    textDecorationLine: "line-through",
+  },
+  guiaPassoTexto: {
+    fontFamily: FONTE.regular,
+    fontSize: 13,
+    lineHeight: 19,
+    color: COR.tintaMedia,
+    marginTop: 4,
+  },
+  guiaBotao: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    alignSelf: "flex-start",
+    backgroundColor: COR.marinho,
+    borderRadius: RAIO.controle,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 11,
+  },
+  guiaBotaoTexto: {
+    fontFamily: FONTE.semi,
+    fontSize: 13.5,
+    color: COR.branco,
+  },
+
   tela: { flex: 1, backgroundColor: COR.fundo },
   telaDesktop: { flex: 1, backgroundColor: COR.branco },
 
