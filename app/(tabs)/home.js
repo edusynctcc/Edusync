@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import IconeEdusync from "../../components/IconeEdusync";
 import {
@@ -263,6 +264,7 @@ export default function Home() {
   const [correcoes, setCorrecoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [guiaPulado, setGuiaPulado] = useState(false);
 
   useFocusEffect(
@@ -442,7 +444,6 @@ export default function Home() {
               </TouchableOpacity>
             </View>
 
-            {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
             {mostrarGuia && (
               <PrimeirosPassos
@@ -751,7 +752,6 @@ export default function Home() {
           </View>
         )}
 
-        {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
         {mostrarGuia && (
           <PrimeirosPassos

@@ -3,6 +3,7 @@ import { Tabs, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import AvisoCorrecao from "../../components/AvisoCorrecao";
+import Avisos from "../../components/Avisos";
 import {
   Image,
   Platform,
@@ -447,6 +448,10 @@ export default function TabsLayout() {
           <Tabs.Screen name="revisar" />
         </Tabs>
         <AvisoCorrecao />
+
+        {/* Desenhado uma vez só, por cima de tudo: é ele que mostra o aviso
+            que qualquer tela levantar. */}
+        <Avisos />
       </View>
     </View>
   );

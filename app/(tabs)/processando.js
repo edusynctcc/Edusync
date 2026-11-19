@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -426,6 +427,7 @@ export default function Processando() {
   const [resultado, setResultado] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const intervaloRef = useRef(null);
 
   const pulso = useRef(new Animated.Value(0)).current;

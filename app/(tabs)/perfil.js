@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   Image,
@@ -137,6 +138,8 @@ export default function Perfil() {
   const [professor, setProfessor] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
+  useAviso(aviso, "ok");
   const [aviso, setAviso] = useState("");
 
   const [modal, setModal] = useState(null);
@@ -434,8 +437,6 @@ export default function Perfil() {
             </View>
           )}
 
-          {erro ? <Text style={styles.textoErro}>{erro}</Text> : null}
-          {aviso ? <Text style={styles.textoSucesso}>{aviso}</Text> : null}
           {carregando && !professor ? (
             <Text style={{ color: COR.tintaFraca, marginBottom: 12 }}>Carregando...</Text>
           ) : null}

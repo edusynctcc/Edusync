@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   listarAtividades,
@@ -123,6 +124,7 @@ export default function Scanner() {
   const [recentes, setRecentes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
 
   useFocusEffect(
     useCallback(() => {
@@ -410,7 +412,6 @@ export default function Scanner() {
             </View>
           </View>
 
-          {erro ? <Text style={styles.erroTexto}>{erro}</Text> : null}
 
           {recentes.length > 0 && (
             <View

@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   atualizarTurma,
@@ -95,6 +96,7 @@ export default function TurmaDetalhe() {
   const [abaAtiva, setAbaAtiva] = useState("alunos");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState("");
 
@@ -847,7 +849,6 @@ export default function TurmaDetalhe() {
             </View>
           </View>
 
-          {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
           {!!aviso && <Text style={styles.avisoFaixa}>{aviso}</Text>}
 
           {

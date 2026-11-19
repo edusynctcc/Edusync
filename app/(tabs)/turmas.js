@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import BotaoFlutuante from "../../components/BotaoFlutuante";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import { criarTurma, listarTurmas } from "../../constants/api";
 
@@ -44,6 +45,7 @@ export default function Turmas() {
   const [turmas, setTurmas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [busca, setBusca] = useState(turmaBusca ? String(turmaBusca) : "");
   const [modalAberto, setModalAberto] = useState(false);
   const [novaTurma, setNovaTurma] = useState({ nome: "", escola: "" });
@@ -195,7 +197,6 @@ export default function Turmas() {
             )}
           </View>
 
-          {erro ? <Text style={styles.erroFaixa}>{erro}</Text> : null}
           {carregando ? (
             <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>
               Carregando...

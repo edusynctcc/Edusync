@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import { listarCorrecoes } from "../../constants/api";
 import {
@@ -122,6 +123,7 @@ export default function Correcoes() {
   const [correcoes, setCorrecoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
 
   useFocusEffect(
     useCallback(() => {
@@ -295,7 +297,6 @@ export default function Correcoes() {
             })}
           </View>
 
-          {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
           {carregando ? (
             <View style={styles.vazioBox}>

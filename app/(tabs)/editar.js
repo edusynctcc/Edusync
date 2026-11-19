@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   ajustarResposta,
@@ -178,6 +179,7 @@ export default function Editar() {
   const [correcoes, setCorrecoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
 
   const [abaAtiva, setAbaAtiva] = useState("resumo");
   const [selecionada, setSelecionada] = useState(null);
@@ -903,7 +905,6 @@ export default function Editar() {
             )}
           </View>
 
-          {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
           {                                                                  }
           <View style={styles.abasLinha}>

@@ -16,6 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   atualizarAtividade,
@@ -308,6 +309,7 @@ export default function CriarAtividade() {
   const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [problema, setProblema] = useState(null);
 
   const rolagem = useRef(null);
@@ -1253,7 +1255,6 @@ export default function CriarAtividade() {
             </TouchableOpacity>
           )}
 
-          {erro ? <Alerta titulo="Não deu certo" texto={erro} /> : null}
 
           {!emEdicao && (
             <View

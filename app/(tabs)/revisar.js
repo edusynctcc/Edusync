@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   ajustarResposta,
@@ -87,6 +88,7 @@ export default function Revisar() {
   const [correcao, setCorrecao] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [salvandoId, setSalvandoId] = useState(null);
   const [observacao, setObservacao] = useState("");
   const [fechando, setFechando] = useState(false);
@@ -395,11 +397,6 @@ export default function Revisar() {
             </View>
           )}
 
-          {!!erro && (
-            <Text style={[styles.erroFaixa, ehDesktop && styles.erroFaixaDesktop]}>
-              {erro}
-            </Text>
-          )}
 
           {                                                                      }
           {correcao.respostas.map((resposta) => {

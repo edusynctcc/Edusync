@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   buscarAtividade,
@@ -126,6 +127,7 @@ export default function AtividadeDetalhe() {
   const [atividade, setAtividade] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [ocupado, setOcupado] = useState("");
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
@@ -420,7 +422,6 @@ export default function AtividadeDetalhe() {
             </View>
           </View>
 
-          {!!erro && <Text style={styles.erroFaixa}>{erro}</Text>}
 
           {/* Editar, salvar a prova em PDF e excluir. */}
           <View style={[styles.acoes, ehDesktop && styles.acoesDesktop]}>

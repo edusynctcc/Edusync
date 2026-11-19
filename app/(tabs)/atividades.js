@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import CabecalhoMobile from "../../components/CabecalhoMobile";
+import { useAviso } from "../../components/Avisos";
 import { COR, FONTE, RAIO } from "../../components/estilo";
 import {
   excluirAtividade as excluirAtividadeApi,
@@ -60,6 +61,7 @@ export default function Atividades() {
   const [atividades, setAtividades] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  useAviso(erro);
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
   const [gerandoProva, setGerandoProva] = useState(false);
@@ -248,9 +250,6 @@ export default function Atividades() {
             </TouchableOpacity>
           </View>
 
-          {erro ? (
-            <Text style={{ color: "red", marginBottom: 10 }}>{erro}</Text>
-          ) : null}
           {carregando ? (
             <Text style={{ color: COR.tintaFraca, marginBottom: 10 }}>
               Carregando...
