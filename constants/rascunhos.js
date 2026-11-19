@@ -29,15 +29,24 @@ export async function guardarRascunho(rascunho) {
   const lista = await lerRascunhos();
   const semEle = lista.filter((r) => r.id !== id);
 
-  try {
-    await AsyncStorage.setItem(
-      CHAVE,
-      JSON.stringify([corpo, ...semEle].slice(0, LIMITE)),
-    );
-    return id;
-  } catch {
-    // Quase sempre é falta de espaço, e o que ocupa espaço são as imagens.
-    // Guardar o texto sem elas é muito melhor do que perder o rascunho.
+  // Falta de espaço é o erro comum aqui: o navegador dá uns 5 MB para TODOS os
+  // rascunhos juntos, e o que ocupa esse espaço são as imagens.
+  //
+  // A ordem de sacrifício importa. Primeiro vão os rascunhos MAIS ANTIGOS, um
+  // a um -- quem está com a tela aberta quer o de agora inteiro, com as fotos,
+  // e não se importa com o de três semanas atrás. Só se nem sozinho ele couber
+  // é que as imagens dele saem. Antes era o contrário: a primeira coisa a cair
+  // eram justamente as imagens que a pessoa acabou de escolher.
+  for (let quantos = semEle.length; quantos >= 0; quantos--) {
+    try {
+      await AsyncStorage.setItem(
+        CHAVE,
+        JSON.stringify([corpo, ...semEle.slice(0, quantos)].slice(0, LIMITE)),
+      );
+      return id;
+    } catch {
+      // Não coube: tenta de novo guardando um rascunho antigo a menos.
+    }
   }
 
   try {
@@ -48,10 +57,7 @@ export async function guardarRascunho(rascunho) {
       questoes: questoes.map((q) => ({ ...q, imagem: null })),
     };
 
-    await AsyncStorage.setItem(
-      CHAVE,
-      JSON.stringify([semImagens, ...semEle].slice(0, LIMITE)),
-    );
+    await AsyncStorage.setItem(CHAVE, JSON.stringify([semImagens]));
   } catch {
     // Sem espaço nem para o texto: a tela continua funcionando mesmo assim.
   }
