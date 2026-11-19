@@ -396,6 +396,10 @@ const ROTULOS_POR_ROTA: Record<string, string> = {
   turma: "Turma",
 };
 
+// Toda tela nova dentro de (tabs) entra automaticamente na barra de baixo. A
+// que não for um destino do menu precisa ser listada AQUI -- senão ela vira um
+// botão a mais, sem ícone e sem rótulo, que ninguém vê mas que ocupa o seu
+// pedaço de largura e empurra os outros cinco para a esquerda.
 const ROTAS_OCULTAS_DA_BARRA: string[] = [
   "criar-atividade",
   "perfil",
@@ -404,6 +408,7 @@ const ROTAS_OCULTAS_DA_BARRA: string[] = [
   "revisar",
   "turma",
   "atividade",
+  "rascunhos",
 ];
 
 const ORDEM_BARRA_MOBILE: string[] = [
