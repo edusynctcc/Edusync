@@ -1824,22 +1824,36 @@ export default function CriarAtividade() {
             <TouchableOpacity
               style={[
                 styles.botaoExcluir,
-                ehDesktop && styles.botaoExcluirDesktop,
+                ehDesktop
+                  ? styles.botaoExcluirDesktop
+                  : styles.botaoExcluirMobile,
               ]}
               onPress={() => setConfirmandoSaida(true)}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={
+                emEdicao ? "Excluir atividade" : "Descartar atividade"
+              }
             >
-              <Ionicons name="trash-outline" size={18} color={COR.perigo} />
-              <Text style={styles.botaoExcluirTexto} numberOfLines={1}>
-                {emEdicao ? "Excluir atividade" : "Descartar"}
-              </Text>
+              <Ionicons
+                name="trash-outline"
+                size={ehDesktop ? 18 : 20}
+                color={COR.perigo}
+              />
+              {ehDesktop && (
+                <Text style={styles.botaoExcluirTexto} numberOfLines={1}>
+                  {emEdicao ? "Excluir atividade" : "Descartar"}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {!emEdicao && (
               <TouchableOpacity
                 style={[
                   styles.botaoProva,
-                  ehDesktop && styles.botaoProvaDesktop,
+                  ehDesktop
+                    ? styles.botaoProvaDesktop
+                    : styles.botaoCurtoMobile,
                 ]}
                 onPress={salvarRascunhoESair}
                 disabled={!temConteudo}
@@ -1863,7 +1877,10 @@ export default function CriarAtividade() {
             )}
 
             <TouchableOpacity
-              style={[styles.botaoProva, ehDesktop && styles.botaoProvaDesktop]}
+              style={[
+                styles.botaoProva,
+                ehDesktop ? styles.botaoProvaDesktop : styles.botaoLargoMobile,
+              ]}
               onPress={salvarProvaEmPdf}
               disabled={gerandoPdf}
               activeOpacity={0.85}
@@ -1877,7 +1894,9 @@ export default function CriarAtividade() {
             <TouchableOpacity
               style={[
                 styles.botaoPublicar,
-                ehDesktop && styles.botaoPublicarDesktop,
+                ehDesktop
+                  ? styles.botaoPublicarDesktop
+                  : styles.botaoLargoMobile,
               ]}
               onPress={publicarAtividade}
               disabled={salvando}
@@ -2608,15 +2627,30 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
+  // ---------------------------------------------------------------------
+  // A LINHA DE AÇÕES
+  //
+  // `flexWrap` nos dois. Sem ele a linha do computador não cabia em janela
+  // estreita e, como ela alinha à direita, o excesso saía pela ESQUERDA: o
+  // botão de descartar ficava metade escondido atrás do menu lateral. Com
+  // wrap, o que não cabe desce para a linha de baixo e nada some.
+  //
+  // No celular a mesma linha vira: [lixeira] [salvar rascunho] e, embaixo,
+  // os dois botões largos -- o de descartar não precisa de texto num lugar
+  // onde cada botão de largura inteira custa uma rolada de tela.
+  // ---------------------------------------------------------------------
   acoesFinais: { width: "100%", gap: 12 },
-  acoesFinaisMobile: { flexDirection: "column" },
+  acoesFinaisMobile: { flexDirection: "row", flexWrap: "wrap" },
   acoesFinaisDesktop: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "flex-end",
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
     paddingTop: 20,
   },
+  botaoCurtoMobile: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  botaoLargoMobile: { width: "100%" },
   botaoProva: {
     flexDirection: "row",
     alignItems: "center",
@@ -2650,6 +2684,7 @@ const styles = StyleSheet.create({
     backgroundColor: COR.branco,
   },
   botaoExcluirDesktop: { marginRight: "auto" },
+  botaoExcluirMobile: { width: 54, paddingHorizontal: 0, flexShrink: 0 },
   botaoExcluirTexto: {
     fontFamily: FONTE.bold,
     fontSize: 14,
