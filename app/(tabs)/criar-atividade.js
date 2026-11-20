@@ -56,11 +56,25 @@ const TIPOS = [
 ];
 
 const LETRAS = ["A", "B", "C", "D", "E"];
-const LETRAS_ITEM = ["a", "b", "c", "d", "e", "f", "g", "h"];
+// Os rótulos dos itens: a) b) c) ... z) e, acabadas as letras, 1) 2) 3).
+//
+// Antes a lista tinha oito letras e o nono item caía num `String(indice + 1)`
+// que devolvia "9)" logo depois do "h)" -- um salto sem explicação. Pior que
+// feio: o leitor que remonta os itens ao reabrir a atividade só reconhecia
+// letras, então do nono em diante tudo voltava grudado no enunciado.
+//
+// Agora o alfabeto inteiro vem primeiro e a numeração continua de onde ele
+// para, e os dois leitores (esta tela e o PDF) entendem as duas formas.
+const LETRAS_ITEM = "abcdefghijklmnopqrstuvwxyz".split("");
+const MAX_ITENS = LETRAS_ITEM.length + 99;
+
+function rotuloDoItem(indice) {
+  return LETRAS_ITEM[indice] || String(indice - LETRAS_ITEM.length + 1);
+}
 
 function novoItem(indice) {
   return {
-    letra: LETRAS_ITEM[indice] || String(indice + 1),
+    letra: rotuloDoItem(indice),
     texto: "",
     resposta: "",
   };
@@ -146,7 +160,7 @@ function separarItens(pergunta, gabarito) {
       linhas.pop();
       continue;
     }
-    const achou = ultima.match(/^([a-z])\)\s*(.+)$/i);
+    const achou = ultima.match(/^([a-z]|\d{1,2})\)\s*(.+)$/i);
     if (!achou) break;
     itens.unshift({
       letra: achou[1].toLowerCase(),
@@ -158,7 +172,11 @@ function separarItens(pergunta, gabarito) {
 
   // Um item só pode ser coincidência: uma pergunta que por acaso termina em
   // "a) alguma coisa". Com dois ou mais, foi escrito como lista.
-  if (itens.length < 2) return null;
+  //
+  // E a lista TEM de começar no a). Sem essa trava, agora que o leitor também
+  // aceita número, um enunciado comum terminado numa lista numerada ("1) ...
+  // 2) ...") seria confundido com itens de gabarito.
+  if (itens.length < 2 || itens[0].letra !== "a") return null;
 
   const respostas = String(gabarito || "")
     .split(";")
@@ -714,7 +732,7 @@ export default function CriarAtividade() {
           ...q,
           itens: itens.map((item, i) => ({
             ...item,
-            letra: LETRAS_ITEM[i] || String(i + 1),
+            letra: rotuloDoItem(i),
           })),
         };
       }),
@@ -729,7 +747,9 @@ export default function CriarAtividade() {
   }
 
   function adicionarItem(idQuestao) {
-    mexerNosItens(idQuestao, (itens) => [...itens, novoItem(itens.length)]);
+    mexerNosItens(idQuestao, (itens) =>
+      itens.length >= MAX_ITENS ? itens : [...itens, novoItem(itens.length)],
+    );
   }
 
   function removerItem(idQuestao, indice) {
@@ -1742,6 +1762,7 @@ export default function CriarAtividade() {
 
                   <TouchableOpacity
                     style={styles.itemAdicionar}
+                    disabled={(questao.itens || []).length >= MAX_ITENS}
                     onPress={() => adicionarItem(questao.id)}
                   >
                     <Ionicons name="add" size={17} color={COR.marcador} />

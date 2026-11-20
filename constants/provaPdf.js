@@ -132,13 +132,15 @@ export function montarHtmlDaProva({
         linhas.pop();
         continue;
       }
-      const achou = ultima.match(/^([a-z])\)\s*(.+)$/i);
+      const achou = ultima.match(/^([a-z]|\d{1,2})\)\s*(.+)$/i);
       if (!achou) break;
       itens.unshift({ letra: achou[1].toLowerCase(), texto: achou[2].trim() });
       linhas.pop();
     }
 
-    if (itens.length < 2) return null;
+    // Mesma regra da tela de criar: dois itens no mínimo e a lista começando
+    // no a), senão um enunciado que termina em lista numerada viraria item.
+    if (itens.length < 2 || itens[0].letra !== "a") return null;
     return { comando: linhas.join("\n").trim(), itens };
   };
 
