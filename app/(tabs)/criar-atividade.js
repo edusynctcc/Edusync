@@ -29,6 +29,7 @@ import {
   excluirQuestao,
   lerAtividadeDeArquivo,
   listarAlternativas,
+  listarCorrecoes,
   listarQuestoes,
   listarTurmas,
   urlDaImagem,
@@ -321,6 +322,7 @@ export default function CriarAtividade() {
 
   const [salvando, setSalvando] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState("");
+  const [folhasCorrigidas, setFolhasCorrigidas] = useState(0);
 
   const [erro, setErro] = useState("");
   useAviso(erro);
@@ -364,6 +366,7 @@ export default function CriarAtividade() {
     setQuestoes([novaQuestao()]);
     setTurmaSelecionada(null);
     setResumoImport("");
+    setFolhasCorrigidas(0);
     setImportPendente(null);
     setErro("");
     setProblema(null);
@@ -501,6 +504,14 @@ export default function CriarAtividade() {
         setTitulo(a.nome || "");
         setDisciplina(a.disciplina || "");
         setDescricao(a.descricao || "");
+
+        // Quantas folhas já foram corrigidas. É isso que decide se as
+        // questões ainda podem ser trocadas.
+        const corrigidas = await listarCorrecoes({
+          id_atividade: Number(id),
+        }).catch(() => []);
+        if (!ativo) return;
+        setFolhasCorrigidas(corrigidas.length);
 
         if (!a.id_turma) return;
 
@@ -1055,6 +1066,26 @@ export default function CriarAtividade() {
     const id_atividade = Number(idCru);
 
     if (emEdicao) {
+      // Trocar as questões quer dizer apagar as que existem, e apagar uma
+      // questão leva junto as respostas dos alunos penduradas nela.
+      //
+      // A verificação precisa vir ANTES do primeiro apagamento. Antes ela
+      // acontecia dentro do servidor, questão por questão: as sem resposta
+      // eram apagadas, a primeira com resposta era recusada, e a atividade
+      // ficava pela metade -- com parte das questões já perdida.
+      const corrigidas = await listarCorrecoes({ id_atividade }).catch(
+        () => [],
+      );
+
+      if (corrigidas.length > 0) {
+        throw new Error(
+          `Título, disciplina, turma e descrição foram salvos. As questões não: ` +
+            `esta atividade já tem ${corrigidas.length} ` +
+            `${corrigidas.length === 1 ? "folha corrigida" : "folhas corrigidas"}, ` +
+            `e trocá-las apagaria as notas dos alunos.`,
+        );
+      }
+
       const antigas = await listarQuestoes(id_atividade);
       for (const q of antigas) {
         await excluirQuestao(q.id_questao);
@@ -1256,6 +1287,17 @@ export default function CriarAtividade() {
                 {emEdicao ? "Editar atividade" : "Criar atividade"}
               </Text>
             </TouchableOpacity>
+          )}
+
+          {emEdicao && folhasCorrigidas > 0 && (
+            <Alerta
+              titulo="As questões desta atividade estão travadas"
+              texto={
+                `${folhasCorrigidas} ${folhasCorrigidas === 1 ? "folha já foi corrigida" : "folhas já foram corrigidas"}. ` +
+                "Trocar as questões agora apagaria as notas dos alunos, então elas não podem mais ser alteradas. " +
+                "Título, disciplina, turma e descrição continuam liberados."
+              }
+            />
           )}
 
           {!emEdicao && rascunhos.length > 0 && (
