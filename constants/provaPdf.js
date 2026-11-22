@@ -7,6 +7,7 @@ import {
   urlDaImagem,
 } from "./api";
 import { LOGO_EDUSYNC } from "./logo";
+import { montarPdfDaProva, nomeDoArquivo } from "./provaArquivo";
 import { qrSvg } from "./qr";
 
 
@@ -337,7 +338,40 @@ export async function imprimirHtml(html) {
   }
 }
 
-export async function imprimirProvaDaAtividade(atividade) {
+// ---------------------------------------------------------------------------
+// Entregar a prova: baixar o arquivo ou mandar para a impressora.
+//
+// São dois caminhos de verdade, não dois nomes para a mesma coisa.
+//
+// "imprimir" monta o HTML e pede a janela de impressão do sistema. É o que
+// existia, e continua sendo o caminho quando a prova vai para o papel.
+//
+// "baixar" desenha o PDF aqui dentro e salva o arquivo. Existe porque
+// navegador nenhum deixa um site salvar PDF sozinho -- ele só sabe abrir a
+// janela de impressão e esperar a pessoa escolher "Salvar como PDF", que são
+// dois cliques e uma caixa de diálogo no meio.
+//
+// No celular "baixar" não se aplica: a folha de impressão do próprio Android
+// já traz "Salvar como PDF", então lá os dois botões levam ao mesmo lugar.
+// ---------------------------------------------------------------------------
+export async function entregarProva(dados, modo = "imprimir") {
+  if (modo === "baixar" && Platform.OS === "web") {
+    try {
+      const doc = montarPdfDaProva({
+        ...dados,
+        codigo: dados.id_atividade ? codigoDaFolha(dados.id_atividade) : "",
+      });
+      doc.save(nomeDoArquivo(dados.titulo));
+      return "";
+    } catch (e) {
+      return "Não consegui gerar o arquivo: " + (e?.message || e);
+    }
+  }
+
+  return imprimirHtml(montarHtmlDaProva(dados));
+}
+
+export async function imprimirProvaDaAtividade(atividade, modo = "imprimir") {
   const id_atividade = atividade.id_atividade ?? atividade.id;
 
   const doBanco = await listarQuestoes(id_atividade);
@@ -377,14 +411,15 @@ export async function imprimirProvaDaAtividade(atividade) {
     turma = turmas.find((t) => t.id_turma === atividade.id_turma)?.nome || "";
   }
 
-  return imprimirHtml(
-    montarHtmlDaProva({
+  return entregarProva(
+    {
       titulo: atividade.nome || atividade.titulo || "Atividade",
       disciplina: atividade.disciplina || "",
       turma,
       descricao: atividade.descricao || "",
       questoes: await embutirImagens(questoes),
       id_atividade,
-    })
+    },
+    modo
   );
 }

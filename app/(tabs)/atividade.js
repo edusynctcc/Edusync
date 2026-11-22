@@ -162,16 +162,16 @@ export default function AtividadeDetalhe() {
     }, [id_atividade]),
   );
 
-  async function gerarProva() {
+  async function gerarProva(modo = "baixar") {
     if (ocupado) return;
-    setOcupado("pdf");
+    setOcupado(modo === "imprimir" ? "imprimir" : "pdf");
     setErro("");
 
     try {
-      const problema = await imprimirProvaDaAtividade({
-        ...atividade,
-        turma: atividade.turma?.nome || "",
-      });
+      const problema = await imprimirProvaDaAtividade(
+        { ...atividade, turma: atividade.turma?.nome || "" },
+        modo,
+      );
       if (problema) setErro(problema);
     } catch (e) {
       setErro(e.message);
@@ -459,7 +459,28 @@ export default function AtividadeDetalhe() {
               style={[styles.botaoAcao, ehDesktop && styles.botaoAcaoDesktop]}
               activeOpacity={0.85}
               disabled={!!ocupado}
-              onPress={gerarProva}
+              onPress={() => gerarProva("baixar")}
+            >
+              <Ionicons
+                name="download-outline"
+                size={ehDesktop ? 18 : 19}
+                color={COR.marcador}
+              />
+              <Text
+                style={[
+                  styles.botaoAcaoTexto,
+                  ehDesktop && styles.botaoAcaoTextoDesktop,
+                ]}
+              >
+                {ocupado === "pdf" ? "Gerando..." : "Salvar em PDF"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.botaoAcao, ehDesktop && styles.botaoAcaoDesktop]}
+              activeOpacity={0.85}
+              disabled={!!ocupado}
+              onPress={() => gerarProva("imprimir")}
             >
               <Ionicons
                 name="print-outline"
@@ -472,7 +493,7 @@ export default function AtividadeDetalhe() {
                   ehDesktop && styles.botaoAcaoTextoDesktop,
                 ]}
               >
-                {ocupado === "pdf" ? "Gerando..." : "Salvar prova em PDF"}
+                {ocupado === "imprimir" ? "Abrindo..." : "Imprimir"}
               </Text>
             </TouchableOpacity>
 

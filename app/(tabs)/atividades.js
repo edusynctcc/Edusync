@@ -64,23 +64,23 @@ export default function Atividades() {
   useAviso(erro);
   const [menuAtivo, setMenuAtivo] = useState(null);
   const [atividadeParaExcluir, setAtividadeParaExcluir] = useState(null);
-  const [gerandoProva, setGerandoProva] = useState(false);
+  const [gerandoProva, setGerandoProva] = useState("");
   const [rascunhos, setRascunhos] = useState([]);
 
-  async function salvarProvaEmPdf(atividade) {
+  async function salvarProvaEmPdf(atividade, modo = "baixar") {
     if (gerandoProva) return;
 
-    setGerandoProva(true);
+    setGerandoProva(modo);
     setErro("");
 
     try {
-      const problema = await imprimirProvaDaAtividade(atividade);
+      const problema = await imprimirProvaDaAtividade(atividade, modo);
       if (problema) setErro(problema);
       else setMenuAtivo(null);
     } catch (e) {
       setErro(e.message);
     } finally {
-      setGerandoProva(false);
+      setGerandoProva("");
     }
   }
 
@@ -400,8 +400,31 @@ export default function Atividades() {
             <TouchableOpacity
               style={[styles.menuOpcao, ehDesktop && styles.menuOpcaoDesktop]}
               activeOpacity={0.7}
-              disabled={gerandoProva}
-              onPress={() => salvarProvaEmPdf(menuAtivo)}
+              disabled={!!gerandoProva}
+              onPress={() => salvarProvaEmPdf(menuAtivo, "baixar")}
+            >
+              <Ionicons
+                name="download-outline"
+                size={17}
+                color={COR.marcador}
+              />
+              <Text
+                style={[
+                  styles.menuOpcaoTexto,
+                  ehDesktop && styles.menuOpcaoTextoDesktop,
+                ]}
+              >
+                {gerandoProva === "baixar"
+                  ? "Gerando prova..."
+                  : "Salvar prova em PDF"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuOpcao, ehDesktop && styles.menuOpcaoDesktop]}
+              activeOpacity={0.7}
+              disabled={!!gerandoProva}
+              onPress={() => salvarProvaEmPdf(menuAtivo, "imprimir")}
             >
               <Ionicons name="print-outline" size={17} color={COR.marcador} />
               <Text
@@ -410,7 +433,9 @@ export default function Atividades() {
                   ehDesktop && styles.menuOpcaoTextoDesktop,
                 ]}
               >
-                {gerandoProva ? "Gerando prova..." : "Salvar prova em PDF"}
+                {gerandoProva === "imprimir"
+                  ? "Abrindo..."
+                  : "Imprimir prova"}
               </Text>
             </TouchableOpacity>
 

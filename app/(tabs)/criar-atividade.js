@@ -42,11 +42,7 @@ import {
   guardarRascunho,
   lerRascunhos,
 } from "../../constants/rascunhos";
-import {
-  embutirImagens,
-  imprimirHtml,
-  montarHtmlDaProva,
-} from "../../constants/provaPdf";
+import { embutirImagens, entregarProva } from "../../constants/provaPdf";
 
 const TIPOS = [
   { valor: "alternativa", rotulo: "Alternativa" },
@@ -324,7 +320,7 @@ export default function CriarAtividade() {
   const [modalTurmaAberto, setModalTurmaAberto] = useState(false);
 
   const [salvando, setSalvando] = useState(false);
-  const [gerandoPdf, setGerandoPdf] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState("");
 
   const [erro, setErro] = useState("");
   useAviso(erro);
@@ -1099,7 +1095,7 @@ export default function CriarAtividade() {
     }
   }
 
-  async function salvarProvaEmPdf() {
+  async function salvarProvaEmPdf(modo = "baixar") {
     if (gerandoPdf) return;
 
     if (!titulo.trim() || questoes.every((q) => !q.enunciado.trim())) {
@@ -1109,7 +1105,7 @@ export default function CriarAtividade() {
       return;
     }
 
-    setGerandoPdf(true);
+    setGerandoPdf(modo);
     setErro("");
 
     try {
@@ -1123,21 +1119,23 @@ export default function CriarAtividade() {
         })),
       );
 
-      const problema = await imprimirHtml(
-        montarHtmlDaProva({
+      const problema = await entregarProva(
+        {
           titulo,
           disciplina,
           turma: turmaSelecionada?.nome || "",
           descricao,
           questoes: paraProva,
-        }),
+          id_atividade: emEdicao ? id : null,
+        },
+        modo,
       );
 
       if (problema) setErro(problema);
     } catch (e) {
       setErro("Não consegui gerar a prova: " + (e.message || e));
     } finally {
-      setGerandoPdf(false);
+      setGerandoPdf("");
     }
   }
 
@@ -1879,15 +1877,34 @@ export default function CriarAtividade() {
             <TouchableOpacity
               style={[
                 styles.botaoProva,
-                ehDesktop ? styles.botaoProvaDesktop : styles.botaoLargoMobile,
+                ehDesktop ? styles.botaoProvaDesktop : styles.botaoCurtoMobile,
               ]}
-              onPress={salvarProvaEmPdf}
-              disabled={gerandoPdf}
+              onPress={() => salvarProvaEmPdf("baixar")}
+              disabled={!!gerandoPdf}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name="download-outline"
+                size={19}
+                color={COR.marcador}
+              />
+              <Text style={styles.botaoProvaTexto} numberOfLines={1}>
+                {gerandoPdf === "baixar" ? "Gerando..." : "Salvar em PDF"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.botaoProva,
+                ehDesktop ? styles.botaoProvaDesktop : styles.botaoCurtoMobile,
+              ]}
+              onPress={() => salvarProvaEmPdf("imprimir")}
+              disabled={!!gerandoPdf}
               activeOpacity={0.85}
             >
               <Ionicons name="print-outline" size={19} color={COR.marcador} />
               <Text style={styles.botaoProvaTexto} numberOfLines={1}>
-                {gerandoPdf ? "Gerando..." : "Salvar prova em PDF"}
+                {gerandoPdf === "imprimir" ? "Abrindo..." : "Imprimir"}
               </Text>
             </TouchableOpacity>
 
