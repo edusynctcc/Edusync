@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { comoId } from '../utils/ids';
 
 const prisma = new PrismaClient();
 
@@ -9,7 +10,8 @@ async function atividadePertenceAoProfessor(id_atividade: number, id_professor: 
 }
 
 export async function criarQuestao(req: Request, res: Response) {
-  const { numero, pergunta, tipo, resposta_correta, peso, id_atividade } = req.body;
+  const { numero, pergunta, tipo, resposta_correta, peso } = req.body;
+  const id_atividade = comoId(req.body.id_atividade);
   const id_professor = req.professor!.id;
 
   if (!numero || !pergunta || !tipo || !id_atividade) {

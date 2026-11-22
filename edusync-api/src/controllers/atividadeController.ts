@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { comoId } from '../utils/ids';
 
 const prisma = new PrismaClient();
 
 export async function criarAtividade(req: Request, res: Response) {
-  const { nome, disciplina, descricao, imagem, id_turma } = req.body;
+  const { nome, disciplina, descricao, imagem } = req.body;
+  const id_turma = comoId(req.body.id_turma);
   const id_professor = req.professor!.id;
 
   if (!nome) {
@@ -83,7 +85,8 @@ export async function buscarAtividade(req: Request, res: Response) {
 export async function atualizarAtividade(req: Request, res: Response) {
   const id_professor = req.professor!.id;
   const id_atividade = Number(req.params.id);
-  const { nome, disciplina, descricao, imagem, id_turma } = req.body;
+  const { nome, disciplina, descricao, imagem } = req.body;
+  const id_turma = comoId(req.body.id_turma);
 
   const atividadeExiste = await prisma.atividade.findFirst({
     where: { id_atividade, id_professor },

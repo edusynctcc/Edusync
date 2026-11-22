@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { comoId } from "../utils/ids";
 import { Request, Response } from "express";
 
 const prisma = new PrismaClient();
@@ -19,7 +20,8 @@ async function questaoPertenceAoProfessor(
 }
 
 export async function criarAlternativa(req: Request, res: Response) {
-  const { letra, texto, id_questao } = req.body;
+  const { letra, texto } = req.body;
+  const id_questao = comoId(req.body.id_questao);
   const id_professor = req.professor!.id;
 
   if (!letra || !texto || !id_questao) {

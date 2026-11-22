@@ -1048,7 +1048,12 @@ export default function CriarAtividade() {
     rolagem.current.scrollTo({ y: Math.max(y - 12, 0), animated: true });
   }
 
-  async function gravarQuestoes(id_atividade) {
+  async function gravarQuestoes(idCru) {
+    // Em edição o id vem do endereço da tela, e endereço é sempre texto. O
+    // banco espera número: mandando "10" em vez de 10, a questão nova não
+    // entrava e a tela só dizia "deu erro no servidor".
+    const id_atividade = Number(idCru);
+
     if (emEdicao) {
       const antigas = await listarQuestoes(id_atividade);
       for (const q of antigas) {

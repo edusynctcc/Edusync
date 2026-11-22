@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { comoId } from "../utils/ids";
 import { Request, Response } from "express";
 import { lerChamada, AlunoLido } from "../services/chamadaService";
 import { jaEstaNaTurma, normalizar } from "../services/alunoService";
@@ -18,7 +19,8 @@ async function turmaPertenceAoProfessor(
 }
 
 export async function criarAluno(req: Request, res: Response) {
-  const { nome, matricula, numero_chamada, id_turma } = req.body;
+  const { nome, matricula, numero_chamada } = req.body;
+  const id_turma = comoId(req.body.id_turma);
   const id_professor = req.professor!.id;
 
   if (!nome || !matricula || !numero_chamada || !id_turma) {
