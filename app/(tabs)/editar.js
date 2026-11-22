@@ -25,12 +25,9 @@ import {
 } from "../../constants/api";
 import {
   baixarPlanilha,
+  entregarRelatorio,
   formatarNota,
-  imprimirRelatorio,
   montarCsvDasNotas,
-  montarHtmlCompleto,
-  montarHtmlDasNotas,
-  montarHtmlDasQuestoes,
 } from "../../constants/relatorio";
 
 const BARRA_TRILHO = "#D7E4F2";
@@ -332,22 +329,20 @@ export default function Editar() {
     (q) => q.aproveitamento !== null && q.aproveitamento !== undefined,
   );
 
-  async function exportarPdf(conteudo) {
+  async function exportarPdf(conteudo, modo = "baixar") {
     if (exportando) return;
 
     setEscolhendoRelatorio(false);
     setExportando(true);
     setErro("");
 
-    const grupo = montarGrupo();
-
     try {
-      let html;
-      if (conteudo === "questoes") html = montarHtmlDasQuestoes(grupo, questoes);
-      else if (conteudo === "tudo") html = montarHtmlCompleto(grupo, questoes);
-      else html = montarHtmlDasNotas(grupo);
-
-      const problema = await imprimirRelatorio(html);
+      const problema = await entregarRelatorio(
+        montarGrupo(),
+        questoes,
+        conteudo,
+        modo,
+      );
       if (problema) setErro(problema);
     } finally {
       setExportando(false);
@@ -1017,11 +1012,16 @@ export default function Editar() {
                   secretaria.
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={19}
-                color={COR.chevron}
-              />
+              <TouchableOpacity
+                style={styles.opcaoImprimir}
+                activeOpacity={0.6}
+                disabled={exportando}
+                onPress={() => exportarPdf("notas", "imprimir")}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir a janela de impressão"
+              >
+                <Ionicons name="print-outline" size={19} color={COR.marcador} />
+              </TouchableOpacity>
             </TouchableOpacity>
 
             {
@@ -1051,11 +1051,16 @@ export default function Editar() {
                     : "Nenhuma questão foi corrigida ainda."}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={19}
-                color={COR.chevron}
-              />
+              <TouchableOpacity
+                style={styles.opcaoImprimir}
+                activeOpacity={0.6}
+                disabled={exportando}
+                onPress={() => exportarPdf("questoes", "imprimir")}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir a janela de impressão"
+              >
+                <Ionicons name="print-outline" size={19} color={COR.marcador} />
+              </TouchableOpacity>
             </TouchableOpacity>
 
             {
@@ -1083,11 +1088,16 @@ export default function Editar() {
                     : "Nenhuma questão foi corrigida ainda."}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={19}
-                color={COR.chevron}
-              />
+              <TouchableOpacity
+                style={styles.opcaoImprimir}
+                activeOpacity={0.6}
+                disabled={exportando}
+                onPress={() => exportarPdf("tudo", "imprimir")}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir a janela de impressão"
+              >
+                <Ionicons name="print-outline" size={19} color={COR.marcador} />
+              </TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1355,6 +1365,11 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   opcaoDesativada: { opacity: 0.45 },
+  opcaoImprimir: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginLeft: 2,
+  },
   opcaoIcone: {
     width: 45,
     height: 45,

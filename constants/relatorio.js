@@ -1,6 +1,7 @@
 import * as Print from "expo-print";
 import { Platform } from "react-native";
 import { LOGO_EDUSYNC } from "./logo";
+import { montarPdfDoRelatorio, nomeDoRelatorio } from "./relatorioArquivo";
 
 
 function escapar(texto) {
@@ -195,6 +196,101 @@ export function montarHtmlCompleto(grupo, questoes) {
         ${tabelaDasQuestoes(questoes)}
       </section>`,
   });
+}
+
+// As mesmas tabelas do HTML, só que em dados -- é delas que o gerador de PDF
+// desenha a folha. Uma fonte só para os dois caminhos: mudou a regra de
+// ordenação ou o formato da nota, muda nos dois.
+function dadosDoRelatorio(grupo, questoes, conteudo) {
+  const notas = {
+    titulo: "Notas dos alunos",
+    colunas: [
+      { titulo: "Nº", largura: 12 },
+      { titulo: "Aluno" },
+      { titulo: "Nota", largura: 32, direita: true, forte: true },
+    ],
+    linhas: (grupo.alunos || []).map((c) => [
+      String(c.aluno?.numero_chamada ?? ""),
+      c.aluno?.nome || "Aluno",
+      `${formatarNota(c.nota)} / ${formatarNota(c.peso_total)}`,
+    ]),
+  };
+
+  const porQuestao = {
+    titulo: "Desempenho por questão",
+    sub: "Da que a turma foi pior para a que foi melhor",
+    colunas: [
+      { titulo: "Nº", largura: 12 },
+      { titulo: "Questão" },
+      { titulo: "Acertaram", largura: 28, direita: true },
+      { titulo: "Aproveitamento", largura: 32, direita: true, forte: true },
+    ],
+    linhas: daPiorParaMelhor(questoes).map((q) => [
+      String(q.numero),
+      q.pergunta || "",
+      `${q.acertos} de ${q.respondidas}`,
+      `${Math.round(q.aproveitamento * 100)}%`,
+    ]),
+  };
+
+  const rodape = `${grupo.total} ${
+    grupo.total === 1 ? "folha corrigida" : "folhas corrigidas"
+  } · média ${formatarNota(grupo.media)}`;
+
+  if (conteudo === "questoes") {
+    return {
+      titulo: `${grupo.atividade.nome} — desempenho por questão`,
+      subtitulo: `${grupo.atividade.turma} · ${rodape}`,
+      rodape,
+      secoes: [{ ...porQuestao, titulo: null, sub: null }],
+    };
+  }
+
+  if (conteudo === "tudo") {
+    return {
+      titulo: `${grupo.atividade.nome} — relatório completo`,
+      subtitulo: resumoDaTurma(grupo),
+      rodape,
+      secoes: [notas, porQuestao],
+    };
+  }
+
+  return {
+    titulo: `${grupo.atividade.nome} — notas`,
+    subtitulo: resumoDaTurma(grupo),
+    rodape,
+    secoes: [{ ...notas, titulo: null }],
+  };
+}
+
+// Baixar o arquivo ou abrir a janela de impressão. Vale o mesmo que em
+// provaPdf.js: navegador não salva PDF sozinho, então o "baixar" desenha a
+// folha aqui dentro. No celular os dois caminhos levam à folha de impressão
+// do sistema, que já traz "Salvar como PDF".
+export async function entregarRelatorio(
+  grupo,
+  questoes,
+  conteudo,
+  modo = "baixar",
+) {
+  if (modo === "baixar" && Platform.OS === "web") {
+    try {
+      const dados = dadosDoRelatorio(grupo, questoes, conteudo);
+      montarPdfDoRelatorio(dados).save(nomeDoRelatorio(dados.titulo));
+      return "";
+    } catch (e) {
+      return "Não consegui gerar o arquivo: " + (e?.message || e);
+    }
+  }
+
+  const html =
+    conteudo === "questoes"
+      ? montarHtmlDasQuestoes(grupo, questoes)
+      : conteudo === "tudo"
+        ? montarHtmlCompleto(grupo, questoes)
+        : montarHtmlDasNotas(grupo);
+
+  return imprimirRelatorio(html);
 }
 
 export async function imprimirRelatorio(html) {
