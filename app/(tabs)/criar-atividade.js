@@ -1924,7 +1924,7 @@ export default function CriarAtividade() {
             <TouchableOpacity
               style={[
                 styles.botaoProva,
-                ehDesktop ? styles.botaoProvaDesktop : styles.botaoCurtoMobile,
+                ehDesktop ? styles.botaoProvaDesktop : styles.botaoMeioMobile,
               ]}
               onPress={() => salvarProvaEmPdf("baixar")}
               disabled={!!gerandoPdf}
@@ -1936,14 +1936,18 @@ export default function CriarAtividade() {
                 color={COR.marcador}
               />
               <Text style={styles.botaoProvaTexto} numberOfLines={1}>
-                {gerandoPdf === "baixar" ? "Gerando..." : "Salvar em PDF"}
+                {gerandoPdf === "baixar"
+                  ? "Gerando..."
+                  : ehDesktop
+                    ? "Salvar em PDF"
+                    : "Baixar PDF"}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.botaoProva,
-                ehDesktop ? styles.botaoProvaDesktop : styles.botaoCurtoMobile,
+                ehDesktop ? styles.botaoProvaDesktop : styles.botaoMeioMobile,
               ]}
               onPress={() => salvarProvaEmPdf("imprimir")}
               disabled={!!gerandoPdf}
@@ -2713,7 +2717,22 @@ const styles = StyleSheet.create({
     borderTopColor: "#E2E8F0",
     paddingTop: 20,
   },
-  botaoCurtoMobile: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // As bases em porcentagem é que decidem onde cada botão quebra de linha:
+  //
+  //   [lixeira] [salvar rascunho]        <- 54px + 60%, cabem juntos
+  //   [baixar PDF] [imprimir]            <- 45% cada, cabem em par
+  //   [publicar atividade]               <- linha inteira
+  //
+  // Sem isso os quatro tentavam caber na mesma linha e o rótulo de cada um
+  // virava "S...", "S...", "I..." -- três botões que ninguém sabe o que são.
+  botaoCurtoMobile: { flexGrow: 1, flexShrink: 1, flexBasis: "60%", minWidth: 0 },
+  botaoMeioMobile: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "45%",
+    minWidth: 0,
+    paddingHorizontal: 12,
+  },
   botaoLargoMobile: { width: "100%" },
   botaoProva: {
     flexDirection: "row",
